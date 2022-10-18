@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@eventstore/db-client": "^2.1.1"
+  }
+}
