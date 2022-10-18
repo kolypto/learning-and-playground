@@ -1,0 +1,25 @@
+#: kivy 1.2.0
+
+<LoginScreen>:
+    f_login: login 
+    f_passwd: passwd
+
+    GridLayout:
+        rows: 2
+        cols: 2
+        padding: 10
+        spacing: 10
+
+        Label:
+            text: 'Login:'
+        TextInput:
+            id: login 
+            text: ''
+        
+        Label:
+            text: 'Password:'
+        TextInput:
+            id: passwd
+            text: ''
+            password: True
+        

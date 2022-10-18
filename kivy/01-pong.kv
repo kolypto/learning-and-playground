@@ -1,0 +1,72 @@
+#:kivy 1.0.9
+
+# Widget rule: is applied to any instance of the named class
+<PongGame>:
+    # Rule section.
+    # You can: set property values ; add child widgets ; define `canvas` with graphics instructions
+    
+    # Properties
+    ball: pong_ball
+    player1: player_left
+    player2: player_right
+
+    # A `canvas` block.
+    # This allows us to draw some graphics primitives.
+    canvas:
+        # Add a Rectangle primitive.
+        # The rendered rectangle will be automatically updated when the properties used in the value expression change.
+        # Using kv language gives automatic property binding :)
+        Rectangle:
+            # Position: 5px left of the horizontal center of the widget
+            pos: self.center_x - 5, 0
+            # Size: 10px width, full height
+            size: 10, self.height
+
+    # "Player 1 score."
+    # Add a "Label" widget as a child. 
+    Label:
+        font_size: 70
+        center_x: root.width / 4
+        top: root.top - 50
+        text: str(root.player1.score)
+    
+    # Player 2 score
+    Label:
+        font_size: 70
+        center_x: root.width * 3/4
+        top: root.top - 50
+        text: str(root.player2.score)
+    
+    # The ball
+    PongBall:
+        id: pong_ball
+        center: self.parent.center
+    
+    # Players
+    PongPaddle:
+        id: player_left
+        x: root.x 
+        center_y: root.center_y 
+    PongPaddle:
+        id: player_right
+        x: root.width - self.width
+        center_y: root.center_y 
+
+
+<PongBall>:
+    size: 50, 50
+
+    canvas:
+        Color:
+            rgba: [1, 0, 0, 1]
+
+        Ellipse:
+            size: self.size
+            pos: self.pos
+
+<PongPaddle>:
+    size: 25, 200
+    canvas:
+        Rectangle:
+            pos: self.pos
+            size: self.size

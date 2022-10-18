@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "kivy-example"
+version = "0.1.0"
+description = ""
+authors = ["Mark Vartanyan <kolypto@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+Kivy = {extras = ["base"], version = "^2.1.0"}
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
