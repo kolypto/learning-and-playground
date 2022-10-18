@@ -1,0 +1,30 @@
+# ===[ APP ]=== #
+
+# ===[ ANGULAR ]=== #
+
+# Tools
+.sass-cache
+
+# ===[ OTHER ]=== #
+
+# IDE Projects
+/.idea
+/.*project
+/.settings
+/.vscode
+
+# Temps
+*~
+*.tmp
+*.bak
+*.swp
+*.kate-swp
+*.DS_Store
+Thumbs.db
+
+# Runtime
+/*.log
+/*.pid
+
+# ===[ EXCLUDES ]=== #
+!.gitkeep

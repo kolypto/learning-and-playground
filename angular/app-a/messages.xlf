@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file source-language="en-US" datatype="plaintext" original="ng2.template">
+    <body>
+      <trans-unit id="1468050c35a6c08872a1d2fde52083e47054990b" datatype="html">
+        <source>Hello</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app-translations/app-translations.component.ts</context>
+          <context context-type="linenumber">4</context>
+        </context-group>
+        <note priority="1" from="description">Title of the main page</note>
+        <note priority="1" from="meaning">greets the user</note>
+      </trans-unit>
+      <trans-unit id="745149368d7d34997a15f1630270e13e8eb7afbd" datatype="html">
+        <source>Translatable text without a tag</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app-translations/app-translations.component.ts</context>
+          <context context-type="linenumber">7</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6423a84b98dc6d0215a039dff71f195f46dfb452" datatype="html">
+        <source>Random image</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app-translations/app-translations.component.ts</context>
+          <context context-type="linenumber">10</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="38b38677be8dcc72f9513d885b862cea0b186328" datatype="html">
+        <source>
+      Updated
+        <x id="ICU" equiv-text="{minutes, plural, =0 {...} =1 {...} other {...}}"/>
+
+      
+      by
+      <x id="ICU_1" equiv-text="{gender, select, male {...} female {...} other {...}}"/>
+    </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app-translations/app-translations.component.ts</context>
+          <context context-type="linenumber">13</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5a134dee893586d02bffc9611056b9cadf9abfad" datatype="html">
+        <source>{VAR_PLURAL, plural, =0 {just now} =1 {one minute ago} other {<x id="INTERPOLATION" equiv-text="{{minutes}}"/> minutes ago} }</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app-translations/app-translations.component.ts</context>
+          <context context-type="linenumber">15</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="38073855b2baac086b0faf1e370543e83dfd5160" datatype="html">
+        <source>{VAR_SELECT, select, male {him} female {her} other {them} }</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app-translations/app-translations.component.ts</context>
+          <context context-type="linenumber">22</context>
+        </context-group>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>
