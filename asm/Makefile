@@ -7,3 +7,6 @@ CC=gcc -no-pie -g
 
 03-asm-commands: 03-asm-commands.s
 	${CC} $< -o $@
+
+04-asm-printf: 04-asm-printf.s
+	${CC} $< -o $@
