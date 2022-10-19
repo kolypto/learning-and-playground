@@ -10,3 +10,6 @@ CC=gcc -no-pie -g
 
 04-asm-printf: 04-asm-printf.s
 	${CC} $< -o $@
+
+05-subprog: 05-subprog.s
+	${CC} $< -o $@

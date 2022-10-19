@@ -58,6 +58,8 @@ main:
     ret 
 
 
+# We jump here in case of an error.
+# Print a const string, exit(255)
 format_error:
     # write() syscall
     mov $1, %rax  # syscall: 1=write

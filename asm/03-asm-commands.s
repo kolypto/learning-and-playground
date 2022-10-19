@@ -1,6 +1,8 @@
 .data
     leet: .long 0x31137
+
     array: .long 0x01, 0x02, 0x03 
+    array_end:  # marks the end of the array (!)
 
     printf_number: .string "%d\n"
 
@@ -85,6 +87,48 @@ sum:addq %rcx, %rax
     # ja: above:    jump if op1 > op2, unsigned
     # jb: below:    jump if op1 < op2, unsigned
     # Also: jne, jng, jnl, jna, jnb
+
+    # Task: find the largest element
+    # Result: The largest element will be stored here 
+    mov array, %eax    # Greatest element value
+    mov $array, %ebx   # Current element ptr
+loop_start:
+    cmp %eax, (%ebx)   # compare the current element
+    jle next           # skip next line if the current element is not max
+    mov (%ebx), %eax   # remember the greatest value
+next:
+    add $4, %ebx  # go to next element. 4 = sizeof(long)
+check_bounds:
+    cmp $array_end, %ebx 
+    jne loop_start
+
+    # printf()
+    mov $printf_number, %rdi
+    mov %rax, %rsi
+    push $0  # alignment
+    call printf 
+    pop %rax
+
+
+    # === Boolean operators
+    # and <src> <dst>
+    # or <src> <dst>
+    # xor <src> <dst>
+    # not <op>
+    # test <op1> <op2> -- like `and`, but does not modify operands. It only sets the flags.
+    # sal/shl num, <dst>    - shift arithmetic left / shift logical left. Shifted bit is placed into `CF` flag
+    # sar/shr num, <dst>    - shift arithmetic right / shift logical right Shifted bit is placed into `CF` flag
+    # ror/rol num, <dst>    - cyclic shift (rotation)
+    # rcr/rcl num, <dst>    - cyclic shift through `CF` flag (sees `CF` as an extension of the operand)
+    testb $0b00001000, %al
+    je not_set  # jump here if 3rd bit is not set
+not_set:
+    xor %eax, %eax  # faster than `mov`, but it sets flags. `mov` does not modify flags.
+
+
+    # === 
+
+
 
     # Done
     ret
