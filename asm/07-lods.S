@@ -25,6 +25,8 @@ main:
     # Remember this memory address
     mov %rax, %rbx
 
+
+    # === Remove every space ===
     # Remove every space
     mov $sample_string_with_spaces, %rsi
     mov %rax, %rdi
@@ -50,6 +52,15 @@ z:
     # printf()
     mov %rbx, %rdi 
     call printf
+
+    # === Zero out memory ===
+    # rep <cmd>: repeats a command while %ecx > 0, decrements %ecx every time
+    # repe/repz <cmd>: repeats a command while %ecx > 0 AND ZF is set
+    # repne/repnz <cmd>: repeats a command while %ecx > 0 AND ZF is not set
+    # cld: clear direction flag (DF)
+    # std: set direction flag (DF)
+
+    # TODO: no example
 
     # Done
     mov $0, %eax
