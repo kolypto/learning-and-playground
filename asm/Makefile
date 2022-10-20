@@ -16,3 +16,7 @@ CC=gcc -no-pie -g
 
 06-stat: 06-stat.S
 	@${CC} $< -o $@
+
+07-lods: 07-lods.S
+	@${CC} $< -o $@
+
