@@ -18,6 +18,8 @@ main:
     # * All other registers are free to be changed by the function.
     # * Integers are returned in %rax or %rdx:%rax. Floating-point values are returned in xmm0 or xmm1:xmm0.
     # 
+    # When a function is called, by Linux ABI calling convention, it should preserve the values of the following registers:
+    # callee-preserved: %rbx, %rsp, %rbp, %r12-%r15
 
     # This is called by the C library startup code
     # We do this to make sure that the stack is 16-byte aligned.

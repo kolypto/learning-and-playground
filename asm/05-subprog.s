@@ -42,6 +42,7 @@ print_number:
 # Three arguments
 do_something_with_stack:
     # Remember the current %ebp; then temporarily use it to keep the current stack ptr
+    # This is equivalent to `enter`, but `enter` is unusably slow. Don't use it.
     push %rbp
     mov %rsp, %rbp  # remember the current stack state
 
@@ -57,6 +58,7 @@ do_something_with_stack:
     add (8*2)(,%rbp), %rax  # third
 
     # Restore stack
+    # This is equivalent to `leave`
     mov %rbp, %rsp  # Let it point to the same 
     pop %rbp 
     ret $(3*8)  # drop these 3 parameters we've been given

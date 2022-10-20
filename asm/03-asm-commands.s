@@ -30,10 +30,14 @@ main:
     movl $array, %eax 
     movl $0xFF, (%eax)  # write into "the address at %eax"
 
+
+
     # === lea
     # > lea <src> <dst>
     # Load effective address. Puts the address of <src> into <dst>
     leal array, %eax  # same as: movl $array %eax
+
+
 
     # === push, pop
     # In Linux ABI, stack is aligned by 4 bytes
@@ -43,6 +47,8 @@ main:
     pushq $0x10
     popq %rax  # 0x10
     popq %rbx  # 0x20
+
+
 
     # === math
     # inc <operand>         operand++
@@ -55,6 +61,8 @@ main:
     movb $255, %al 
     addb $1, %al
     #jnc overflow
+
+
 
     # === loop
     # loop <label>
@@ -76,6 +84,8 @@ sum:addq %rcx, %rax
     xor %rax, %rax  # Zeroing EAX is efficient way to clear AL
     call printf 
     pop %rax  # remove the value from the stack
+
+
 
     # === Comparison
     # cmp <op2>, <op1>
@@ -108,6 +118,7 @@ check_bounds:
     push $0  # alignment
     call printf 
     pop %rax
+
 
 
     # === Boolean operators
