@@ -6,15 +6,29 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"math/cmplx"
 	"math/rand"
 	"runtime"
+	"strings"
 	"time"
 )
 
 func main(){
 	num := getFavoriteNumber()
 	fmt.Println("My favorite number is", rand.Intn(num))
+
+	variableTypes()
+	pointers()
+	structures()
+	arrays()
+	maps()
+	forLoops()
+	conditions()
+	deferring()
+	functionValues()
+	interfaces()
+	useReader()
 }
 
 // Exports: a name is exported if it begins with a Capital letter
@@ -146,7 +160,38 @@ type GPSLocation struct {
 func maps(){
 	// Map: { key => value }
 	// Zero value: `nil`. Has no keys, no keys can be added.
+	var lab_locations map[string]GPSLocation = make(map[string]GPSLocation)
+	lab_locations["Bell Labs"] = GPSLocation{40.68433, -74.39967}
 
+	// Map literals
+	lab_locations = map[string]GPSLocation{
+		"Bell Labs": GPSLocation{40.68433, -74.39967}, 
+		// If the top-level type is just a type name, you can omit it from the elements
+		"Google": {37.42202, -122.08408}, 
+	}
+
+	// Delete element
+	delete(lab_locations, "Bell Labs")
+
+	// Get value
+	fmt.Println("The value", lab_locations["NOTEXIST"]) // {0 0} returns zero value for the map's element
+	v, ok := lab_locations["NOTEXIST"]
+	if ok {
+		fmt.Println("Value exists", v)
+	} else {
+		fmt.Println("Value does not exist")
+	}
+
+	// Example: word count
+	wordcount := make(map[string]uint)
+	sample_string := "a b c d aaa a b x y z z z"
+	words := strings.Split(sample_string, " ")
+	for _, word := range words {
+		wordcount[word] += 1
+	}
+	fmt.Println(wordcount)
+
+	UNUSED(lab_locations)
 }
 
 
@@ -215,3 +260,142 @@ func deferring(){
 	defer fmt.Println("world")
 	fmt.Print("Hello ")
 }
+
+func functionValues(){
+	// Functions can be closures: have access to local variables
+	offset := -1
+	add := func(x, y int) int {return offset + x+y}
+	mul := func(x, y int) int {return offset + x*y}
+
+	// Functions are values too
+	var fn func(int, int) int = add 
+	fmt.Println(fn(1, 2))
+	fn = mul
+	fmt.Println(fn(1, 2))
+}
+
+
+// === Methods === //
+
+// Go does not have classes.
+// But you can define methods on types.
+// Methods have a special *receiver* argument
+
+// Value receiver: will operate *on a copy* of this value
+// Pointer receiver: will operate on the actual value, modifications are possible
+func (v *GPSLocation) DistanceToNorthPole() float64 {
+	// Interfaces may hold `nil` values.
+	// In Go, it is common to write methods that gracefully handle being called with a nil receiver
+	if v == nil {
+		return 0
+	}
+	return 1000.0  // don't know yet
+}
+var distance = (&GPSLocation{}).DistanceToNorthPole()
+
+// You can define methods on non-struct types too.
+// Here we define a type alias and give it a method
+type MyFloat float64 
+func (f MyFloat) Abs() float64 {
+	if f < 0 {
+		return float64(-f)
+	} else {
+		return float64( f)
+	}
+}
+
+var absFloat = MyFloat(-127).Abs()
+
+
+// === Interfaces === //
+
+// Go does not have inheritance.
+// But it has interfaces: i.e. signature matching.
+// A type implements an interface by implementing its methods.
+// This, `GPSLocation`` is an implicit Abser
+type Abser interface {
+	Abs() float64 
+}
+
+// Pitfall: an interface will only match pointer receiver methods if you use it like this:
+// webLoader := &WebLoader{} 
+// This is because of *method sets*:
+// * Pointer struct type would include all non pointer / pointer receiver methods
+// * Non pointer struct type would only include non pointer receiver methods.
+
+func interfaces(){
+	var value Abser
+	value = MyFloat(127)
+
+	// Interface values can be thought of as: (value, type) tuple
+	fmt.Printf("value=%v, type=%T\n", value, value)
+	fmt.Printf("abs value = %v\n", value.Abs())
+
+	// Empty interface: may hold values of any type
+	var i interface{} = "hello"
+
+	// type assertion
+	// If `i` does not hold a `string`, the statement will trigger a panic
+	s := i.(string) // type assertion
+	fmt.Println(s)
+
+	// test whether an interface value holds a specific type
+	// If not, `t` will contain the zero value
+	t, ok := i.(string)
+	if ok {
+		fmt.Printf("`i` is a string: %s\n", t)
+	}
+
+	// A type switch permits several type assertions in series
+	switch v := i.(type) {
+	case string:
+		fmt.Printf("It is a string: %s", v)
+	case int:
+		fmt.Printf("It is an int: %d", v)
+	default:
+		fmt.Printf("It is something else")
+	}
+}
+
+// The most ubiquitous interface is `Stringer` from "fmt".
+// It's a type that can describe itself as a string.
+
+type Person struct {
+	Name string
+	Age  int
+}
+
+func (p Person) String() string {
+	return fmt.Sprintf("%v (%v years)", p.Name, p.Age)
+}
+
+// `error` is also an interface, with method Error() string.
+
+type MyError struct {
+	When time.Time
+	What string
+}
+
+func (e *MyError) Error() string {
+	return fmt.Sprintf("at %v, %s", e.When, e.What)
+}
+
+// `io.Reader` represents the read end of a stream of data
+// It has a Read(b []byte) method that populates the byte slice with data
+
+func useReader(){
+	r := strings.NewReader("Hello reader!")
+	b := make([]byte, 8)
+	for {
+		n, err := r.Read(b)
+
+		fmt.Printf("b=%v, b[:n] = %q\n", b, b[:n])
+
+		if err == io.EOF {
+			break
+		}
+	}
+}
+
+
+// === Generics === //
