@@ -29,6 +29,7 @@ func main(){
 	functionValues()
 	interfaces()
 	useReader()
+	goroutines()
 }
 
 // Exports: a name is exported if it begins with a Capital letter
@@ -398,4 +399,103 @@ func useReader(){
 }
 
 
+
 // === Generics === //
+
+// A function that works on multiple types.
+// Index is applicable to any type that fulfills the built-in constraint "comparable"
+func Index[T comparable](s []T, x T) int {
+	for i, v := range s {
+		if v == x {
+			return i
+		}
+	}
+	return -1
+}
+
+// Go also supports generic types
+type List[T any] struct {
+	next *List[T]
+	value T
+}
+
+
+
+// === Goroutines === //
+
+// A goroutine is a lightweight thread managed by Go runtime.
+// 	go f(x, y, z)
+// Arguments are evaluated immediately in the current goroutine, but f() gets executed in a new goroutine.
+
+// They both run in the same address space: access to shared memory must be synchronized.
+// You may use the "sync" package -- or better, channels.
+
+func goroutines(){
+	// sum() gets arguments, runs a calculation, returns results into a channel
+	sum := func (s []int, results chan int) {
+		sum := 0
+		for _, v := range s {
+			sum += v
+		}
+		results <- sum
+	}
+
+	array_of_ints := []int{7, 2, 8, -9, 4, 0}
+
+	// Communicate through the channel
+	// Optional buffer size parameter: sending will block and wait until there's free space in the buffer
+	ch := make(chan int) // sending does not block (unless the buffer is full)
+	go sum(array_of_ints[:len(array_of_ints)/2 ], ch)
+	go sum(array_of_ints[ len(array_of_ints)/2:], ch)
+
+	// Wait for *both* to finish
+	first, second := <-ch, <-ch
+
+	// Test whether a channel is open?
+	close(ch) // Indicate that no more values will be sent. Should be done by the sender.
+	v, ok := <-ch
+
+	// ### Loop
+
+	// Iterate over the incoming values. Stops when the channel is close()d
+	for value := range ch {
+		fmt.Println("incoming", value)
+	}
+
+	// Print
+	fmt.Println(first, second, v, ok)
+
+	// ### Select
+	// Select lets a goroutine wait on multiple communication operations
+
+	numbers := make(chan int, 10)
+	signal_finish := make(chan int)
+
+	go func(){
+		fmt.Println("Sending...")
+		numbers <- 1
+		numbers <- 2
+		signal_finish <- 0
+		fmt.Println("Sending done")
+	}()
+
+	func (){
+		var x, sum int
+		for {
+			fmt.Println("Listening...")
+			select {
+			// Wait on either
+			case numbers <- x:
+				sum += x
+				fmt.Println("Number", x)
+			case <- signal_finish:
+				fmt.Println("Finish")
+				return
+			// Do if nothing happened (`select` would block)
+			//default:
+			//	fmt.Println("Default")
+			//	continue
+			}
+		}
+	}()
+}
