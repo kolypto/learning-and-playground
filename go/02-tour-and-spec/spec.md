@@ -479,6 +479,153 @@ Defer: `defer` fucntions are executed immediately before the surrounding functio
 
 ## Built-in functions
 
+`close(channel)`: records that no more values will be send on the channel.
+Sending on a closed channel will cause a run-time panic.
+When closed, receive operations will return the zero value without blocking.
+
+`len()`, `cap()`: always returns an `int` (any platform). 
+
+`len()` returns the length of strings, arrays, slices, maps. 
+`cap()` returns the length of the array, slice capacity.
+
+`len(channel)` returns the number of elements queued in channel buffer, 
+and `cap(channel)` returns the channel buffer capacity.
+
+At any time, the following relationship holds:
+
+> 0 <= len(s) <= cap(s)
+
+For a `nil` slice/map/channel, `len()=0`, `cap()=0`.
+
+The expression `len(s)` is a constant for: string constants, array. In this case, the expression is not evaluated.
+
+`new(T)` takes a a type, allocates storage, initializes it with a zero value, and returns a pointer `*T`.
+
+`make(T, ...)` is used when the *core type* of `T` is a slice/map/channel. It returns a value (not a pointer).
+It has optional parameters: slice capacity, map initial capacity, channel buffer size:
+
+```go
+make(T, n)      // slice, len()=n, cap()=n
+make(T, n, m)   // slice, len()=n, cap()=m
+
+make(T, n)      // map, initial space for approx. `n` elements
+
+make(T, n)      // channel, buffer size n
+```
+
+`append()` appends several values to the slice and returns the resulting slice.
+If capacity of the slice is not large enough, it allocates a new array.
+
+```go
+s0 := []int{0, 0}
+s1 := append(s1, 3, 5, 7)
+s2 := append(s2, s1...)  // append a slice
+
+// Array of any
+var t []interface{}
+t = append(t, 42, 3.1415, "foo")
+
+// Special case: append a string to []byte
+var b []byte
+b = append(b, "bar"...)
+```
+
+`copy(dst, src)` copies slice elements, returns the number of elements copied.
+As a special case, it can copy a `string` into a `[]byte` string.
+
+`delete(map, key)` removes the element with key `key` from a map.
+If the map is `nil`, delete is a no-op.
+
+
+## Handling Panics
+
+Two built-in functions:
+
+```go
+func panic(interface{})
+func recover() interface{}
+```
+
+A call to `panic()` terminates the execution of the current function, but any deferreds are executed as usual.
+Next, the top-level function terminates, with its deferreds. 
+In the end, the program is terminated and the error condition is reported.
+
+```go
+panic(42)
+panic("unreachable")
+panic(Error("cannot parse"))
+```
+
+The `recover()` function allows a program to manage behavior of a panicking goroutine. 
+It is usually run in a deferred function.
+
+`recover()` returns the panic value. If you return normally, without starting a new panic, the panicking sequence stops,
+normal execution resumes.
+
+`recover()` returns `nil` when there's no panic, or the argument was `nil`, or when `recover()` was not called directly
+by a deferred function.
+
+```go
+func something(){
+    defer func(){
+        if x:= recover() ; x != nil {
+            log.Printf("run time panic: %v", x)
+        }
+    }
+
+    // ...
+}
+```
+
+
+## Import
+
+Importing:
+
+```go
+import   "lib/math"         // math.Sin
+import m "lib/math"         // m.Sin: alias
+import . "lib/math"         // Sin: direct
+
+// Import solely for side-effects (initialization)
+import _ "lib/math"
+
+```
+
+
+## Initialization
+
+Variables may be initialized using `init()` declared in the package block. 
+Multiple such functions may be defined per package.
+The `init()` identifier itself is not declared: it cannot be referred to from anywhere in a program.
+
+A complete program is created by linking a single, unimported, package `"main"`.
+It must have a `main()` function. When the function returns, the program exists. 
+It does not wait for other non-main goroutines to complete.
+
+
+## Errors
+Predeclared:
+
+```go
+type error interface {
+	Error() string
+}
+```
+
+
+## Package `unsafe`
+
+Package `"unsafe"` provides facilities for low-level programming including operations that violate the type system. 
+
+
+
+
+
+
+
+
+
 
 
 
