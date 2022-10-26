@@ -1,5 +1,7 @@
 # The Go Programming Language Spec
 
+<https://go.dev/ref/spec>, Version of June 29, 2022
+
 ## Lexical Elements 
 
 Comments:
@@ -642,5 +644,243 @@ Package `"unsafe"` provides facilities for low-level programming including opera
 
 
 
+
+
+
+
+
+
+
+
+
+
 # Effective Go
+
+<https://go.dev/doc/effective_go>, 25.10.2022
+
+## Formatting
+`gofmt` handles the indentation and the lining up. Don't fight with it.
+
+We use tabs for indentation. Use spaces only if you must.
+
+## Commentary
+`//` and `/* .. */`. 
+Comments that go before a declaration are doc comments.
+
+
+
+## Names
+Convention: package name in lowercase. Source directory has the same name.
+
+Remember that the importer sees the package name: `bufio` package has `Reader`, not `BufReader`, because users see it as `bufio.Reader`.
+
+Examples of names that read well: `ring.New` (not `ring.NewRing`), `once.Do`. 
+Long names don't always automatically make things more readable.
+A helpful doc comment can often be more valuable than an extra long name.
+
+Getters and setters. When the field is called `owner`, use `Owner` for getters, `SetOwner` for setters.
+
+Interfaces are named: method name + `-er`.
+
+Finally, the convention is to use `MixedCaps` or `mixedCaps` rather than underscores.
+
+## Semicolons
+
+Semicolons are automatically inserted if the line ends with an identifier, a basic literal, or 
+
+> break continue fallthrough return ++ -- ) }
+
+This means that you cannot put a `{` on the next line after `if`!
+
+
+## Control Structures
+
+If. With an optional init statement.
+
+For: 
+
+```go
+for init; condition; post {}
+for condition {}  // while
+for {}  // while true
+
+// Mappings and arrays
+for key, value := range mapping_or_array {}
+for key := range mapping_or_array {}
+for _, value := range mapping_or_array {}
+for pos, char := range "string_value" {}  // breaks unicode code points
+```
+
+Go has no comma operator, and `++`/`--` are statements, not expressions.
+Use parallel assignment:
+
+```go
+for i, j := 0, len(a)-1; i < j; i, j = i+1, j-1 {
+    a[i], a[j] = a[j], a[i]
+}
+```
+
+Switch evaluates cases top to bottom.
+It is idiomatic to write if-else-if-else as a switch:
+
+```go
+func unhex(c byte) byte {
+    switch {
+    case '0' <= c && c <= '9':
+        return c - '0'
+    case 'a' <= c && c <= 'f':
+        return c - 'a' + 10
+    case 'A' <= c && c <= 'F':
+        return c - 'A' + 10
+    }
+    return 0
+}
+```
+
+Type switch:
+
+```go
+switch t := t.(type) { // it is idiomatic to reuse the name, in effect declaring a new variable, but with a different type
+default:
+    fmt.Printf("unexpected type %T\n", t)     // %T prints whatever type t has
+case bool:
+    fmt.Printf("boolean %t\n", t)             // t has type bool
+case int:
+    fmt.Printf("integer %d\n", t)             // t has type int
+case *bool:
+    fmt.Printf("pointer to boolean %t\n", *t) // t has type *bool
+case *int:
+    fmt.Printf("pointer to integer %d\n", *t) // t has type *int
+}
+```
+
+
+## Functions
+
+Function can return multiple values. Their names are optional, but they are documentation
+
+```go
+func nextInt(b []byte, pos int) (value, nextPos int) {
+    ...
+}
+```
+
+## Data
+
+Allocation: `new(T)` returns a pointer to a new zero value or type `T`. 
+
+Allocation: `make(T, ...args)` only creates slices, maps and channels, and returns an *initialized* (not zeroed) value of `T` (not `*T`).
+
+Why the distinction? Because these types reference data structures that must be initialized before use. 
+A slice, for instance, is a 3-item descriptor: (pointer to data, length, capacity).
+For instance, `make([]int, 10, 100)` initializes a slice with an underlying array. But `new([]int)` returns a pointer to a newly allocated `nil` slice.
+
+If possible, the zero value of a structure should already be usable: the "zero-value-is-useful" property.
+
+Constructors: it's ok to return a pointer:
+
+```go
+func NewFile(fd int, name string) *File {
+    if fd <= 0 {
+        return nil
+    }
+    return &File(fd, name, nil, 0)
+}
+```
+
+Literals:
+
+```go
+// Positional
+return &File{fd, name, nil, 0}
+
+// With labelling
+return &File{fd: fd, name: name}
+
+// Labelling can be used with array/slice/map literals and is ignored:
+a := [...]string   {Enone: "no error", Eio: "Eio", Einval: "invalid argument"}
+s := []string      {Enone: "no error", Eio: "Eio", Einval: "invalid argument"}
+m := map[int]string{Enone: "no error", Eio: "Eio", Einval: "invalid argument"}
+```
+
+### Arrays and Slices
+
+Arrays are values. Assigning one array to another copies all the elements.
+
+If you pass it to a function, it will receive a copy, not a pointer to it.
+It's expensive. Pass a pointer. Or use slices.
+
+The size of an array is part of its type.
+
+Slices wrap arrays. Most array programming in Go is done with slices rather than arrays.
+The capacity `cap()` reports the limit of the underlying array. If the data exceeds the capacity, 
+the slice is reallocated.
+
+If you need a 2D slice, there are two ways: allocate a new slice for each row, 
+or allocate a single array and point individual slices into it. If slices don't grow, it can be more efficient
+to construct the object with a single allocation.
+
+### Maps
+
+Maps: keys to values.
+
+When a missing key is accessed, the zero value it returned.
+Use multiple assignment to differentiate between missing values and zero values:
+
+```go
+value, ok := mapping[key] // the "comma ok" idiom
+```
+
+To test for presence without worrying about the actual value:
+
+```go
+_, present := mapping[key]
+```
+
+### Printing
+
+`fmt.Println`, `fmt.Printf`, ...
+
+Use `%v` to print the default conversion (the catchall format). 
+
+It can print arrays and maps. For maps, the output is sorted by key.
+
+* `%v` print the default representation
+* `%+v` print struct, annotate fields. `%#v` prints the full Go syntax with type name
+* `%q` prints a quoted string. `%#q` uses backquotes.
+* `%x` hex string
+* `%T`: prints the type of a value
+
+To control the default format of a type, define a method `String() string` on the type.
+
+
+## Initialization
+
+
+
+## Methods
+
+## Interfaces and Other types
+
+## The Blank Identifier
+
+## Embedding
+
+## Concurrency
+
+## Errors
+
+## A Web Server
+
+
+
+
+
+
+
+
+
+
+# Go Comments
+<https://go.dev/doc/comment>, 25.10.2022
 
