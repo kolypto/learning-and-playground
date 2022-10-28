@@ -856,31 +856,416 @@ To control the default format of a type, define a method `String() string` on th
 
 ## Initialization
 
+The `iota` enumerator:
 
+```go
+const (
+    _ = iota  // ignore iota=0
+    KB ByteSize = 1 << (10 * iota)
+    MB // implicitly repeated
+    GB
+    TB
+    PB
+    EB
+    ZB
+    YB
+)
+```
+
+Every file can have multiple `init` methods to prepare the program state before real execution begins.
 
 ## Methods
 
+Methods can be defined for any named type:
+
+```go
+type ByteSlice []byte
+
+// This method requires the returning of an updated slice
+func (slice ByteSlice) Append(data []byte) []byte {
+    return append(slice, data)
+}
+
+// Use a pointer to be able to update the slice in place
+// No return.
+func (p *ByteSlice) Append(data []byte) {
+    slice := append(slice, data)
+
+    // Instead of a return
+    *p = slice
+}
+```
+
+The rule about pointers vs. values for receivers:
+
+* Value methods: can be invoked on pointers and values
+* Pointer methods: can be invoked on pointers only
+
+this is because pointer methods can modify the receiver.
+Invoking a pointer method on a value would receive a copy of the value, so any modifications would be discarded.
+The language, therefore, disallows the mistake.
+
+One handy exception: when the value is addressable, Go will do `(&value).Method` for you automatically. 
+
 ## Interfaces and Other types
 
-## The Blank Identifier
+Interface: if something can do *this*, then it can be used *here*.
+
+It's a common idiom in Go to convert the type of an expression to access a different set of methods.
+
+Type switch: `value.(type)` and `value.(typeName)`. Use the *comma-ok* idiom to test safely.
+
 
 ## Embedding
 
+Go does not have subclasses, but can "borrow" pieces of an implementation by *embedding types*.
+
+Interface embedding: just mention an interface.
+
+For struct:
+
+```go
+type ReadWriter struct {
+    // Methods for both will become available
+    *Reader
+    *Writer
+}
+```
+
+Important difference from subclassing: when we invoke a method of an embedded type on our outer type,
+the receiver of the method is still the inner type, not the outer one!
+
+Embedding adds fields, but the original structure is also a regular fields:
+
+```go
+type Job {
+    ...
+    *log.Logger
+}
+
+// Constructor, literal
+func NewJob(logger *log.Logger){
+    return &Job{..., logger}
+}
+
+// Refer to a method on the embedded struct
+func (job *Job) String(){
+    return job.Logger.String()  // "parent" method
+}
+```
+
 ## Concurrency
+
+In Go, shared values are passed around on channels. As a result, data races cannot occur by design:
+only one goroutine has access to the value at any given time.
+
+> Do not communicate by sharing memory; share memory by communicating.
+
+Goroutines are simple functions that start executing in parallel. They're cheap, with a small starting stack.
+Goroutines are multiplexed onto multiple OS threads: N:M concurrency. 
+
+Use channels to signal results and completion. 
+
+### Channels
+
+```go
+make(chan int) // unbuffered
+make(chan int, 0) // unbuffered
+make(chan *os.File, 100) // buffered channel
+```
+
+Unbuffered channels combine communication with synchronization, guaranteeing that two goroutines are in a known state.
+
+Idiom: wait for a goroutine to complete
+
+```go
+c := make(chan int)
+
+// Do something in the background
+go func(){
+    ...
+    c <- 1
+}
+
+// Do something in the meanwhile
+...
+
+// Wait for results
+<- c
+```
+
+An unbuffered channel: sender blocks until the receiver has received the value. 
+
+A buffered channel: sender blocks only until the value has been copied to the buffer; if the buffer is full, 
+this means waiting until some receiver has retrieved the value.
+
+Idiom: use a buffered channel as a semaphore (to limit throughput):
+
+```go
+var sem = make(chan int, 10)
+
+func handle(r *Request){
+    sem <- 1  // wait for the active queue to drain
+    process(r)
+    <-sem  // done, enable next request to run
+}
+```
+
+This approach creates a new goroutine for every incoming request, which is an overkill, since only 10 can run at any moment.
+We can address that deficiency by changing the design: *gate* the creation of goroutines:
+
+```go
+func Serve(queue chan *Request){
+    for req := range queue {
+        // Get a fresh variable, deliberately shadowing the loop variable locally.
+        // If we don't, all goroutines will share the same variable.
+        // Alternatively: pass it as a param to the closure
+        req := req
+        
+        
+        sem <- 1
+        go func(){
+            process(req)
+            <- sem
+        }()
+    }
+}
+```
+
+Another approach that manages resources well: start with a fixed number of goroutines all reading from the channel:
+
+```go
+func handle(queue chan *Request){
+    // keep reading, process
+    for r := range queue {
+        process(r)
+    }
+}
+
+func Serve(clientRequests chan *Request, quit chan bool){
+    // The number of goroutines limits the number of parallel processes
+    for i:= 0; i<10; i++ {
+        go handle(clientRequests)
+    }
+
+    <- quit // wait to be told to exit
+}
+```
+
+### Channels of channels
+A channel is a value. It can be sent over a channel.
+This allows the implementation of safe, parallel demultiplexing.
+
+If the job includes a channel on which to reply, each client can provide its own path for the answer:
+
+```go
+type Request struct {
+    args []int
+    f    func([]int) int
+    result chan int
+}
+
+func main(){
+    request := &Request([]int{3, 4, 5}, sum, make(chan int))
+    clientRequest <- request
+
+    // Wait for results
+    result := request.resultChan
+}
+```
+
+And here's the server:
+
+```go
+func handle(queue chan *Request){
+    for req := range queue {
+        req.result <- req.f(req.args)
+    }
+}
+```
+
+This code is a framework for a rate-limited, parallel, non-blocking RPC system.
+And there's not a mutex in sight.
+
+### Parallelization
+
+Parallelize a calculation across multiple CPU cores (if the calculation can be broken into separate pieces)
+
+```go
+func DoSomeCalculation(i){
+    ...
+    c <- 1 // signal completion
+}
+
+const numCPU = runtime.GOMAXPROCS(0)  // =runtime.NumCPU, but can be overridden
+
+func DoAll(){
+    c := make(chan int, numCPU)
+
+    for i:=0; i<numCPU; i++ {
+        go DoSomeCalculation(i)
+    }
+
+    // Drain the channel
+    for i:=0; i<numCPU; i++ {
+        <-c
+    }
+}
+```
+
+### A Leaky Buffer
+
+In an RPC package, to avoid allocating and freeing buffers, we can abuse a channel:
+
+```go
+var freeList = make(chan *Buffer, 100)
+var serverChan = make(chan *Buffer)
+
+// Read data into a buffer. When it's ready, send it to the server for processing
+func client(){
+    for {
+        var b *Buffer
+
+        // Grab a buffer, allocate if it's not available
+        select {
+            case b = <-freeList:
+                // Got one, nothing more to do
+            default:
+                b = new(Buffer)
+        }
+
+        // Read next message from the net
+        load(b)
+
+        // Done
+        serverChan <- b
+    }
+}
+
+// Receive messages from the client, process it, then return the buffer
+func server(){
+    for {
+        // Wait for work
+        b := <-serverChan
+        process(b)
+
+        // Reuse buffer if there's room
+        select {
+            case freeList <- b:
+                // Buffer returned. Nothing more to do.
+            default:
+                // Free list is full. Drop the buffer, it will be garbage collected
+        }
+    }
+}
+```
+
+This implementation builds a leaky bucket free list in just a few lines, relying on the buffered channel and the garbage collector for bookeeping.
+
 
 ## Errors
 
-## A Web Server
+Callers that care about the precise error details can use a type switch:
+
+```go
+file, err = os.Create(filename)
+if err == nill {
+    return
+}
+if e, ok := err.(*os.PathError); ok && e.Err == syscall.ENOSPC {
+    deleteTempFiles()  // Recover some space.
+    continue
+}
+```
+
+### Panic
+
+Panic creates a run-time error that will stop the program. It's a way to indicate that something impossible has happened.
+
+When `panic` is called, it immediately stops execution of the current function and begins unwinding the stack of the goroutine,
+running any deferred functions along the way. It that unwinding reaches the top of the goroutine's stack, the program dies.
+
+However, it's possible to use the built-in function `recover()` to regain control of the goroutine and resume normal execution.
+A call to `recover()` stops the unwinding and returns the argument passed to `panic()`. 
+Because the only code that runs while unwinding is inside deferred functions, `recover()` is only useful inside deferred functions.
+
+One application: shut down a failing goroutine without killing the other executing goroutines.
+
+```go
+func server(workChan <-chan *Work) {
+    for work := range workChan {
+        go safelyDo(work)
+    }
+}
+
+func safelyDo(work *Work) {
+    defer func() {
+        if err := recover(); err != nil {
+            log.Println("work failed:", err)
+        }
+    }()
+    do(work)
+}
+```
 
 
 
 
-
-
-
-
-
-
-# Go Comments
+# Go Doc Comments
 <https://go.dev/doc/comment>, 25.10.2022
+
+Every exported (capitalized) name should have a doc comment.
+
+The [go/doc](https://go.dev/pkg/go/doc) and [go/doc/comment](https://go.dev/pkg/go/doc/comment) provide the ability to extract
+documentation from Go source code.
+The `go doc` command looks up and prints the doc comment for a given package or symbol (top level definition).
+
+### Package
+
+Every package should have a package comment that goes before `package`.
+
+A package comment for a command describes the behavior of the program.
+
+### Types
+
+By default, programmers should expect a type to be safe for use only by a single goroutine at a time (non-threadsafe).
+If a type provides stronger guarantees, the doc comment should state them:
+
+> A \<type> is safe for concurrent use
+
+Go types should aim to have a usable zero value. If it isn't obvious, it's meaning should be documented:
+
+> The zero value for Buffer is an empty buffer.
+
+For a struct with exported fields, the doc comment or per-field comment should explain the meaning of each exported field.
+
+### Funcs
+
+A doc comment should explain what the function returns. If there are side effects -- what it does.
+
+Named arguments can be referred to directly.
+
+By default, programmers can assume that a top-level func is thread-safe (safe to call from multiple goroutines).
+If not, it should be stated.
+
+Doc comments should not explain internal details such as the algorithm used: use comments inside the function.
+
+### Syntax
+
+Simplified Markdown with no HTML support.
+
+Use `[Text]` followed by `[Text]: URL` for hyperlinks.
+
+Use <code>``quoted''</code>  backticks-quotes to produce proper left-right “quotes”.
+
+Doc links: `[Name1]` and `[Name1.Name2]` refer to exported identifiers in the current package.
+
+Doc links: `[pkg.Name1]` and `[pkg.Name1.Name2]` refer to identifiers in other packages.
+If the current package imports `encoding/json`, then `[json.Decoder]` can be written in place of `[encoding/json.Decoder]` to link to the docs.
+
+Lists: start with `*` `+` `-` `•` `*` `+` `-` `•`.
+List items can only contain paragraphs: no code blocks or nested lists. This avoids any space-counting subtlety.
+
+A code block: a span of indented text.
+Can be used for preformatted text with alignment.
 
