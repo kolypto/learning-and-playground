@@ -9,4 +9,6 @@ func main(){
 	PlayBytes()
 	PlayEmbed()
 	PlayEncodingJson()
+	PlayHtml()
+	PlayHtmlTemplate()
 }

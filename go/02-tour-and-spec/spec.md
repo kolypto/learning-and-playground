@@ -1169,7 +1169,7 @@ Callers that care about the precise error details can use a type switch:
 
 ```go
 file, err = os.Create(filename)
-if err == nill {
+if err == nil {
     return
 }
 if e, ok := err.(*os.PathError); ok && e.Err == syscall.ENOSPC {
@@ -1177,6 +1177,26 @@ if e, ok := err.(*os.PathError); ok && e.Err == syscall.ENOSPC {
     continue
 }
 ```
+
+It is preferable, however, to use the "errors" package like this:
+
+```go
+// This code will unwrap errors, looking for the one you expect
+var perr *fs.PathError
+if errors.As(err, &perr) {
+	fmt.Println(perr.Path)
+}
+
+// This code will not work as expected with wrapped errors
+if perr, ok := err.(*fs.PathError); ok {
+	fmt.Println(perr.Path)
+}
+```
+
+And here's an easy way to wrap an error:
+
+> errors.Unwrap(fmt.Errorf("... %w ...", ..., err, ...))
+
 
 ### Panic
 
