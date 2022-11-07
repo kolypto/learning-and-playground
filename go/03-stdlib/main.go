@@ -11,4 +11,8 @@ func main(){
 	PlayEncodingJson()
 	PlayHtml()
 	PlayHtmlTemplate()
+	PlayOS()
+	PlayOsExec()
+	PlayIO()
+	PlayIOFS()
 }
