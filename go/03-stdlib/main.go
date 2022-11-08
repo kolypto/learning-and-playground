@@ -3,7 +3,13 @@ package main
 // Run me:
 // $ go run .
 
+import (
+	"log"
+)
+
 func main(){
+	log.SetFlags(log.Lshortfile | log.Lmsgprefix)
+
 	PlayFmt()
 	PlayBuiltin()
 	PlayBytes()
@@ -15,4 +21,7 @@ func main(){
 	PlayOsExec()
 	PlayIO()
 	PlayIOFS()
+	PlayReflect()
+	PlayRegexp()
+	
 }
