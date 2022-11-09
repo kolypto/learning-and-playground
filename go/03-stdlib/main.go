@@ -2,6 +2,11 @@ package main
 
 // Run me:
 // $ go run .
+// Build or test with race detector:
+// $ go test -race mypkg
+// $ go run -race mysrc.go
+// $ go build -race mycmd
+// $ go install -race mypkg
 
 import (
 	"log"
@@ -23,5 +28,7 @@ func main(){
 	PlayIOFS()
 	PlayReflect()
 	PlayRegexp()
-	
+	PlayTrace()
+	PlaySort()
+	PlayCustomSort()
 }
