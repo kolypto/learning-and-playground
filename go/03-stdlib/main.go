@@ -31,4 +31,5 @@ func main(){
 	PlayTrace()
 	PlaySort()
 	PlayCustomSort()
+	PlaySync()
 }
