@@ -32,4 +32,5 @@ func main(){
 	PlaySort()
 	PlayCustomSort()
 	PlaySync()
+	PlayTime()
 }
