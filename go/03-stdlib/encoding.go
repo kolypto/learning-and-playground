@@ -18,7 +18,7 @@ func PlayEncodingJson(){
 		if err == nil {
 			fmt.Printf("JSON: %s\n", json_str) //-> JSON: {"Name":"Alice","Body":"Hello","Time":123456789}
 		} else {
-			fmt.Printf("JSON encoding error: %w\n", err)
+			fmt.Printf("JSON encoding error: %v\n", err)
 		}
 	}
 
@@ -32,7 +32,7 @@ func PlayEncodingJson(){
 		if err == nil {
 			fmt.Printf("Parsed: %#v\n", msg)
 		} else {
-			log.Println("JSON parse error: %w\n", err)
+			log.Printf("JSON parse error: %v\n", err)
 			return
 		}
 	}
@@ -44,7 +44,7 @@ func PlayEncodingJson(){
 		if err == nil {
 			fmt.Printf("Parsed: %#v\n", generic_msg)
 		} else {
-			fmt.Printf("JSON parse error: %w\n", err)
+			fmt.Printf("JSON parse error: %v\n", err)
 		}
 
 		for k, v := range generic_msg {

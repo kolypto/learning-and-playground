@@ -66,7 +66,7 @@ func PlayTime(){
 	now := time.Now()  // current local time
 	parsedTime, err := time.ParseInLocation(time.RFC3339, "2022-09-01T00:00:00+03:00", local)
 	if err != nil {
-		log.Fatal("Failed to parse the time: %v", err)
+		log.Fatalf("Failed to parse the time: %v", err)
 	} else {
 		fmt.Printf("Parsed time: %v\n", parsedTime)
 	}

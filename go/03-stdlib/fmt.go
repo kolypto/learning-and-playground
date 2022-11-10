@@ -69,7 +69,7 @@ func PlayFmt(){
 	// Error
 	// Use %w: unwraps errors
 	err := fmt.Errorf("Failed: %s, value=%d", "Error string", 127)
-	fmt.Printf("Errorf()=%#w\n", err)  //-> Errorf()=&errors.errorString{s:"Failed: Error string, value=127"}
+	fmt.Printf("Errorf()=%#v\n", err)  //-> Errorf()=&errors.errorString{s:"Failed: Error string, value=127"}
 
 
 }

@@ -2,6 +2,8 @@ package main
 
 // Run me:
 // $ go run .
+// $ go test
+
 // Build or test with race detector:
 // $ go test -race mypkg
 // $ go run -race mysrc.go
