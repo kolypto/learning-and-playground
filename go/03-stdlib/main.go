@@ -35,4 +35,7 @@ func main(){
 	PlayCustomSort()
 	PlaySync()
 	PlayTime()
+	PlayNet()
+
+	PlayHttp()
 }

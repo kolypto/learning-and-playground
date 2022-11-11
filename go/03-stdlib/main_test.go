@@ -68,7 +68,7 @@ func TestMain(m *testing.M){
 func BenchmarkXxx(b *testing.B){
 	// Do expensive set up
 	// Register a cleanup function
-	t.Cleanup(func(){
+	b.Cleanup(func(){
 		// ... clean-up when the test completes
 	})
 

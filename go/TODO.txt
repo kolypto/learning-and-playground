@@ -14,6 +14,7 @@ web: go kit (for microservices)
 web: beego (all inclusive, rapid development; like Django / Ruby on Rails)
 
 web-graphql: gqlgen (net/http family)
+net: gRPC
 
 db: "sql", "pq"
 
