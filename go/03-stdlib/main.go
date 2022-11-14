@@ -21,13 +21,16 @@ func main(){
 	PlayBuiltin()
 	PlayBytes()
 	PlayEmbed()
+	
 	PlayEncodingJson()
 	PlayHtml()
 	PlayHtmlTemplate()
+
 	PlayOS()
 	PlayOsExec()
 	PlayIO()
 	PlayIOFS()
+	
 	PlayReflect()
 	PlayRegexp()
 	PlayTrace()
@@ -35,7 +38,7 @@ func main(){
 	PlayCustomSort()
 	PlaySync()
 	PlayTime()
-	PlayNet()
 
+	PlayNet()
 	PlayHttp()
 }
