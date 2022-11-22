@@ -41,4 +41,6 @@ func main(){
 
 	PlayNet()
 	PlayHttp()
+
+	PlayRPC()
 }

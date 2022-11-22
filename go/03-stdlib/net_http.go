@@ -14,6 +14,11 @@ func PlayHttp() {
 	httpFunc()
 	httpClient()
 	httpServer()
+
+
+	// Example HTTP server:
+	// * https://github.com/enricofoltran/simple-go-server/blob/master/main.go
+	// * https://gist.github.com/creack/4c00ee404f2d7bd5983382cc93af5147
 }
 
 
