@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/netip"
 	"time"
 )
 
@@ -141,6 +142,17 @@ func netFuncs(){
 	ip = net.IPv4(127, 0, 0, 1)
 	fmt.Printf("IPv4=%v\n", ip)
 
+	// netip: an IP that takes less memory, is immutable, and is comparable (supports == and being a map key)
+	var nip netip.Addr  // IPv4 or IPv6
+	nip, ok := netip.AddrFromSlice(ip)
+	if !ok {
+		log.Fatalf("Failed to parse IP: %v", ip)
+	}
+	fmt.Printf("IP: %v\n", nip)
+
+	// netip.AddrPort: IP + port, efficient
+	var ipport netip.AddrPort = netip.MustParseAddrPort("127.0.0.1:80")
+	fmt.Printf("IP:port: %v\n", ipport)
 
 	// Pipe() (Conn, Conn) creates a synchronous, in-memory, full duplex network connection.
 	// Reads on one end are matched with writes on the other, copying data directly between the two. There is no internal buffering.
