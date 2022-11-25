@@ -1,6 +1,6 @@
 web: net/http (ok performance)
+web: gorilla/mux (ok performance; compatible with http.Handler; idiomatic Go; used in Yandex)
 web: gin (ok performance; compatible with net/http; de facto standard; but too much magic and un-idiomatic)
-web: gorilla/mux (ok performance; compatible with http.Handler; idiomatic Go)
 web: chi (ok performance; compatible with http.Handler; idiomatic Go)
 web: echo (ok performance; more straightforward; not compatible with http.Handler)
 web: Sentry supports: net/http, Gin, Echo, FastHTTP
@@ -16,7 +16,7 @@ web: beego (all inclusive, rapid development; like Django / Ruby on Rails)
 web-graphql: gqlgen (net/http family)
 net: gRPC
 
-db: "sql", "pq"
+db: "goqu", "sqlx", "goqu", "gorm", "hood"
 
 awesome-go
 

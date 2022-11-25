@@ -1,0 +1,8 @@
+go 1.19
+
+use (
+	./01-hello
+	./02-tour-and-spec
+	./03-stdlib
+	./04-database
+)
