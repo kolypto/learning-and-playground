@@ -1,3 +1,5 @@
+// sqlx: extensions to database/sql
+
 package main
 
 import (

@@ -1,3 +1,5 @@
+// pgx: Postgres client
+
 package main
 
 import (

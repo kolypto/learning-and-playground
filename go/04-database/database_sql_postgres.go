@@ -1,3 +1,5 @@
+// stdlib: database/sql
+
 package main
 
 import (

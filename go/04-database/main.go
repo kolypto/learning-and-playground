@@ -1,20 +1,28 @@
 package main
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 func main() {
-	err := PlayDatabaseSqlPostgres()
-	if err != nil {
-		log.Fatalf("Database got killed: %v", err)
+	var playgrounds = []SimplePlayFunc{
+		{"database/sql", PlayDatabaseSqlPostgres},
+		{"pgx", PlayPgx},
+		{"sqlx", PlaySqlx},
+		{"orm", PlayOrm},
 	}
 
-	err = PlayPgx()
-	if err != nil {
-		log.Fatalf("Pgx got itself killed: %v", err)
-	}
-
-	err = PlaySqlx()
-	if err != nil {
-		log.Fatalf("Sqlx got itself killed: %v", err)
+	for _, playfunc := range playgrounds {
+		fmt.Printf("==========[ %s ]==========\n", playfunc.Name)
+		err := playfunc.Func()
+		if err != nil {
+			log.Fatalf("%s got itself killed: %v", playfunc.Name, err)
+		}
 	}
 }
+
+type SimplePlayFunc struct {
+	Name string
+	Func func() error
+} 
