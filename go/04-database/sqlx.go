@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
-	"github.com/jmoiron/sqlx" // drop-in replacement
+	_ "github.com/jackc/pgx/v5"
+	"github.com/jmoiron/sqlx" // drop-in replacement, and a superset of "database/sql"
 )
 
 func PlaySqlx() error {
@@ -23,10 +25,26 @@ func PlaySqlx() error {
 	ctx, stop := context.WithCancel(context.Background())
 	defer stop()
 	
-	// Beginx(), BeginTxx()
+	// Beginx(), BeginTxx(), MustBegin()
 	tx, err := db.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
+	}
+
+	// INSERT, with named struct and batch insert
+	{
+		_, error := tx.NamedExec(
+			`INSERT INTO users (name, age) VALUES (:name, :age)`,
+			[]UserRow{
+				{Name: "John", Age: sql.NullInt64{Int64: 30, Valid: true}},
+				{Name: "Jack", Age: sql.NullInt64{Int64: 31, Valid: true}},
+			},
+			// Can also use map:
+			// map[string]any{"name": "John", "Age": 30},
+		)
+		if err != nil {
+			return error
+		}
 	}
 
 	// Queryx()
@@ -38,8 +56,8 @@ func PlaySqlx() error {
 		defer rows.Close()
 
 		// Next(), StructScan() into struct
+		var user UserRow  // scan into the same struct every time
 		for rows.Next() {
-			var user UserRow
 			err = rows.StructScan(&user)
 			if err != nil {
 				return err
@@ -59,7 +77,7 @@ func PlaySqlx() error {
 		fmt.Printf("Get() user: %v\n", user)
 	}
 
-	// Select() to load multiple rows
+	// Select() to load multiple rows into a slice
 	// WARNING: it will load the entire result set into memory at once!
 	{
 		var users []UserRow
@@ -88,6 +106,25 @@ func PlaySqlx() error {
 		}
 
 		fmt.Printf("NamedQuery() user: %v\n", user)
+	}
+
+	// In() expands slice, returning the modified query string and a new arg list that can be executed.
+	// The query should use the "?" bind var.
+	{
+		query, args, error := sqlx.In(`SELECT * FROM users WHERE id IN ?;`, []int{1, 2, 3})
+		if err != nil {
+			return error
+		}
+		fmt.Printf("Query=%s, args=%v\n", query, args)
+	}
+
+	// Named() returns a new query with :name :name replaced with `?` `?` and actual values represented as an array
+	{
+		query, args, error := sqlx.Named(`INSERT INTO users (name, age) VALUES(:name, :age);`, map[string]any{"name": "me", "age": 0})
+		if err != nil {
+			return error 
+		}
+		fmt.Printf("Query=%s, args=%v\n", query, args)
 	}
 
 	
