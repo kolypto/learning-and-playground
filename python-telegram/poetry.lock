@@ -1,0 +1,17 @@
+[[package]]
+name = "python-telegram"
+version = "0.16.0"
+description = "Python library to help you build your own Telegram clients"
+category = "main"
+optional = false
+python-versions = "*"
+
+[metadata]
+lock-version = "1.1"
+python-versions = "^3.10"
+content-hash = "03c7138ab03f99b5772a8e0dd508092849b3ff96a040de21d45251e7adda5748"
+
+[metadata.files]
+python-telegram = [
+    {file = "python-telegram-0.16.0.tar.gz", hash = "sha256:b8d472e8329274ea9fa96d1014caa91a8c0fd5510bef16bede24759c35882b1a"},
+]
