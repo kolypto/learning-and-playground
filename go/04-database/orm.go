@@ -10,6 +10,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/doug-martin/goqu/v9"
 	_ "github.com/doug-martin/goqu/v9/dialect/postgres"
+	"github.com/jmoiron/sqlx"
 )
 
 func PlayOrm() error {
@@ -91,11 +92,13 @@ func playGoqu() error {
 	pg := goqu.Dialect("postgres")
 
 	// Use it on a DB
-	db, err := sql.Open("pgx", "postgres://postgres:postgres@localhost:5432")
+	db, err := sqlx.Open("pgx", "postgres://postgres:postgres@localhost:5432")
 	if err != nil {
 		return err
 	}
 	pgdb := pg.DB(db)
+
+	db.MustExec(usersSchema)
 
 	// SELECT
 	query, args, err := pg.From(`test`).
@@ -112,11 +115,57 @@ func playGoqu() error {
 	if count, err := pgdb.From("users").Count(); err != nil {
 		return err
 	} else {
-		fmt.Printf("Count: %s\n", count)
+		fmt.Printf("Count: %d\n", count)
 	}
 
-	// 
+	// Clause methods:
+	// Ex{}: map: identifier => value (WHERE)
+	// ExOr{}: OR version 
+	// S(), T(), C(): Schema, Table, Column
+	// I(): Table.Column
+	// L: SQL literal
+	// V: Value to be used
+
+	// Ex{}, Op{}
+	{
+		sql, _, _ := pgdb.From(`items`).Where(goqu.Ex{
+			"a": "a",  					// a == "a'"
+			"b": goqu.Op{"neq": 1}, 	// b != 1
+			"c": nil,  					// c IS NULL
+			"d": []int{1,2,3},  		// d IN (1,2,3)
+		}).ToSQL()
+		fmt.Printf("SQL: %s\n", sql)
+	}
 	
+	// S(), T(), C()
+	{
+		t := goqu.T("users")
+		sql, _, _ := pgdb.From(t).Select(
+			t.Col("id"),  // SELECT users.id
+		).Where(
+			goqu.C("age").Gte(18),  // age >= 18
+		).ToSQL()
+		fmt.Printf("SQL: %s\n", sql)
+	}
+
+	// I()
+	{
+		id := goqu.I("users.id") // "table.column", or just "column"
+		sql, _, _ := pgdb.From(id.GetTable()).Select(id).ToSQL()
+		fmt.Printf("SQL: %s\n", sql)
+	}
+
+	// L(), V()
+	{
+		sql, args, _ := pgdb.From("users").Select(
+			goqu.V(true).As("is_verified"),  // literal value
+		).Where(
+			goqu.L(`age >= ?`, 18),  // literal expr
+		).ToSQL()
+		fmt.Printf("SQL: %s %v\n", sql, args)
+	}
+
+	// TODO: See further: SELECT , INSERT, UPDATE, DELETE dataset, PREPAREd statements, Database, Time
 
 
 	return nil
