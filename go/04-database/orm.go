@@ -5,12 +5,15 @@ package main
 import (
 	"context"
 	"database/sql"
+	_ "embed"
 	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/doug-martin/goqu/v9"
 	_ "github.com/doug-martin/goqu/v9/dialect/postgres"
 	"github.com/jmoiron/sqlx"
+
+	"goplay/database/sql/sqlc/dbs"
 )
 
 func PlayOrm() error {
@@ -21,8 +24,10 @@ func PlayOrm() error {
 		// * query builders: because with raw SQL you'd resort to templating
 		// * code generators: because they give you type-safe code
 		// {"GORM", playGorm},
+
 		{"Squirrel", playSquirrel},
 		{"goqu", playGoqu},
+		{"sqlc", playSqlc},
 	}
 	
 	for _, playfunc := range playgrounds {
@@ -171,20 +176,50 @@ func playGoqu() error {
 	return nil
 }
 	
-func playS() error {
+func playSqlc() error {
 	// Set up the pool
-	db, err := sql.Open("pgx", "postgres://postgres:postgres@localhost:5432")
+	db, err := sqlx.Open("pgx", "postgres://postgres:postgres@localhost:5432")
 	if err != nil {
 		return err
 	}	
 	defer db.Close() // you rarely need this
+
+	// Create tables
+	tx := db.MustBegin()
+	tx.MustExec(sqlSchema)
 
 	// Prepare context
 	// It will stop any running queries in case we quit. That's structured concurrency.
 	ctx, stop := context.WithCancel(context.Background())
 	defer stop()
 
-	ctx.Done()
+	// Get queries
+	queries := dbs.New(tx)
 
+	// Create a user
+	{
+		createdUser, err := queries.CreateUser(ctx, dbs.CreateUserParams{
+			Login: "kolypto",
+			Age: sql.NullInt32{18, true},
+		})
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Created user id: %d\n", createdUser.ID)
+	}
+
+	// List users
+	{
+		users, err := queries.ListUsers(ctx)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Users: %v\n", users)
+	}
+
+	ctx.Done()
 	return nil
 }
+
+//go:embed sqlc/schema.sql
+var sqlSchema string

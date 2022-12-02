@@ -1,0 +1,31 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "query.sql"  # directory of queries, or one file, or list of paths
+    schema: "schema.sql"  # directory of migrations, or one file, or list of paths
+    gen:
+      go:
+        package: "dbs"
+        out: "dbs"
+        
+        sql_package: "database/sql"  # or "pgx/v5"
+        emit_db_tags: true  # struct tags "db:"
+        emit_json_tags: true 
+
+        # Override column names if something goes wrong
+        rename:
+          age: "Age"
+        # Custom types
+        overrides:
+        - db_type: "uuid"
+          go_type: "github.com/gofrs/uuid.UUID"
+
+      # Python: generate Pydantic models and SqlAlchemy core executions
+      python:
+        package: "dbs"
+        out: "pydbs"
+        emit_async_querier: true 
+        emit_pydantic_models: true  # pydantic? or dataclass?
+
+      # json:
+        # out: "./"
