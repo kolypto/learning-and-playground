@@ -1,0 +1,56 @@
+output = "models"
+wipe = true 
+
+add-global-variants	= true
+add-panic-variants = true
+add-enum-types = true
+add-soft-deletes = true
+
+[psql]
+# psql: host, port, user, pass, sslmode
+# psql: schema, dbname
+# pqsl: whitelist[], blacklist[]
+# Environment: PSQL_*, e.g. "PSQL_DBNAME"
+host = "localhost"
+port = 5432
+user = "postgres"
+pass = "postgres"
+dbname = "postgres"
+sslmode = "disable"
+blacklist = ["migrations", "*._*"]  # ignore table, columns by pattern
+
+
+# Rename tables, columns
+[aliases.tables.busers]
+up_plural     = "Users"
+up_singular   = "User"
+down_plural   = "users"
+down_singular = "user"
+
+  [aliases.tables.busers.columns]
+  login = "Login"
+
+[aliases.tables.barticles]
+up_plural = "Articles"
+up_singular = "Article"
+down_plural = "articles"
+down_singular = "article"
+
+# Configure a relationship
+[aliases.tables.barticles.relationships.fk_author]  # also see alternative syntax
+# Foreign: the table that the foreign key points to
+foreign = "author"  # Default: Author
+# Local: the table with the foreign key
+local = "AuthoredVideos"  # Default: AuthorVideos
+
+
+# Auto-set ctime & mtime
+[auto-columns]
+created = "created_at"
+updated = "updated_at"
+
+
+# Override types
+#[[types]]
+# match: type "null.String", nullablt=True
+# replace: "mynull.String"

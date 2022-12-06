@@ -37,6 +37,7 @@ func PlayDatabaseSqlPostgres() error{
 	// BEGIN transaction
 	// NOTE: If the context is canceled, the sql package will roll back the transaction. 
 	tx, err := db.BeginTx(ctx, nil)  // default isolation level depends on the driver
+	defer tx.Rollback()
 	if err != nil {
 		return err
 	}
