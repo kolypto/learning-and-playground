@@ -342,8 +342,18 @@ func playSqlboiler() error {
 			return err
 		}
 		
-		
+		// Get related
+		videos, err := user.AuthoredVideos().All(ctx, tx)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Related videos: %v\n", videos)
 	}
+
+	// Hooks
+	models.AddUserHook(boil.AfterInsertHook, func(ctx context.Context, exec boil.ContextExecutor, p *models.User) error {
+		return nil
+	})
 
 	ctx.Done()
 	return nil
