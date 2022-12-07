@@ -14,6 +14,8 @@ type User struct {
 // Fields of the User.
 func (User) Fields() []ent.Field {
 	return []ent.Field {
+		// All fields are required by default, unless Optional().
+		// "id" is built in
 		field.Int("age").Positive(),
 		field.String("login").Default(""),
 	}
