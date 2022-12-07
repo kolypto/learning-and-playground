@@ -7,17 +7,25 @@ import (
 	"database/sql"
 	_ "embed"
 	"fmt"
+	"time"
 
+	"entgo.io/ent/dialect"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/doug-martin/goqu/v9"
 	_ "github.com/doug-martin/goqu/v9/dialect/postgres"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
+	"goplay/database/sql/ent/ent"
+	"goplay/database/sql/ent/ent/car"
+	"goplay/database/sql/ent/ent/user"
 	"goplay/database/sql/sqlboiler/models"
 	"goplay/database/sql/sqlc/dbs"
+
+	entsql "entgo.io/ent/dialect/sql"
 )
 
 func PlayOrm() error {
@@ -33,6 +41,7 @@ func PlayOrm() error {
 		{"goqu", playGoqu},
 		{"sqlc", playSqlc},
 		{"sqlboiler", playSqlboiler},
+		{"ent", playEntityFramework},
 	}
 	
 	for _, playfunc := range playgrounds {
@@ -193,7 +202,7 @@ func playSqlc() error {
 	// Create tables
 	tx := db.MustBegin()
 	defer tx.Rollback()
-	tx.MustExec(sqlSchema)
+	tx.MustExec(sqlcSchema)
 
 	// Prepare context
 	// It will stop any running queries in case we quit. That's structured concurrency.
@@ -243,7 +252,7 @@ func playSqlboiler() error {
 	// Create tables
 	tx := db.MustBegin()
 	defer tx.Rollback()
-	tx.MustExec(sqlSchema)
+	tx.MustExec(sqlboilerSchema)
 
 	// Prepare context
 	// It will stop any running queries in case we quit. That's structured concurrency.
@@ -283,11 +292,12 @@ func playSqlboiler() error {
 	
 	// NewQuery(): custom query
 	{
-		rows, err := models.NewQuery(qm.From(`users`)).QueryContext(ctx, tx)
+		rows, err := models.NewQuery(qm.From(`busers`)).QueryContext(ctx, tx)
 		if err != nil {
 			return err
 		}
 		fmt.Printf("NewQuery(): %v\n", rows)
+		rows.Close()
 	}
 
 	// Query Mods
@@ -327,7 +337,7 @@ func playSqlboiler() error {
 	// Bind() finisher
 	{
 		var users []models.User  // or a custom struct
-		err := queries.Raw(`SELECT * FROM users`).Bind(ctx, tx, &users)
+		err := queries.Raw(`SELECT * FROM busers`).Bind(ctx, tx, &users)
 		if err != nil {
 			return err
 		}
@@ -359,6 +369,129 @@ func playSqlboiler() error {
 	return nil
 }
 
-//go:embed sqlc/schema.sql
-var sqlSchema string
 
+func playEntityFramework() error {
+	// Set up the pool
+	db, err := sqlx.Open("pgx", "postgres://postgres:postgres@localhost:5432")
+	if err != nil {
+		return err
+	}	
+	defer db.Close() // you rarely need this
+	
+	// Create an ent.Driver from `db`
+	driver := entsql.OpenDB(dialect.Postgres, db.DB)
+	client := ent.NewClient(ent.Driver(driver))
+
+	// Prepare context
+	// It will stop any running queries in case we quit. That's structured concurrency.
+	ctx, stop := context.WithCancel(context.Background())
+	defer stop()
+
+	// Transaction
+	tx, err := client.Tx(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Run the auto-migration tool
+	if err := tx.Client().Schema.Create(ctx); err != nil {
+		return errors.WithMessage(err, "Migration failed")
+	}
+
+	// User.Create()
+	{
+		user, err := tx.User.Create().
+			SetLogin("john").
+			SetAge(30).
+			Save(ctx)
+		if err != nil {
+			return errors.WithMessage(err, "Failed to create a user")
+		}
+		fmt.Printf("User created: id=%d\n", user.ID)
+	}
+
+	// User.Query() 
+	{
+		user, err := tx.User.Query(). 
+				Where(user.Login("john")).  // same as: 
+			Only(ctx)  // Assert: exactly 1 user 
+		if err != nil {
+			return errors.WithMessage(err, "User not found")
+		}
+		fmt.Printf("User: %v\n", user)
+	}
+	
+	// User.AddCars() relationship
+	{
+		tesla, err := tx.Car. 
+			Create(). 
+			SetModel("Tesla"). 
+			SetRegisteredAt(time.Now()).
+			Save(ctx)
+		if err != nil {
+			return errors.WithMessage(err, "Failed to create a car")
+		}
+
+		ford, err := tx.Car. 
+			Create(). 
+			SetModel("Ford"). 
+			SetRegisteredAt(time.Now()). 
+			Save(ctx)
+		if err != nil {
+			return errors.WithMessage(err, "Failed to create a car")
+		}
+
+		// AddCars()
+		owner, err := tx.User. 
+			Create(). 
+			SetAge(30). 
+			SetLogin("Owner"). 
+			AddCars(tesla, ford).
+			Save(ctx)
+		if err != nil {
+			return errors.WithMessage(err, "Failed to save a user")
+		}
+
+		fmt.Printf("Created User(id=%d) with cars [Tesla(id=%d), Ford(id=%d)]\n", owner.ID, tesla.ID, ford.ID)
+
+		// QueryCars()
+		cars, err := owner.QueryCars().Where(
+			car.ModelNotIn("Lada"),
+		).All(ctx)
+		if err != nil {
+			return errors.WithMessage(err, "Failed to load user cars")
+		}
+		fmt.Printf("QueryCars(): %v\n", cars)
+
+		// Car.QueryOwner()
+		owner, err = tesla.QueryOwner().Only(ctx)
+		if err != nil {
+			return errors.WithMessage(err, "Failed to find owner's car")
+		}
+
+		fmt.Printf("Car %q owner: %q\n", cars[0], owner)
+	}
+
+	// Traverse graph
+	{
+		cars, err := tx.User.Query(). 
+			Where(user.HasCars()). 
+			QueryCars(). 
+			All(ctx)
+		if err != nil {
+			return errors.WithMessage(err, "Failed to find cars for user #1")
+		}
+
+		fmt.Printf("Cars for User: %v\n", cars)
+	}
+
+	ctx.Done()
+	return nil
+}
+
+//go:embed sqlc/schema.sql
+var sqlcSchema string
+
+//go:embed sqlboiler/schema.sql
+var sqlboilerSchema string 
