@@ -15,7 +15,12 @@ web: beego (all inclusive, rapid development; like Django / Ruby on Rails)
 
 web-graphql: gqlgen (net/http family)
 web-graphql: ent
+
 net: gRPC
+
+logger: zap / zerolog
+microservices: kit
+
 
 awesome-go
 
