@@ -304,13 +304,203 @@ In Python, it's ignored, since Python modules are organized according to their l
 
 ## Defining Services
 
+Define RPC services:
+
+```protobuf
+service SearchService {
+    rpc Search(SearchRequest) returns (SearchResponse);
+}
+```
+
+The most straightforward system is gRPC.
+
 ## JSON Mapping
 
-## Options
+Proto3 supports JSON encoding. 
+
+* If a value is missing in the JSON source, or is `null`, a default will be used
+* `enum` -> strings
+* `repeated` -> arrays
+* `bytes` -> base64 string
+* `int32` -> Number, `int64` -> string number
+* `float` -> 1.1, `"NaN"`, `"Infinity"`, `"-Infinity"`
+* `Any` -> `{"@type": "url", ...}`
+* `Timestamp` -> RFC3339, Z-normalized: `"1972-01-01T10:00:20.021Z"`
+* `Duration` -> string `"1.003s"`
+
+Options:
+
+* Emit default values: yes/no. Fields with default values are omitted by default.
+* Ignore unknown fields: reject (default) / ignore
+* Convert to camelCase: yes (default) / no. The parser will accept both as its input.
+* Emit enum values as: strings (default) / integers 
 
 ## Generation
 
-## File location
+```console
+$ protoc --proto_path=IMPORT_PATH --python_out=DST_DIR --go_out=DST_DIR path/to/file.proto
+```
 
-## Supported Platforms
+## Style Guide
+
+* Use CamelCase for message names, enums, services
+* Use snake_case for field names
+* Use plural words for repeated fields
+
+
+## Encoding: Wire Format
+
+Use [protoscope](https://github.com/protocolbuffers/protoscope?utm_source=developers.google.com&utm_medium=referral) to inspect low-level wire format.
+
+### Integers and Field Numbers
+
+Example:
+
+```protobuf
+message Test1 {
+    optional int32 a = 1;
+}
+```
+
+Encode `{ a: 150 }` and you'll see:
+
+> 08 96 01
+
+Wire encoding uses varints: variable-width integers. They allow encoding unsigned 64-bit integers using 1-10 bytes, with small values using fewer bytes.
+
+Each byte in the varint has a continuation bit: indicates if the byte that follows it is part of the varint.
+
+```
+0000 0001
+^ msb
+```
+
+Here is `150` encoded as `9601`:
+
+```
+10010110 00000001
+^ msb    ^ msb
+```
+
+How to figure out 150? 
+Drop the MSBs, then concatenate the 7-bit payloads, and interpret it as a little-endian 64-bit unsigned integer.
+
+```
+data:
+10010110 00000001   // remove msb
+ 0010110  0000001   // put into little-endian order 
+ 0000001  0010110   // concatenate
+ 00000010010110     // interpret at integer
+```
+
+The type of scheme is called TLV (tag-length-value).
+There are 6 wire types:
+
+* `0` varint (all ints)
+* `1` i64 (fixed64, double)
+* `2` len (string, bytes, nested message, packed repeated fields)
+* `5` i32 (fixed32, float)
+
+The "tag" is a varint: field number + wire type 
+
+> (field_number << 3) | wire_type
+
+So: 
+
+* Wire type: 3 bits + Field number: 4 bits + MSB: 1 bit; or (field numbers: 1..16)
+* Wire type: 3 bits + Field number: 11 bits + MSG: 1+1 bits (field numbers: 1..2048)
+
+Now, in our message, `08` is:
+
+> 00001000
+
+So it's type=0 field_number=1
+
+### Length
+
+Consider 
+
+```protobuf
+message Test2 {
+  optional string b = 2;
+}
+```
+
+Message `{b: "testing"}` will be encoded:
+
+> 12 07 [74 65 73 74 69 6e 67]
+
+```
+12 = 00010 010  // type=2 (LEN), field number=1
+07 = varint 7
+next 7 bytes: string
+```
+
+Submessages also use the `LEN` wire type, indicating the length of the nested struct.
+
+### Optional and Repeated Elements
+
+Optional fields are just left out when not present. This means that "huge" protos with only a few fields set are quire sparse.
+
+Repeated fields are just, well, repeated. 
+
+A non-`repeated` field normally has only one instance. If the same field appears multiple times, the parser accepts the *last* value it sees.
+The effect is that parsing the concatenation of two encoded messages produces exactly the same result as if you merged the resulting objects:
+
+> message.ParseFromString(str1 + str2) == message.MergeFrom(message2)
+
+This property is occasionally useful: e.g. for non-zero defaults?
+
+Starting in v2.1.0 in proto3, `repeated` fields of scalar integer type can be packed. They are encoded as a single LEN record that contains each element concatenated.
+
+### Maps
+
+Maps are just a shorthand for a special kind of repeated field:
+
+```protobuf
+message Test6 {
+  map<string, int32> g = 7;
+}
+```
+
+
+this is actually the same as
+
+```protobuf
+message Test6 {
+  message g_Entry {
+    optional string key = 1;
+    optional int32 value = 2;
+  }
+  repeated g_Entry g = 7;
+}
+```
+
+### Field Order
+
+Field numbers have no effect on serialization order. There is no guaranteed order. 
+
+Do not assume the byte output of a serialized message is stable
+
+## Techniques
+
+### Streaming Multiple Messages
+
+It's up to you to keep track of where one message ends and the next begins. The protobuf wire format is not self-delimiting.
+Easiest way: write the message size before each message.
+
+### Large Data Sets
+
+Protocol Buffers are not designed to handle large messages. If you have >1Mb data, consider an alternative strategy.
+
+Protocol Buffers are great for handling individual messages *within* a large data set: that is, a collection of small pieces.
+
+### Self-Describing Messages
+
+Protocol Buffers are not self-describing: a raw message does not mean much without a corresponding `.proto` file.
+However, a self-describing message may be implemented using `google.protobuf.FileDescriptorSet` + `google.protobuf.Any`.
+
+See [`src/google/protobuf/descriptor.proto`](https://github.com/protocolbuffers/protobuf/blob/main/src/google/protobuf/descriptor.proto).
+
+The reason that this functionality is not included in the Protocol Buffer library is because we have never had a use for it inside Google.
 
