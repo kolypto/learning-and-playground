@@ -1,0 +1,59 @@
+// IDL file: Interface Definition Language
+
+// Package for the generated code
+namespace goplay.fb;
+
+// Enum, represented as 1 byte.
+enum Color:byte {
+    Red = 0,
+    Green,  // default enum behavior: increment when unspecified
+    Blue = 2,
+}
+
+// Union: any of
+union Equipment {
+    Weapon
+    // .. add more tables
+}
+
+// Structs are ideal for data structures that will not change
+// They use less memory and have faster lookup
+struct Location {
+    x: float;
+    y: float;
+    z: float;
+}
+
+// Tables 
+table Monster {
+    // Nested struct 
+    position: Location;
+
+    // Fieldswith default values.
+    // Other fields, when unspecified, receive 0, null
+    hp: short = 100;
+    mana: short = 150;
+    color: Color = Red;
+
+    equipped: Equipment; // union
+
+    // Deprecated value.
+    // You cannot delete from a table, but for backwards-compatibility, you can mark fields as (deprecated).
+    // This prevents the generation of accessors for this field. 
+    friendly: bool = false (deprecated);
+
+    // Arrays 
+    inventory: [ubyte]; // array of scalars
+    path: [Location];   // array of structs
+    weapons: [Weapon];  // array of tables
+}
+
+// Table 
+table Weapon {
+    name: string; // string
+    damage: short;
+}
+
+
+// The root type declares what will be the root table for the serialized data 
+root_type Monster;

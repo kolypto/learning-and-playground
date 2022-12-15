@@ -6,5 +6,6 @@ use (
 	./03-stdlib
 	./04-database
 	./05-libs
+	./flatbuffers
 	./protobuf
 )
