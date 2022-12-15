@@ -1,25 +1,30 @@
-web: net/http (ok performance)
-web: gorilla/mux (ok performance; compatible with http.Handler; idiomatic Go; used in Yandex)
-web: gin (ok performance; compatible with net/http; de facto standard; but too much magic and un-idiomatic)
-web: chi (ok performance; compatible with http.Handler; idiomatic Go)
-web: echo (ok performance; more straightforward; not compatible with http.Handler)
-web: Sentry supports: net/http, Gin, Echo, FastHTTP
+Web frameworks:
+    Based on net/http:
+        net/http (ok performance)
+        gorilla/mux (ok performance; compatible with http.Handler; idiomatic Go; used in Yandex)
+        gin (ok performance; compatible with net/http; de facto standard; but too much magic and un-idiomatic)
+        chi (ok performance; compatible with http.Handler; idiomatic Go)
+        echo (ok performance; more straightforward; not compatible with http.Handler)
+        Sentry supports: net/http, Gin, Echo, FastHTTP
 
-web: fasthttp (too fast; might not be for you!!)
-web: fiber (fast. like Express. Not compatible with net/http: based on fasthttp)
-web: gearbox (too fast; based on fasthttp; not popular)
-web: atreugo (too fast; based on fasthttp; not popular)
+    Based on fasthttp:
+        fasthttp (too fast; might not be for you!!)
+        fiber (fast. like Express. Not compatible with net/http: based on fasthttp)
+        gearbox (too fast; based on fasthttp; not popular)
+        atreugo (too fast; based on fasthttp; not popular)
 
-web: go kit (for microservices)
-web: beego (all inclusive, rapid development; like Django / Ruby on Rails)
+    Other:
+        go kit (for microservices)
 
-web-graphql: gqlgen (net/http family)
-web-graphql: ent
+    Not good:
+        beego (all inclusive, rapid development; like Django / Ruby on Rails)
 
-net: gRPC
+    GraphQL:
+        gqlgen 
+        ent 
 
-logger: zap / zerolog
-microservices: kit
+logger: glog, zap / zerolog
+
 
 
 awesome-go
