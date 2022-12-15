@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=b'Z\030goplay/protobuf/goplaypb',
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x13proto/example.proto\x12\x08goplaypb\x1a\x1fgoogle/protobuf/timestamp.proto\"\x80\x01\n\x08UserInfo\x12\n\n\x02id\x18\x01 \x01(\x04\x12\r\n\x05login\x18\x02 \x01(\t\x12\r\n\x05\x65mail\x18\x03 \x01(\t\x12\x10\n\x03\x61ge\x18\x04 \x01(\rH\x00\x88\x01\x01\x12\x30\n\x0clast_updated\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x06\n\x04_ageB\x1aZ\x18goplay/protobuf/goplaypbb\x06proto3'
+  serialized_pb=b'\n\x13proto/example.proto\x12\x08goplaypb\x1a\x1fgoogle/protobuf/timestamp.proto\"\x80\x01\n\x08UserInfo\x12\n\n\x02id\x18\x01 \x01(\x04\x12\r\n\x05login\x18\x02 \x01(\t\x12\r\n\x05\x65mail\x18\x03 \x01(\t\x12\x10\n\x03\x61ge\x18\x04 \x01(\rH\x00\x88\x01\x01\x12\x30\n\x0clast_updated\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x06\n\x04_age\"\"\n\x0fGetUserInfoArgs\x12\x0f\n\x07user_id\x18\x01 \x01(\x04\"5\n\x11GetUserInfoResult\x12 \n\x04user\x18\x01 \x01(\x0b\x32\x12.goplaypb.UserInfo2P\n\x05Users\x12G\n\x0bGetUserInfo\x12\x19.goplaypb.GetUserInfoArgs\x1a\x1b.goplaypb.GetUserInfoResult\"\x00\x42\x1aZ\x18goplay/protobuf/goplaypbb\x06proto3'
   ,
   dependencies=[google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,])
 
@@ -91,11 +91,78 @@ _USERINFO = _descriptor.Descriptor(
   serialized_end=195,
 )
 
+
+_GETUSERINFOARGS = _descriptor.Descriptor(
+  name='GetUserInfoArgs',
+  full_name='goplaypb.GetUserInfoArgs',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='user_id', full_name='goplaypb.GetUserInfoArgs.user_id', index=0,
+      number=1, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=197,
+  serialized_end=231,
+)
+
+
+_GETUSERINFORESULT = _descriptor.Descriptor(
+  name='GetUserInfoResult',
+  full_name='goplaypb.GetUserInfoResult',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='user', full_name='goplaypb.GetUserInfoResult.user', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=233,
+  serialized_end=286,
+)
+
 _USERINFO.fields_by_name['last_updated'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
 _USERINFO.oneofs_by_name['_age'].fields.append(
   _USERINFO.fields_by_name['age'])
 _USERINFO.fields_by_name['age'].containing_oneof = _USERINFO.oneofs_by_name['_age']
+_GETUSERINFORESULT.fields_by_name['user'].message_type = _USERINFO
 DESCRIPTOR.message_types_by_name['UserInfo'] = _USERINFO
+DESCRIPTOR.message_types_by_name['GetUserInfoArgs'] = _GETUSERINFOARGS
+DESCRIPTOR.message_types_by_name['GetUserInfoResult'] = _GETUSERINFORESULT
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 UserInfo = _reflection.GeneratedProtocolMessageType('UserInfo', (_message.Message,), {
@@ -105,6 +172,46 @@ UserInfo = _reflection.GeneratedProtocolMessageType('UserInfo', (_message.Messag
   })
 _sym_db.RegisterMessage(UserInfo)
 
+GetUserInfoArgs = _reflection.GeneratedProtocolMessageType('GetUserInfoArgs', (_message.Message,), {
+  'DESCRIPTOR' : _GETUSERINFOARGS,
+  '__module__' : 'proto.example_pb2'
+  # @@protoc_insertion_point(class_scope:goplaypb.GetUserInfoArgs)
+  })
+_sym_db.RegisterMessage(GetUserInfoArgs)
+
+GetUserInfoResult = _reflection.GeneratedProtocolMessageType('GetUserInfoResult', (_message.Message,), {
+  'DESCRIPTOR' : _GETUSERINFORESULT,
+  '__module__' : 'proto.example_pb2'
+  # @@protoc_insertion_point(class_scope:goplaypb.GetUserInfoResult)
+  })
+_sym_db.RegisterMessage(GetUserInfoResult)
+
 
 DESCRIPTOR._options = None
+
+_USERS = _descriptor.ServiceDescriptor(
+  name='Users',
+  full_name='goplaypb.Users',
+  file=DESCRIPTOR,
+  index=0,
+  serialized_options=None,
+  create_key=_descriptor._internal_create_key,
+  serialized_start=288,
+  serialized_end=368,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='GetUserInfo',
+    full_name='goplaypb.Users.GetUserInfo',
+    index=0,
+    containing_service=None,
+    input_type=_GETUSERINFOARGS,
+    output_type=_GETUSERINFORESULT,
+    serialized_options=None,
+    create_key=_descriptor._internal_create_key,
+  ),
+])
+_sym_db.RegisterServiceDescriptor(_USERS)
+
+DESCRIPTOR.services_by_name['Users'] = _USERS
+
 # @@protoc_insertion_point(module_scope)

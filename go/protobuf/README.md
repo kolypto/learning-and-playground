@@ -504,3 +504,17 @@ See [`src/google/protobuf/descriptor.proto`](https://github.com/protocolbuffers/
 
 The reason that this functionality is not included in the Protocol Buffer library is because we have never had a use for it inside Google.
 
+
+
+
+
+
+
+# gRPC
+
+Two types of RPC services:
+
+* Simple RPC: waits for a response to come back
+* Server-side streaming RPC: the client gets a stream to read a sequence of messages back
+* Client-side streaming RPC: client writes a sequence of messages 
+* Bi-directional streaming RPC: both sides send a sequence of messages

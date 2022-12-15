@@ -13,5 +13,22 @@ message UserInfo {
 
     optional uint32 age = 4; 
     google.protobuf.Timestamp last_updated = 5;
+}
 
+
+
+
+
+
+message GetUserInfoArgs {
+    uint64 user_id = 1;
+}
+
+message GetUserInfoResult {
+    UserInfo user = 1;
+}
+
+
+service Users {
+    rpc GetUserInfo(GetUserInfoArgs) returns (GetUserInfoResult) {}
 }
