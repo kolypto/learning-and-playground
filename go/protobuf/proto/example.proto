@@ -1,0 +1,17 @@
+syntax = "proto3";
+package goplaypb;
+
+// option go_package = "goplay/protobuf/goplaypb";
+option go_package = "goplay/protobuf/goplaypb";
+
+import "google/protobuf/timestamp.proto";
+
+message UserInfo {
+    uint64 id = 1;
+    string login = 2;
+    string email = 3;
+
+    optional uint32 age = 4; 
+    google.protobuf.Timestamp last_updated = 5;
+
+}
