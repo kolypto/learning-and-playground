@@ -23,12 +23,41 @@ Web frameworks:
         gqlgen 
         ent 
 
-logger: glog, zap / zerolog
+Logger: glog, zap / zerolog
 
+Configuration:
+    https://github.com/spf13/viper
+    https://github.com/knadh/koanf
+    https://github.com/joho/godotenv
+    https://github.com/kelseyhightower/envconfig
+    https://github.com/caarlos0/env
 
+Dependency Injection:
+    https://github.com/google/wire
+    https://github.com/uber-go/fx
+    https://github.com/uber-go/dig
 
-awesome-go
+GUI:
+    List: Native GUI & HTML GUI bindings: https://github.com/go-graphics/go-gui-projects
 
+    Native:
+        https://github.com/golang/mobile
+        https://github.com/therecipe/qt
+        https://github.com/andlabs/ui
+    HTML:
+        https://github.com/wailsapp/wails
+        https://github.com/webview/webview
+        https://github.com/zserge/lorca
+        https://github.com/maxence-charriere/go-app
+        https://github.com/asticode/go-astilectron
+        https://github.com/sciter-sdk/go-sciter
+        https://github.com/ImVexed/muon
+    Custom:
+        https://github.com/fyne-io/fyne
+        https://gioui.org/
+        https://github.com/go-flutter-desktop/go-flutter
+
+Telegram: telegram-bot-api, telebot
 
 Example HTTP server: 
 https://github.com/enricofoltran/simple-go-server/blob/master/main.go

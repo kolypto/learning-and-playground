@@ -1289,3 +1289,55 @@ List items can only contain paragraphs: no code blocks or nested lists. This avo
 A code block: a span of indented text.
 Can be used for preformatted text with alignment.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Generics
+Source: <https://go.dev/doc/tutorial/generics>, 15.12.2022
+
+A function that sums up a map of ints of floats:
+
+```go
+func SumNumbers [K comparable, V int64|float64] (m map[K]V) V {
+    var sum V
+    for _, v := range m {
+        s += V
+    }
+    return V
+}
+```
+
+Now call it:
+
+```go
+ints := map[string]int64{
+    "first":  34,
+    "second": 12,
+}
+
+SumNumbers[string, int64](ints) // with type safety
+SumNumbers(ints) // simple
+```
+
+To improve on this example, define a type and use it:
+
+```go
+type Number interface {
+    int64 | float64
+}
+
+func SumNumbers[K comparable, V Number](m map[K]V) V { 
+    ...
+}
+```
