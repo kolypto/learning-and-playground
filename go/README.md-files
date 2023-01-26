@@ -8,8 +8,8 @@ go/02-tour-and-spec/go.mod
 go/02-tour-and-spec/tour.go
 go/02-tour-and-spec/tour_webserver.go
 go/03-stdlib/go.mod
-go/03-stdlib/fmt.go
 go/03-stdlib/main.go
+go/03-stdlib/fmt.go
 go/03-stdlib/builtin.go
 go/03-stdlib/bytes.go
 go/03-stdlib/embed.go
@@ -46,13 +46,13 @@ go/04-database/sqlc/sqlc.yaml
 go/04-database/sqlc/query.sql
 go/04-database/sqlc/schema.sql
 cockroachdb-errors/cockroachdb_errors.go
-protobuf/go.mod
 protobuf/README.md
+protobuf/go.mod
 protobuf/main.go
 protobuf/protobuf.go
 protobuf/proto/example.proto
 protobuf/grpc.go
 flatbuffers/README.md
 flatbuffers/proto/monster.fbs
-flatbuffers/main.go
 flatbuffers/go.mod
+flatbuffers/main.go

@@ -6,7 +6,9 @@
 
 # go/01-hello
 
-## go/01-hello/go.mod
+
+# go/01-hello/go.mod
+
 ```
 module example.com/hello
 
@@ -43,7 +45,9 @@ require (
 ```
 
 
-## go/01-hello/hello.go
+
+# go/01-hello/hello.go
+
 ```go
 // $ go mod init example.com/hello
 // Run me:
@@ -99,9 +103,12 @@ func init() {
 
 
 
+
 # go/01-hello/greetings
 
-## go/01-hello/greetings/go.mod
+
+# go/01-hello/greetings/go.mod
+
 ```
 module example.com/greetings
 
@@ -110,7 +117,9 @@ go 1.18
 ```
 
 
-## go/01-hello/greetings/greetings.go
+
+# go/01-hello/greetings/greetings.go
+
 ```go
 package greetings
 
@@ -166,7 +175,9 @@ func randomGreetMessage() string {
 ```
 
 
-## go/01-hello/greetings/greetings_test.go
+
+# go/01-hello/greetings/greetings_test.go
+
 ```go
 // Filename ends with "_test.go": this is a test that `go test` will run
 // Run me:
@@ -204,9 +215,8 @@ func TestHello (t *testing.T) {
 
 
 
-# go/02-tour-and-spec
 
-## go/02-tour-and-spec/spec.md
+# go/02-tour-and-spec
 # The Go Programming Language Spec
 
 <https://go.dev/ref/spec>, Version of June 29, 2022
@@ -1551,7 +1561,9 @@ func SumNumbers[K comparable, V Number](m map[K]V) V {
 }
 ```
 
-## go/02-tour-and-spec/go.mod
+
+# go/02-tour-and-spec/go.mod
+
 ```
 module goplay/tour
 
@@ -1560,7 +1572,9 @@ go 1.18
 ```
 
 
-## go/02-tour-and-spec/tour.go
+
+# go/02-tour-and-spec/tour.go
+
 ```go
 // Every Go program is made up of packages
 // Programs start running in package "main"
@@ -2066,7 +2080,9 @@ func goroutines(){
 ```
 
 
-## go/02-tour-and-spec/tour_webserver.go
+
+# go/02-tour-and-spec/tour_webserver.go
+
 ```go
 /*
 Webserver serves a page on :1718 by default. It's an app to generate QR codes.
@@ -2134,9 +2150,12 @@ const indexPageTemplateStr = `
 
 
 
+
 # go/03-stdlib
 
-## go/03-stdlib/go.mod
+
+# go/03-stdlib/go.mod
+
 ```
 module goplay/stdlib
 
@@ -2145,7 +2164,63 @@ go 1.19
 ```
 
 
-## go/03-stdlib/fmt.go
+
+# go/03-stdlib/main.go
+
+```go
+package main
+
+// Run me:
+// $ go run .
+// $ go test
+
+// Build or test with race detector:
+// $ go test -race mypkg
+// $ go run -race mysrc.go
+// $ go build -race mycmd
+// $ go install -race mypkg
+
+import (
+	"log"
+)
+
+func main(){
+	log.SetFlags(log.Lshortfile | log.Lmsgprefix)
+
+	PlayFmt()
+	PlayBuiltin()
+	PlayBytes()
+	PlayEmbed()
+	
+	PlayEncodingJson()
+	PlayHtml()
+	PlayHtmlTemplate()
+
+	PlayOS()
+	PlayOsExec()
+	PlayIO()
+	PlayIOFS()
+	
+	PlayReflect()
+	PlayRegexp()
+	PlayTrace()
+	PlaySort()
+	PlayCustomSort()
+	PlaySync()
+	PlayTime()
+
+	PlayNet()
+	PlayHttp()
+
+	PlayRPC()
+}
+
+```
+
+
+
+# go/03-stdlib/fmt.go
+
 ```go
 package main
 
@@ -2244,59 +2319,9 @@ func (person *Person) GoString() string {
 ```
 
 
-## go/03-stdlib/main.go
-```go
-package main
 
-// Run me:
-// $ go run .
-// $ go test
+# go/03-stdlib/builtin.go
 
-// Build or test with race detector:
-// $ go test -race mypkg
-// $ go run -race mysrc.go
-// $ go build -race mycmd
-// $ go install -race mypkg
-
-import (
-	"log"
-)
-
-func main(){
-	log.SetFlags(log.Lshortfile | log.Lmsgprefix)
-
-	PlayFmt()
-	PlayBuiltin()
-	PlayBytes()
-	PlayEmbed()
-	
-	PlayEncodingJson()
-	PlayHtml()
-	PlayHtmlTemplate()
-
-	PlayOS()
-	PlayOsExec()
-	PlayIO()
-	PlayIOFS()
-	
-	PlayReflect()
-	PlayRegexp()
-	PlayTrace()
-	PlaySort()
-	PlayCustomSort()
-	PlaySync()
-	PlayTime()
-
-	PlayNet()
-	PlayHttp()
-
-	PlayRPC()
-}
-
-```
-
-
-## go/03-stdlib/builtin.go
 ```go
 package main
 
@@ -2346,7 +2371,9 @@ func PlayBuiltin(){
 ```
 
 
-## go/03-stdlib/bytes.go
+
+# go/03-stdlib/bytes.go
+
 ```go
 package main
 
@@ -2373,7 +2400,9 @@ func PlayBytes(){
 ```
 
 
-## go/03-stdlib/embed.go
+
+# go/03-stdlib/embed.go
+
 ```go
 package main
 
@@ -2403,7 +2432,9 @@ func PlayEmbed(){
 ```
 
 
-## go/03-stdlib/encoding.go
+
+# go/03-stdlib/encoding.go
+
 ```go
 package main
 
@@ -2506,7 +2537,9 @@ type Message struct {
 ```
 
 
-## go/03-stdlib/html.go
+
+# go/03-stdlib/html.go
+
 ```go
 package main
 
@@ -2656,7 +2689,9 @@ func PlayHtmlTemplate(){
 ```
 
 
-## go/03-stdlib/reflect.go
+
+# go/03-stdlib/reflect.go
+
 ```go
 package main
 
@@ -2702,7 +2737,9 @@ func PlayReflect(){
 ```
 
 
-## go/03-stdlib/os.go
+
+# go/03-stdlib/os.go
+
 ```go
 package main
 
@@ -2825,7 +2862,9 @@ func PlayIOFS(){
 ```
 
 
-## go/03-stdlib/regexp.go
+
+# go/03-stdlib/regexp.go
+
 ```go
 package main
 
@@ -2864,7 +2903,9 @@ func PlayRegexp(){
 ```
 
 
-## go/03-stdlib/runtime.go
+
+# go/03-stdlib/runtime.go
+
 ```go
 package main
 
@@ -2926,7 +2967,9 @@ func PlayTrace() {
 ```
 
 
-## go/03-stdlib/sort.go
+
+# go/03-stdlib/sort.go
+
 ```go
 package main
 
@@ -3116,7 +3159,9 @@ func (s ByName) Less(i, j int) bool { return s.People[i].Name < s.People[j].Name
 ```
 
 
-## go/03-stdlib/sync.go
+
+# go/03-stdlib/sync.go
+
 ```go
 package main
 
@@ -3187,7 +3232,9 @@ func PlaySync(){
 ```
 
 
-## go/03-stdlib/time.go
+
+# go/03-stdlib/time.go
+
 ```go
 package main
 
@@ -3282,7 +3329,9 @@ func PlayTime(){
 ```
 
 
-## go/03-stdlib/main_test.go
+
+# go/03-stdlib/main_test.go
+
 ```go
 package main_test
 
@@ -3415,7 +3464,9 @@ func TestTimeConsuming(t *testing.T) {
 ```
 
 
-## go/03-stdlib/net_ip.go
+
+# go/03-stdlib/net_ip.go
+
 ```go
 package main
 
@@ -3589,7 +3640,9 @@ func netFuncs(){
 ```
 
 
-## go/03-stdlib/net_http.go
+
+# go/03-stdlib/net_http.go
+
 ```go
 package main
 
@@ -3731,7 +3784,9 @@ func httpServer(){
 ```
 
 
-## go/03-stdlib/net_http_test.go
+
+# go/03-stdlib/net_http_test.go
+
 ```go
 package main_test
 
@@ -3778,7 +3833,9 @@ func TestHttpServer(t *testing.T) {
 ```
 
 
-## go/03-stdlib/net_rpc.go
+
+# go/03-stdlib/net_rpc.go
+
 ```go
 package main
 
@@ -3874,9 +3931,12 @@ type IntOperands struct {
 
 
 
+
 # go/04-database
 
-## go/04-database/go.mod
+
+# go/04-database/go.mod
+
 ```
 module goplay/database/sql
 
@@ -3953,7 +4013,9 @@ require (
 ```
 
 
-## go/04-database/main.go
+
+# go/04-database/main.go
+
 ```go
 package main
 
@@ -3987,7 +4049,9 @@ type SimplePlayFunc struct {
 ```
 
 
-## go/04-database/database_sql_postgres.go
+
+# go/04-database/database_sql_postgres.go
+
 ```go
 // stdlib: database/sql
 
@@ -4114,7 +4178,9 @@ func PlayDatabaseSqlPostgres() error{
 ```
 
 
-## go/04-database/pgx.go
+
+# go/04-database/pgx.go
+
 ```go
 // pgx: Postgres client
 
@@ -4272,7 +4338,9 @@ type UserRow struct {
 ```
 
 
-## go/04-database/sqlx.go
+
+# go/04-database/sqlx.go
+
 ```go
 // sqlx: extensions to database/sql
 
@@ -4413,7 +4481,9 @@ func PlaySqlx() error {
 ```
 
 
-## go/04-database/orm.go
+
+# go/04-database/orm.go
+
 ```go
 // ORM libraries
 
@@ -4918,9 +4988,8 @@ var sqlboilerSchema string
 
 
 
-# go/04-database/ent
 
-## go/04-database/ent/README.md
+# go/04-database/ent
 # Entity Framework
 
 > go install entgo.io/ent/cmd/ent@latest
@@ -4938,9 +5007,12 @@ $ go generate ./ent
 
 
 
+
 # go/04-database/ent/ent/schema
 
-## go/04-database/ent/ent/schema/group.go
+
+# go/04-database/ent/ent/schema/group.go
+
 ```go
 package schema
 
@@ -4971,7 +5043,9 @@ func (Group) Edges() []ent.Edge {
 ```
 
 
-## go/04-database/ent/ent/schema/car.go
+
+# go/04-database/ent/ent/schema/car.go
+
 ```go
 package schema
 
@@ -5005,7 +5079,9 @@ func (Car) Edges() []ent.Edge {
 ```
 
 
-## go/04-database/ent/ent/schema/user.go
+
+# go/04-database/ent/ent/schema/user.go
+
 ```go
 package schema
 
@@ -5042,9 +5118,8 @@ func (User) Edges() []ent.Edge {
 
 
 
-# go/04-database/sqlboiler
 
-## go/04-database/sqlboiler/README.md
+# go/04-database/sqlboiler
 # Sqlboiler
 
 1. Create DB schema, give explicit names to foreign keys (used to name relationships!)
@@ -5052,7 +5127,9 @@ func (User) Edges() []ent.Edge {
 3. Initial generation: `$ sqlboiler psql`
 
 
-## go/04-database/sqlboiler/sqlboiler.toml
+
+# go/04-database/sqlboiler/sqlboiler.toml
+
 ```toml
 output = "models"
 wipe = true 
@@ -5114,7 +5191,9 @@ updated = "updated_at"
 ```
 
 
-## go/04-database/sqlboiler/schema.sql
+
+# go/04-database/sqlboiler/schema.sql
+
 ```sql
 DROP TABLE IF EXISTS busers CASCADE;
 CREATE TABLE busers (
@@ -5177,7 +5256,9 @@ INSERT INTO barticle_tags (article_id, tag_id) VALUES
 ```
 
 
-## go/04-database/sqlboiler/schema-create.sh
+
+# go/04-database/sqlboiler/schema-create.sh
+
 ```bash
 #! /usr/bin/env bash 
 
@@ -5188,9 +5269,8 @@ cat schema.sql | psql postgres://postgres:postgres@localhost:5432/postgres
 
 
 
-# go/04-database/sqlc
 
-## go/04-database/sqlc/README.md
+# go/04-database/sqlc
 # Installation
 
 ```console
@@ -5233,7 +5313,9 @@ sqlc is able to ignore *down* migrations from: dbmate, golang-migrate, goose, sq
 
 
 
-## go/04-database/sqlc/sqlc.yaml
+
+# go/04-database/sqlc/sqlc.yaml
+
 ```yaml
 version: "2"
 sql:
@@ -5270,7 +5352,9 @@ sql:
 ```
 
 
-## go/04-database/sqlc/query.sql
+
+# go/04-database/sqlc/query.sql
+
 ```sql
 -- name: GetUser :one
 SELECT * FROM users
@@ -5291,7 +5375,9 @@ WHERE id = $1;
 ```
 
 
-## go/04-database/sqlc/schema.sql
+
+# go/04-database/sqlc/schema.sql
+
 ```sql
 CREATE TABLE users (
     id bigserial,
@@ -5313,9 +5399,12 @@ CREATE TABLE articles (
 
 
 
+
 # cockroachdb-errors
 
-## cockroachdb-errors/cockroachdb_errors.go
+
+# cockroachdb-errors/cockroachdb_errors.go
+
 ```go
 package main
 
@@ -5475,25 +5564,8 @@ func (e *httpErrorType) SafeDetails() []string {
 
 
 
+
 # protobuf
-
-## protobuf/go.mod
-```
-module goplay/protobuf
-
-go 1.19
-
-require (
-	github.com/golang/protobuf v1.5.2
-	google.golang.org/protobuf v1.28.1
-)
-
-require google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0 // indirect
-
-```
-
-
-## protobuf/README.md
 # Protocol Buffers
 
 ## Introduction
@@ -6016,7 +6088,27 @@ Two types of RPC services:
 * Bi-directional streaming RPC: both sides send a sequence of messages
 
 
-## protobuf/main.go
+
+# protobuf/go.mod
+
+```
+module goplay/protobuf
+
+go 1.19
+
+require (
+	github.com/golang/protobuf v1.5.2
+	google.golang.org/protobuf v1.28.1
+)
+
+require google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0 // indirect
+
+```
+
+
+
+# protobuf/main.go
+
 ```go
 package main
 
@@ -6035,7 +6127,9 @@ func main() {
 ```
 
 
-## protobuf/protobuf.go
+
+# protobuf/protobuf.go
+
 ```go
 package main
 
@@ -6104,9 +6198,12 @@ func PlayProtobuf() error {
 
 
 
+
 # protobuf/proto
 
-## protobuf/proto/example.proto
+
+# protobuf/proto/example.proto
+
 ```protobuf
 syntax = "proto3";
 package goplaypb;
@@ -6148,9 +6245,12 @@ service Users {
 
 
 
+
 # protobuf
 
-## protobuf/grpc.go
+
+# protobuf/grpc.go
+
 ```go
 package main
 
@@ -6257,9 +6357,8 @@ var _ pb.UsersServer = new(exampleApiServer)  // assert:implements
 
 
 
-# flatbuffers
 
-## flatbuffers/README.md
+# flatbuffers
 # Flatbuffers
 
 Main feature: memory efficient. Reads directly from the message. No parsing step required.
@@ -6272,9 +6371,12 @@ Define schema: `monster.fbs`. Then use
 
 
 
+
 # flatbuffers/proto
 
-## flatbuffers/proto/monster.fbs
+
+# flatbuffers/proto/monster.fbs
+
 ```flatbuffers
 // IDL file: Interface Definition Language
 
@@ -6341,9 +6443,25 @@ root_type Monster;
 
 
 
+
 # flatbuffers
 
-## flatbuffers/main.go
+
+# flatbuffers/go.mod
+
+```
+module goplay/flatbuffers
+
+go 1.19
+
+require github.com/google/flatbuffers v22.11.23+incompatible // indirect
+
+```
+
+
+
+# flatbuffers/main.go
+
 ```go
 package main
 
@@ -6427,13 +6545,3 @@ func playFlatbuffers() error {
 }
 ```
 
-
-## flatbuffers/go.mod
-```
-module goplay/flatbuffers
-
-go 1.19
-
-require github.com/google/flatbuffers v22.11.23+incompatible // indirect
-
-```
