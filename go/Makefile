@@ -2,7 +2,7 @@ SHELL=/bin/bash
 
 all: README.md
 
-FOLDERS=go/ cockroachdb-errors/ protobuf/ flatbuffers/ cobra/
+FOLDERS=go/ protobuf/ flatbuffers/ golib/
 
 README.md-filelist: $(shell find ${FOLDERS} -type f)
 	@./README-gen-file-list.sh ${FOLDERS}

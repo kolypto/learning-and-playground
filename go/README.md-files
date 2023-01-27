@@ -45,7 +45,6 @@ go/04-database/sqlc/README.md
 go/04-database/sqlc/sqlc.yaml
 go/04-database/sqlc/query.sql
 go/04-database/sqlc/schema.sql
-cockroachdb-errors/cockroachdb_errors.go
 protobuf/README.md
 protobuf/go.mod
 protobuf/main.go
@@ -56,4 +55,7 @@ flatbuffers/README.md
 flatbuffers/proto/monster.fbs
 flatbuffers/go.mod
 flatbuffers/main.go
-cobra/README.md
+
+golib/cockroachdb_errors.go
+golib/zerolog.go
+golib/cobra.md
