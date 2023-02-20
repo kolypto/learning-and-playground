@@ -1,0 +1,469 @@
+# GUI Editor:
+# https://editor.swagger.io/
+
+# Version
+# Changes:
+# 3.1:
+#   * every `schema` is now a valid JSONSchema: see JSONSchema
+#   * use `type: ['string', 'null']` instead of `type: string nullable: true`
+#   * use `examples`, not `example`
+#   * file upload schema: `content: application/octet-stream` with `schema: type: string format: binary`
+openapi: 3.0.0
+
+# Info: API information
+info:
+    title: Sample API
+    version: 0.1.0
+    description: |
+        Multi-line description in [CommonMark](commonmark.org)
+
+    # URL to the terms of service
+    termsOfService: http://example.com/terms/
+    
+    # Contact information: name, email, URL.
+    contact:
+      name: API Support
+      email: support@example.com
+      url: http://example.com/support
+
+    # Name of the license and a URL to the license description.
+    license:
+      name: Apache 2.0
+      url: http://www.apache.org/licenses/LICENSE-2.0.html
+    
+    # Link to the external documentation (if any).
+    # Code or documentation generation tools can use description as the text of the link. 
+    # externalDocs:
+    #   description: Find out more
+    #   url: http://example.com
+    
+
+
+# Servers: URLs the API is deployed at.
+servers:
+    # Every endpoint is relative to this path, i.e. "/v1" should be specified here.
+    # Relative URLs
+    - url: /v1 
+      description: This server
+    # Absolute URLs
+    - url: http://api.example.com/v1
+      description: Main server
+    - url: http://localhost:8888/
+      description: Testing server 
+    # Websockets
+    - url: ws://api.example.com/v1 
+
+    # Templated server URLs: customize protocol, subdomain (customer, region, production vs staging), port, etc
+    - url: https://{tenant}.example.com:{port}/v2 
+      variables:
+        # Every variable is a string
+        tenant: 
+            default: "example"
+            description: Customer ID 
+        port:
+            default: '443'
+            enum:
+                - '443'
+                - '8443'
+
+    # A global server can be overridden for a path: e.g. when some endpoints live on a different server
+    # paths:
+    #   /files:
+    #       servers: 
+    #           - url: https://files.example.com
+
+# Paths: API endpoints
+paths:
+    # API endpoints: /path: { get: ..., post: ... }
+    # Paths are relative to API server URL.
+    # Use "/get/{id}" path parameters, or even "/report.{format}" path parameters
+    /users:
+
+        # NOTE: you can specify shared `servers` here
+        # NOTE: you can specify shared `parameters` here
+
+        post: 
+            # Operation name: used for method names in generator code
+            operationId: getUsers 
+            
+
+
+            # Description  short and long, and tags
+            summary: Short description
+            description: |
+                Longer description 
+            tags:
+                - Users 
+            # Link to an external documentation
+            externalDocs:
+              description: Learn more about this API
+              url: http://third-party-api.com/ 
+            # Mark a method as "deprecated": stop using it
+            deprecated: true
+            
+
+
+            # Parameters: /{path}, ?query, X-Header, Coookie: name=value
+            parameters:
+              # Int parameter, not required, with default value
+              - name: tenantId 
+                description: Parameter description 
+                # ?query parameter
+                in: query
+                required: false  # default: not required
+                deprecated: false  # mark as deprecated?
+                schema: 
+                    type: integer
+                    format: int
+                    minimum: 1
+                    # Default value for the optional parameter
+                    default: 1
+                # Examples
+                examples:
+                    firstTenant:
+                        summary: From the root tenant 
+                        value: 1
+
+              # Refer to a parameter defined in components/parameters
+              - $ref: "#/components/parameters/limit"
+                
+              # OpenAPI knows how to serialize arrays and objects
+              # See: https://swagger.io/docs/specification/serialization/
+              - name: hashtags
+                in: query 
+                schema: 
+                    type: array 
+                    items:
+                        type: string 
+                # Array serialization method:
+                # form:             color=blue,green,red (explode=false) ; color=blue&color=green&color=red (explode=true)
+                # spaceDelimited:   color=blue green red 
+                # pipeDelimited:    color=blue|green|red
+                style: form
+                explode: false 
+
+              # JSON value in parameter: ?filter={"clothes":"t-shirt"}
+              - name: filter 
+                in: query 
+                content: 
+                    application/json:   
+                        schema: 
+                            type: object 
+                            properties:
+                                clothes: 
+                                    type: string
+
+              # Enum values
+              - name: sort 
+                in: query 
+                required: false 
+                schema: 
+                    type: string 
+                    enum:
+                        - age-asc  
+                        - age-desc
+
+              # Empty-Valued parameters: /api/method?debug
+              - name: debug 
+                in: query 
+                schema:
+                    type: boolean 
+                allowEmptyValue: true  # <-- allows no value
+            
+
+
+            # Response codes and their contents
+            # Note that HTTP status codes must be enclosed in "quotes"
+            responses:
+                # The API spec is not expected to cover *all* possible error codes!
+                # It is expected to cover successful responses and any *known* errors.
+
+                # Happy path: code 200
+                '200':
+                    description: Response description
+                    # Response: JSON, with schema
+                    content:
+                        application/json:
+                            # Response JSON schema
+                            # NOTE: you can use `oneOf` and `anyOf` for alternate schemas!
+                            schema:
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/User'
+                            example:
+                                id: 1
+                                name: John Smith
+                        
+                        # Other media types
+                        text/html:
+                            schema:
+                                type: string 
+                        image/*:
+                            schema:
+                                # This is how you document binary files
+                                type: string 
+                                format: binary
+
+                    # Response headers
+                    headers:
+                        X-RateLimit-Reset: 
+                            description: The UTC date/time when the rate limit window resets
+                            schema: 
+                                type: string 
+                                format: date-time 
+
+                # Documented errors
+                '404':
+                    # NOTE: you can refer to `$ref: '#/components/responses/...'` to reuse a response
+                    description: Not found 
+                    content:
+                        application/json:
+                            schema:
+                                type: object 
+
+                # Use a range of response codes
+                '5XX': 
+                    description: Unexpected error
+                    # This error has no body
+                
+                # "Everything else is an error": describe all errors collectively
+                default:
+                    description: Unexpected error
+
+
+
+            # Input request body
+            # See file uploads: https://swagger.io/docs/specification/describing-request-body/file-upload/
+            # See multipart requests: https://swagger.io/docs/specification/describing-request-body/multipart-requests/
+            # See form data: https://swagger.io/docs/specification/describing-request-body/#form-data
+            requestBody:
+                # NOTE: you can use `$ref: '#/components/requestBodies'` to reuse request bodies 
+                required: false  # Default: false
+                content:
+                    # Supports wildcard media types: "image/*" represents all image types, "*/*" is the same as "application/octet-stream"
+                    # Specific media types have preference: e.g. "image/png" > "image/*" > "*/*"
+                    application/json:
+                        schema: 
+                            # Request schema 
+                            # Supports `oneOf` for alternate schemas
+                            oneOf:
+                              - $ref: '#/components/schemas/User'
+                              - type: object 
+                                properties:
+                                    username: 
+                                        type: string
+                        examples:
+                            # List your examples here
+                            John: 
+                                summary: John
+                                # Has to be a valid JSON value
+                                value:
+                                    id: 1 
+                                    name: John 
+                            # External JSON file
+                            ExternalCat:
+                                summary: Value loaded from a JSON file 
+                                externalValue: http://api.example.com/examples/cat.json
+                            # Refer to a component
+                            Hamster:
+                                $ref: '#/components/examples/hamster'
+
+
+# You can group operations using tags
+tags: 
+  # The order controls grouping & ordering in Swagger UI
+  - name: pets 
+    description: Everything about pets 
+
+
+# Global components
+# Valid naming: A-Za-z0-9._-
+#
+# Reference: 
+#   $ref: '#/components/schemas/User'
+# Any sibling elements of a $ref are ignored. This is because $ref works by replacing itself and everything on its level with the definition it is pointing at. 
+#
+# You can refer to external definitions: 
+#   Local:  $ref: 'document.json#/myElement'
+#   Remote: $ref: 'https://api.example.com/v2/openapi.yaml#/components/schemas/User'
+components:
+    # Schemas: define common data structures
+    #
+    # Every schema is a valid JSON Schema.
+    # See JSON schema: https://swagger.io/docs/specification/data-models/keywords/
+    schemas:
+        # Example model
+        User:
+            type: object 
+            properties:
+            # Data type: string, integer, number, boolean, array, object 
+              id: 
+                type: integer
+              
+              # Strings
+              name:
+                type: string 
+                example: John Smith
+                # String length
+                minLength: 1
+                maxLength: 100
+              
+              # String dates
+              birthday:
+                type: string 
+                # Built-in string types: date, date-time, password (UI masks the input), byte (base64), binary (files)
+                # "format" is an open value: you can use any formats: email, uuid, uri, hostname, ipv4, ...
+                # Tools may use it to validate the input and map it to a specific type
+                format: date  
+                # RegExp validation. Uses JavaScript regexp syntax.
+                pattern: '^\d4-\d2-\d2$'
+                # Is `null` a valid value? 
+                # NOTE: it's not the same as "not required"!
+                nullable: true 
+
+              # Integers
+              volume:
+                type: integer
+                format: int64  # hint for the tools to use a specific type
+                # Include an example value
+                example: 4
+                # Range of possible values
+                minimum: 0
+                maximum: 100 
+                # Multiple of: +step
+                multipleOf: 10  
+
+              # Enums
+              # NOTE: define your enums as '#/components/schemas'
+              sex:
+                type: string 
+                nullable: true 
+                enum:
+                    - "male"
+                    - "female" 
+                    - null   # nullable enum
+              
+              # Arrays
+              tags:
+                type: array 
+                items:
+                    # NOTE: you can use `oneOf` and `anyOf`
+                    # NOTE: you can use `items: {}` to have an array of arbitrary types
+                    type: string 
+                minLength: 0
+                maxLength: 3
+                # Require every item to be unique
+                uniqueItems: true   # Default: false
+
+              # Dicts / Maps
+              friends:
+                type: object 
+                # Some fixed keys 
+                properties:
+                    default:
+                        type: string 
+                required:
+                    - default
+                # Arbitrary properties
+                additionalProperties: 
+                    # Schema for property values
+                    $ref: '#/components/schemas/User'
+                # Limit the max number of properties
+                maxProperties: 3
+            
+              # Read-only properties: allows to reuse the same model in GET and POST.
+              # These properties won't be writable.
+              # If marked as `required` — is applied to responses only.
+              createdAt: 
+                type: string 
+                format: date-time 
+                readOnly: true  # applied to responses only
+
+              # Write-only properties: allows to reuse the same model in GET and POST.
+              # There properties won't be readable.
+              # If marked as `required` — is applied to requestBodies only.
+              password:
+                type: string 
+                writeOnly: true
+
+              # A free-form object
+              storage:
+                type: object 
+                additionalProperties: true
+
+              # The `any` field
+              anything:
+                # schema:  # no schema
+                description: Arbitrary value 
+              
+             
+    
+            
+            # Required: a field must be present. Default: optional.
+            # NOTE: it's not the same as nullable!
+            required:
+              - id
+              - name 
+
+
+        # `oneOf` and `anyOf` for alternate types
+        # * `anyOf` validates against any (one or more) of the subschemas
+        # * `oneOf` validates against exactly one of the subschemas. Use a `discriminator` property to tell which one exactly.
+        # * `allOf` validates against all the subschemas: lets you combine and extend model definitions 
+        Pet: 
+            # Base type
+            type: object 
+            required: ['pet_type']
+            properties:
+              pet_type:
+                # `not`: schema should not match. That is, use any type except integer.
+                not: 
+                    type: integer
+            discriminator:
+              propertyName: pet_type  # contains the name of the target schema
+              # mapping: # Use a different mapping for the discriminator
+        Dog: 
+            allOf:
+              # Inheritance from `Pet`
+              - $ref: '#/components/schemas/Pet'
+              - type: object 
+                properties:
+                    bark: 
+                        type: boolean
+
+
+    # Shared parameters
+    parameters:
+      # pagination 
+      limit:
+        name: limit 
+        in: query 
+        required: false 
+        schema: 
+            type: integer
+            default: 20 
+        description: The number of results per page
+
+    # Shared examples 
+    examples:
+      hamster:
+        summary: An example of a hamster 
+        value: 
+            name: Ginger
+
+    # Authentication
+    # Supports: HTTP basic, HTTP bearer, OAuth2, OpenID
+    # TODO: see https://swagger.io/docs/specification/authentication/
+    securitySchemes:
+      BasicAuth:
+        type: http
+        scheme: basic
+
+# ??
+security:
+    - BasicAuth: []
+
+
+# TODO: Authentication: https://swagger.io/docs/specification/authentication/
+# TODO: Links: https://swagger.io/docs/specification/links/
+# TODO: Callbacks: https://swagger.io/docs/specification/callbacks/
