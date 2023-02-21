@@ -1,10 +1,10 @@
 Web frameworks:
     Based on net/http:
         net/http (ok performance)
-        gorilla/mux (ok performance; compatible with http.Handler; idiomatic Go; used in Yandex)
-        gin (ok performance; compatible with net/http; de facto standard; but too much magic and un-idiomatic)
         chi (ok performance; compatible with http.Handler; idiomatic Go)
-        echo (ok performance; more straightforward; not compatible with http.Handler)
+        echo (ok performance; more straightforward; not compatible with http.Handler; Context object is a mockable interface and it allows for some advanced testing.)
+        gin (ok performance; compatible with net/http; de facto standard; but too much magic and un-idiomatic)
+        gorilla/mux (ok performance; compatible with http.Handler; idiomatic Go; used in Yandex; discontinued)
         Sentry supports: net/http, Gin, Echo, FastHTTP
 
     Based on fasthttp:
@@ -36,6 +36,9 @@ Configuration:
     https://github.com/joho/godotenv
     https://github.com/kelseyhightower/envconfig
     https://github.com/caarlos0/env
+
+Access Control:
+    Powerful https://github.com/casbin/casbin (integrated with Echo)
 
 Dependency Injection:
     https://github.com/google/wire
