@@ -119,6 +119,9 @@ go/04-database/sqlx.go
 go/docker-compose.yml
 go/go.work
 go/go.work.sum
+golib/cobra.md
+golib/cockroachdb_errors.go
+golib/zerolog.go
 protobuf/README.md
 protobuf/go.mod
 protobuf/go.sum

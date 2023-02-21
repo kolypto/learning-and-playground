@@ -59,3 +59,4 @@ flatbuffers/main.go
 golib/cockroachdb_errors.go
 golib/zerolog.go
 golib/cobra.md
+golib/web-echo.go
