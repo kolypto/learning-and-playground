@@ -1,0 +1,7 @@
+# Don't commit secrets
+*.env
+
+# Terraform runtimes
+.terraform
+.terraform.lock.hcl
+terraform.tfstate*
