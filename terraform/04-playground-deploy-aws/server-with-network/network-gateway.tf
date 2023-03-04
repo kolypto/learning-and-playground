@@ -4,7 +4,7 @@
 # See also: "aws_egress_only_internet_gateway"
 resource "aws_internet_gateway" "gw" {
     vpc_id = aws_vpc.server_vpc.id
-    tags = { Name = "Playground Server Published" }
+    tags = { Name = "${var.project_name} gateway" }
 }
 
 # "aws_route": creates a routing entry in a VPC routing table

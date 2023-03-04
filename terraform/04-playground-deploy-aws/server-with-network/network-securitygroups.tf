@@ -6,14 +6,14 @@
 # We have just one server, so it does not say "server-api" or "server-frontend"
 resource "aws_security_group" "server" {
     # Name prefix: use it to make sure names stay unique
-    name_prefix   = "playground-server-security-"
+    name_prefix   = "${var.server_name}-server-security-"
 
     # VPC to define it on
     vpc_id = aws_vpc.server_vpc.id
 
     # Name
-    tags = { Name = "Playground Server Security" }
-    description = "Sever Security that allows HTTP and SSH in"
+    tags = { Name = "${var.server_name} server security" }
+    description = "Allows HTTP and SSH in"
 }
 
 

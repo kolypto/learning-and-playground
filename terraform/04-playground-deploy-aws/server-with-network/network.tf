@@ -20,7 +20,7 @@ resource "aws_network_interface" "server_ips" {
     ]
 
     # Name
-    tags = { Name = "playground-primary-network" }
+    tags = { Name = "${var.server_name}-primary-network" }
     description = "Internal network for the server and its services"
 }
 
@@ -41,7 +41,7 @@ resource "aws_vpc" "server_vpc" {
     enable_dns_hostnames = true # Enabled DNS hostnames. Default: false
 
     # Name
-    tags = { Name = "Playground Net" }
+    tags = { Name = "${var.project_name} VPC" }
 }
 
 # "aws_subnet": a subnet within a VPC
@@ -67,5 +67,5 @@ resource "aws_subnet" "server_vpc_subnets" {
     }
 
     # Name
-    tags = { Name = "playground-net-${each.key}" }
+    tags = { Name = "${var.project_name}-net-${each.key}" }
 }

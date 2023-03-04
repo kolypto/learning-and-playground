@@ -7,6 +7,9 @@ module "server" {
 
     # NOTE: we do not need to initialize providers within a module:
     # because providers from the root module propagate into other modules!
+
+    project_name = "playground"
+    server_name = "playground"
 }
 
 # Create a database

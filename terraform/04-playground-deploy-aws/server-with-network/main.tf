@@ -22,7 +22,7 @@ resource "aws_instance" "server" {
 
     # Tags to assign: i.e. the "Name" of the instance.
     # Yes. Name is a tag.
-    tags = { Name = "Playground" }
+    tags = { Name = var.server_name }
 
     # CPU credits: "standard" or "unlimited".
     # T2 instances are launched as "standard" by default
@@ -95,7 +95,7 @@ resource "aws_eip" "server_ip" {
 # SSH key to access the server with
 resource "aws_key_pair" "ssh_key" {
   # Use `key_name` for a static unique name, use `key_name_prefix` for a generated unique name
-  key_name_prefix = "playground-ssh-key-"
+  key_name_prefix = "${var.server_name}-ssh-key-"
   public_key = file(var.ssh_public_key_file)  # read from file
 }
 
