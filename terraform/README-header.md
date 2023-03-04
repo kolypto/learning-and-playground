@@ -490,7 +490,7 @@ module "consul" {
   # Meta-arguments
   count = 3  # how many
   for_each = ...  # multiple instances
-  providers = {}  # pass provider configurations
+  providers = {}  # pass provider configurations. By default, a module inherits them.
   depends_on = ... # explicit dependency
 
   # Arguments
@@ -756,9 +756,11 @@ Additional features you may want to add:
 
 ```
 --env-file=.env
--v ~/.terraformrc:/root/.terraformrc
 --privileged=true -v /var/run/docker.sock:/var/run/docker.sock
--v ~/.docker/config.json:/root/.docker/config.json
+-v ~/.docker/config.json:/root/.docker/config.json:ro
+-v ~/.terraformrc:/root/.terraformrc:ro
+-v ~/.ssh:/root/.ssh:ro
+-v $PWD/.env:/root/.env:ro
 ```
 
 

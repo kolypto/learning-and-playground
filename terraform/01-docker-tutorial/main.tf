@@ -1,6 +1,6 @@
 terraform {
   # Terraform version
-  required_version = ">= 0.13"
+  required_version = "~> 1.3"
 
   # Provider: use Docker
   required_providers {
