@@ -490,7 +490,7 @@ module "consul" {
   # Meta-arguments
   count = 3  # how many
   for_each = ...  # multiple instances
-  providers = {}  # pass provider configurations
+  providers = {}  # pass provider configurations. By default, a module inherits them.
   depends_on = ... # explicit dependency
 
   # Arguments
@@ -756,9 +756,11 @@ Additional features you may want to add:
 
 ```
 --env-file=.env
--v ~/.terraformrc:/root/.terraformrc
 --privileged=true -v /var/run/docker.sock:/var/run/docker.sock
--v ~/.docker/config.json:/root/.docker/config.json
+-v ~/.docker/config.json:/root/.docker/config.json:ro
+-v ~/.terraformrc:/root/.terraformrc:ro
+-v ~/.ssh:/root/.ssh:ro
+-v $PWD/.env:/root/.env:ro
 ```
 
 
@@ -795,7 +797,7 @@ Additional features you may want to add:
 ```terraform
 terraform {
   # Terraform version
-  required_version = ">= 0.13"
+  required_version = "~> 1.3"
 
   # Provider: use Docker
   required_providers {
@@ -1152,6 +1154,18 @@ output "nginx_container_names" {
 
 
 
+# 03-tutorial/terraform.tfvars
+
+```terraform
+# Variables can be set with this file.
+# NOTE: do not commit it!
+
+nginx_port = 8000
+
+```
+
+
+
 # 03-tutorial/variables.tf
 
 ```terraform
@@ -1267,250 +1281,934 @@ terraform {
 # 04-playground-deploy-aws/terraform.tf
 
 ```terraform
-
-```
-
-
-
-
-
-# examples
-
-
-# examples/example-ec2.tf
-
-```terraform
 terraform {
-  /* Uncomment this block to use Terraform Cloud for this tutorial
-  cloud {
-    organization = "organization-name"
-    workspaces {
-      name = "learn-terraform-module-use"
-    }
-  }
-  */
+  required_version = "~> 1.3.9"
 
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.49.0"
+      version = "~> 4.57"
     }
   }
-  required_version = ">= 1.1.0"
 }
-
-
-
 
 provider "aws" {
-  region = "us-west-2"
+  # The region to use
+  region = "eu-central-1"
 
-  default_tags {
-    tags = {
-      hashicorp-learn = "module-use"
-    }
-  }
+  # Access key can be provided here
+  # access_key = "my-access-key"
+  # secret_key = "my-secret-key"
+
+  # The provider can use credentials from ~/.aws/credentials and ~/.aws/config:
+  # profile = "default"  # default profile name (from the credentials file)
+
+  # Environment config:
+  # $ export AWS_REGION="us-west-2"
+  # $ export AWS_ACCESS_KEY_ID="anaccesskey"
+  # $ export AWS_SECRET_ACCESS_KEY="asecretkey"
+
+  # Environment, use config file:
+  # $ export AWS_CONFIG_FILE=~/.aws/config
+  # $ export AWS_SHARED_CREDENTIALS_FILE=~/.aws/credentials
+  # $ export AWS_PROFILE="default"
+
+  # If provided with a role ARN, assume this role
+  # See blocks: `assume_role`, `assume_role_with_web_identity`,
 }
 
-module "vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "3.18.1"
+# Data source: current AWS region
+data "aws_region" "current" {}
 
-  name = var.vpc_name
-  cidr = var.vpc_cidr
+```
 
-  azs             = var.vpc_azs
-  private_subnets = var.vpc_private_subnets
-  public_subnets  = var.vpc_public_subnets
 
-  enable_nat_gateway = var.vpc_enable_nat_gateway
 
-  tags = var.vpc_tags
+# 04-playground-deploy-aws/main.tf
+
+```terraform
+
+# === Infrastructure first === #
+
+# Create the server and its network
+module "server" {
+    source = "./server-with-network"
+
+    # NOTE: we do not need to initialize providers within a module:
+    # because providers from the root module propagate into other modules!
+
+    project_name = "playground"
+    server_name = "playground"
 }
 
-module "ec2_instances" {
-  source  = "terraform-aws-modules/ec2-instance/aws"
-  version = "4.3.0"
+# Create a database
+module "db_postgres" {
+    source = "./server-rds-postgres"
 
-  count = 2
-  name  = "my-ec2-cluster-${count.index}"
-
-  ami                    = "ami-0c5204531f799e0c6"
-  instance_type          = "t2.micro"
-  vpc_security_group_ids = [module.vpc.default_security_group_id]
-  subnet_id              = module.vpc.public_subnets[0]
-
-  tags = {
-    Terraform   = "true"
-    Environment = "dev"
-  }
+    # Put it into the same subnets the server is in
+    # NOTE: AWS requires that an RDS instance is in at least 2 availability zone subnets!
+    vpc_id = module.server.vpc_id
+    subnet_ids = module.server.vpc_server_subnet_ids
 }
 
+# === Now deploy the app to this infrastructure === #
 
+# Set up the database
+module "app-setup-database" {
+    source = "./app-setup-database"
 
-
-
-
-
-
-
-
-
-variable "vpc_name" {
-  description = "Name of VPC"
-  type        = string
-  default     = "example-vpc"
-}
-
-variable "vpc_cidr" {
-  description = "CIDR block for VPC"
-  type        = string
-  default     = "10.0.0.0/16"
-}
-
-variable "vpc_azs" {
-  description = "Availability zones for VPC"
-  type        = list(string)
-  default     = ["us-west-2a", "us-west-2b", "us-west-2c"]
-}
-
-variable "vpc_private_subnets" {
-  description = "Private subnets for VPC"
-  type        = list(string)
-  default     = ["10.0.1.0/24", "10.0.2.0/24"]
-}
-
-variable "vpc_public_subnets" {
-  description = "Public subnets for VPC"
-  type        = list(string)
-  default     = ["10.0.101.0/24", "10.0.102.0/24"]
-}
-
-variable "vpc_enable_nat_gateway" {
-  description = "Enable NAT gateway for VPC"
-  type        = bool
-  default     = true
-}
-
-variable "vpc_tags" {
-  description = "Tags to apply to resources created by VPC module"
-  type        = map(string)
-  default = {
-    Terraform   = "true"
-    Environment = "dev"
-  }
-}
-
-
-output "vpc_public_subnets" {
-  description = "IDs of the VPC's public subnets"
-  value       = module.vpc.public_subnets
-}
-
-output "ec2_instance_public_ips" {
-  description = "Public IP addresses of EC2 instances"
-  value       = module.ec2_instances[*].public_ip
+    # Manage this instance
+    postgres_url = module.db_postgres.psql_internal_url
+    project_name = "playground"
+    applications = ["goserver"]
 }
 
 ```
 
 
 
-# examples/example-s3.tf
+# 04-playground-deploy-aws/outputs.tf
 
 ```terraform
 
-# https://developer.hashicorp.com/terraform/tutorials/modules/module-create
-
-resource "aws_s3_bucket" "s3_bucket" {
-  bucket = var.bucket_name
-
-  tags = var.tags
+output "server_public_ip" {
+    description = "Server IP address. You can SSH into it."
+    value = module.server.server_public_ip
 }
 
-resource "aws_s3_bucket_website_configuration" "s3_bucket" {
-  bucket = aws_s3_bucket.s3_bucket.id
 
-  index_document {
-    suffix = "index.html"
-  }
 
-  error_document {
-    key = "error.html"
-  }
+output "debug" {
+    description = "Debug information. Show it: $ terraform output debug"
+    value = {
+        db = {
+            psql_root = module.app-setup-database.psql_root
+            psql_applications = module.app-setup-database.psql_applications
+        }
+        ssh = {
+            server = "ssh ${module.server.server_ssh_user}@${module.server.server_public_ip}"
+        }
+    }
+    sensitive = true
+}
+```
+
+
+
+
+
+# 04-playground-deploy-aws/server-with-network
+
+
+# 04-playground-deploy-aws/server-with-network/main.tf
+
+```terraform
+# This module will create:
+# * AWS instance
+# * Network: VPC + subbet
+# * SecurityGroup
+
+
+
+# "aws_instance": provides a EC2 instance resource
+resource "aws_instance" "server" {
+    # AMI image to run
+    # ami = "ami-0c0933ae5caf0f5f9"  # Hardcoded image id
+    ami = data.aws_ami.linux.id  # pick the most recent image from the data source
+
+    # Intance type
+    # t2: nano 0.5G, micro 1G, small 2G, medium 4G, large 8G
+    # t3a: 2x more expensive, have 2 vCPU, better network performance
+    # Use "A1" or "T4g" for ARM instances
+    instance_type = "t2.micro"
+
+    # Use a specific availability zone
+    availability_zone = "eu-central-1a"  # NOTE: our network interface must also be configured in there!
+
+    # Tags to assign: i.e. the "Name" of the instance.
+    # Yes. Name is a tag.
+    tags = { Name = var.server_name }
+
+    # CPU credits: "standard" or "unlimited".
+    # T2 instances are launched as "standard" by default
+    # T3 instances are launched as "unlimited" by default:
+    #   a burstable performance instance can sustain high CPU utilization for any period of time.
+    credit_specification { cpu_credits = "standard" }
+
+    # Give it access to a network.
+    # The network has an IP list a security group associated (~ firewall)
+    network_interface {
+        # The "server_ips" provides some IP addresses within a VPC.
+        # There may be multiple addresses: so we pick the first one: #0
+        network_interface_id = aws_network_interface.server_ips.id
+        device_index         = 0  # from the ip list
+    }
+
+    # Easy way to get a public IP address
+    # associate_public_ip_address = true
+
+    # SSH Key Pair to use with this server.
+    # See "aws_key_pair" resource
+    # Use data source:
+    #   key_name = data.aws_key_pair.aws_ssh.key_name
+    # or create one:
+    key_name = aws_key_pair.ssh_key.key_name
+
+    # Use `user_data` script to initialize the instance
+    # user_data = templatefile("user_data.tftpl", { username = var.user_name })
+    user_data_replace_on_change = true
+    user_data = <<-EOF
+        #!/bin/bash
+        sudo apt-get update -yq
+        sudo apt-get install -yq --no-install-recommends docker.io
+    EOF
+
+    # Remote command: i.e. on the server instance
+    # provisioner "remote-exec" {
+    #     # Run remotely
+    #     inline = [
+    #         "sudo adduser --disabled-password kolypto",
+    #         "sudo apt-get update -yq",
+    #         "sudo apt-get install -yq --no-install-recommends docker.io"
+    #     ]
+    #     connection {
+    #         host        = self.public_ip
+    #         type        = "ssh"
+    #         user        = "ec2-user"
+    #         private_key = file(var.ssh_private_key_file)
+    #     }
+    # }
+
 }
 
-resource "aws_s3_bucket_acl" "s3_bucket" {
-  bucket = aws_s3_bucket.s3_bucket.id
 
-  acl = "public-read"
+# Give it a public IP address
+resource "aws_eip" "server_ip" {
+    instance = aws_instance.server.id
+    vpc      = true
+    # NOTE: you can associate it with a `network_interface` instead of an `instance`.
+    # network_interface = aws_network_interface.server_ips.id
+
+    # NOTE: "aws_eip" may require an IGW to exist prior to association!
+    # Declare it explicitly:
+    depends_on = [ aws_internet_gateway.gw ]
 }
 
-resource "aws_s3_bucket_policy" "s3_bucket" {
-  bucket = aws_s3_bucket.s3_bucket.id
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "PublicReadGetObject"
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = "s3:GetObject"
-        Resource = [
-          aws_s3_bucket.s3_bucket.arn,
-          "${aws_s3_bucket.s3_bucket.arn}/*",
-        ]
-      },
+
+
+# SSH key to access the server with
+resource "aws_key_pair" "ssh_key" {
+  # Use `key_name` for a static unique name, use `key_name_prefix` for a generated unique name
+  key_name_prefix = "${var.server_name}-ssh-key-"
+  public_key = file(var.ssh_public_key_file)  # read from file
+}
+
+
+
+
+
+
+# data."aws_ami": find the most recent Amazon Linux image
+data "aws_ami" "linux" {
+    # When multiple images are found, take the most recent one.
+    # Careful, be sure not to end up with a daily image!
+    most_recent = true
+
+    # Only include images from Amazon
+    owners = ["amazon"]  # Amazon
+
+    # See also: `name_regex`
+    filter {
+        name   = "name"
+
+        # values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]  # Ubuntu Image. User: "ubuntu"
+        # values = ["amzn2-ami-kernel-*-hvm-*-x86_64-gp2"]  # Amazon Image. User: "ec2-user"
+        values = ["debian-11-amd64-2023*-*"]  # Debian Image. User: "admin"
+    }
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/server-with-network/availability-zones.tf
+
+```terraform
+
+# We want to generate a subnet for every availability zone.
+#
+# Availability zones can be listed using `data.aws_availability_zones.available`:
+#   ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
+#
+# Let's generate an object
+
+locals {
+    # Availability zones:
+    # [ { id: 0, char: "a", name: "eu_central-1a"}, ... ]
+    availability_zones = [
+        for i, az_name in sort(data.aws_availability_zones.available.names) :
+            {
+                id: i,  # index: 0, 1, ...
+                char: substr("abcdefgh", i, 1), # char: "a", "b", ...
+                name: az_name,  # az name: "eu_central-1a", ...
+            }
     ]
-  })
+}
+
+
+# List all availability zones in the current region
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/server-with-network/network.tf
+
+```terraform
+# "aws_network_interface": a network interaface that an Instance can use
+# A ENI (Elastic Network Interface) is defined as a network device (~ an IP address) in a subnet of a VPC.
+resource "aws_network_interface" "server_ips" {
+    # Use one subnet: availability zone "a"
+    subnet_id   = aws_subnet.server_vpc_subnets["a"].id   # NOTE!!! hardcoded primary subnet :)
+
+    # Give it an IP address inside this network.
+    # Note: this list is unordered!
+    private_ips = [
+        # it may be hardcoded:
+        #   "172.16.0.10",
+        # but let's calculate a valid IP address using CIDR block:
+        cidrhost(aws_subnet.server_vpc_subnets["a"].cidr_block, 10),   # NOTE!!! hardcoded primary subnet :)
+    ]
+
+    # Security groups for the interface.
+    # It's a sort of a firewall: decides which ports can be open
+    security_groups = [
+        aws_security_group.server.id,
+    ]
+
+    # Name
+    tags = { Name = "${var.server_name}-primary-network" }
+    description = "Internal network for the server and its services"
 }
 
 
 
 
 
-variable "bucket_name" {
-  description = "Name of the s3 bucket. Must be unique."
-  type        = string
+
+
+
+# "aws_vpc": VPC: Logically Isolated Virtual Private Cloud. A virtual network.
+resource "aws_vpc" "server_vpc" {
+    # Network: IP range
+    cidr_block = "172.16.0.0/16"
+
+    # Defaults:
+    enable_dns_support = true  # Enabled DNS support in the VPC. Default: true
+    enable_dns_hostnames = true # Enabled DNS hostnames. Default: false
+
+    # Name
+    tags = { Name = "${var.project_name} VPC" }
 }
 
-variable "tags" {
-  description = "Tags to set on the bucket."
-  type        = map(string)
-  default     = {}
+# "aws_subnet": a subnet within a VPC
+# We actually generate multiple subnets: one for each availability zone.
+# So aws_subnet.server_vpc_subnets["a"] is the primary one, in the first availability zone
+resource "aws_subnet" "server_vpc_subnets" {
+    # Within this VPC
+    vpc_id            = aws_vpc.server_vpc.id
+
+    # Let's create a subnet for every availability zone: primary, and secondary
+    cidr_block        = each.value.cidr_block
+    availability_zone = each.value.availability_zone
+    for_each = {
+        # We could have hardcoded them:
+        #   "a" : { cidr_block = "172.16.0.0/24", availability_zone = "eu-central-1a"},
+        #   "b" : { cidr_block = "172.16.1.0/24", availability_zone = "eu-central-1b"},
+        # But let's generate:
+        for az in local.availability_zones:
+            az.char => {
+                cidr_block = cidrsubnet("172.16.0.0/16", 8, az.id),  # automatic calculation
+                availability_zone = az.name,  # availability zone name
+            }
+    }
+
+    # Name
+    tags = { Name = "${var.project_name}-net-${each.key}" }
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/server-with-network/network-gateway.tf
+
+```terraform
+# If an instance needs a public IP, the VPC must contain a public gateway
+
+# "aws_internet_gateway": provides a VPC access to the Internet
+# See also: "aws_egress_only_internet_gateway"
+resource "aws_internet_gateway" "gw" {
+    vpc_id = aws_vpc.server_vpc.id
+    tags = { Name = "${var.project_name} gateway" }
+}
+
+# "aws_route": creates a routing entry in a VPC routing table
+# See also: "aws_route_table" to have multiple inline routes
+resource "aws_route" "gw_route" {
+    route_table_id         = aws_vpc.server_vpc.main_route_table_id
+    gateway_id             = aws_internet_gateway.gw.id
+    destination_cidr_block = "0.0.0.0/0"
+
+    # It can be used to give access to another VPC
+    # vpc_peering_connection_id = "pcx-45ff3dc1"
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/server-with-network/network-securitygroups.tf
+
+```terraform
+# NOTE: Amazon had issues with "aws_security_group", and it's now DEPRECATED ⚠️
+# All new setups should use "aws_vpc_security_group_egress_rule" and "aws_vpc_security_group_ingress_rule"
+# See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group
+
+
+# We have just one server, so it does not say "server-api" or "server-frontend"
+resource "aws_security_group" "server" {
+    # Name prefix: use it to make sure names stay unique
+    name_prefix   = "${var.server_name}-server-security-"
+
+    # VPC to define it on
+    vpc_id = aws_vpc.server_vpc.id
+
+    # Name
+    tags = { Name = "${var.server_name} server security" }
+    description = "Allows HTTP and SSH in"
+}
+
+
+# Define inbound / outbound rules, allows certain ports only
+
+resource "aws_vpc_security_group_egress_rule" "server_any_out" {
+    security_group_id = aws_security_group.server.id
+
+    description = "Any outbound traffic is ok"
+    cidr_ipv4   = "0.0.0.0/0"
+    ip_protocol = "-1"  # all protocols: TCP and UDP
+    # Use from_port=0 to_port=0 to allow all ports.
+    # AWS, however, insists that the values should be "-1"
+    from_port   = -1
+    to_port     = -1
+}
+
+
+resource "aws_vpc_security_group_ingress_rule" "server_in_http" {
+    security_group_id = aws_security_group.server.id
+
+    description = "HTTP in"
+    cidr_ipv4   = "0.0.0.0/0"  # any network
+    ip_protocol = "tcp"
+    # Port range: from (value) to (value)
+    from_port   = 80
+    to_port     = 80
+}
+
+resource "aws_vpc_security_group_ingress_rule" "server_in_ssh" {
+    security_group_id = aws_security_group.server.id
+
+    description = "SSH in"
+    cidr_ipv4   = "0.0.0.0/0"
+    ip_protocol = "tcp"
+    from_port   = 22
+    to_port     = 22
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/server-with-network/outputs.tf
+
+```terraform
+
+# Server's public IP. You can SSH into it.
+output "server_public_ip" {
+    description = "IP address of the server"
+    value       = aws_eip.server_ip.public_ip
+}
+
+
+# Server's root user name
+output "server_ssh_user" {
+    description = "Server's SSH user"
+    value = "admin"  # hardcoded for Debian. See precondition below
+
+
+    precondition {
+        condition = startswith(data.aws_ami.linux.name, "debian")
+        error_message = <<-EOF
+            TODO: at the moment we only know the root user for Debian systems :)
+            Replace this hardcode when other systems are in use
+        EOF
+    }
+}
+
+
+# VPC id. Other resources may be created there.
+output "vpc_id" {
+    description = "VPC id the server is created in"
+    value = aws_vpc.server_vpc.id
+}
+
+# The subnet the server's in
+output "vpc_server_subnet_ids" {
+    description = "The subnet id the server's in"
+    value = [for subnet in aws_subnet.server_vpc_subnets: subnet.id]
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/server-with-network/variables.tf
+
+```terraform
+# Your public key file.
+# You will use it to SSH into the server.
+variable "ssh_public_key_file" {
+    type        = string
+    description = "SSH public key to add to the instance. You will use it to SSH into it."
+    default     = "~/.ssh/id_rsa.pub"
+}
+
+
+# Project name
+variable "project_name" {
+    type = string
+    description = "Name of the project. Networks will have it."
+}
+
+
+
+# Server name
+variable "server_name" {
+    type = string
+    description = "Name of the server. Object names will depend on it"
+}
+
+```
+
+
+
+
+
+# 04-playground-deploy-aws/server-rds-postgres
+
+
+# 04-playground-deploy-aws/server-rds-postgres/terraform.tf
+
+```terraform
+terraform {
+    required_providers {
+        # Used to generate a random password for Postgres
+        random = {
+            source = "hashicorp/random"
+            version = "~> 3.4"
+        }
+    }
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/server-rds-postgres/main.tf
+
+```terraform
+# This module will create:
+# * Postgres instance in a subnet
+
+
+
+
+
+# Get a Postgres database.
+# See also: "aws_db_instance_automated_backups_replication"
+resource "aws_db_instance" "db" {
+    engine = "postgres"
+    engine_version = "15.2"
+    identifier_prefix = "db-"
+
+    # Postgres
+    username = "postgres"
+    password = random_password.db_password.result
+    db_name  = "postgres"  # create a database
+    parameter_group_name = aws_db_parameter_group.db_params.name
+
+    # Instance
+    instance_class    = "db.t3.micro"
+    storage_encrypted = true  # Encypt data on disk. Default: false
+    publicly_accessible = true  # Is it publicly accessible? Default: false
+
+    # Network
+    db_subnet_group_name   = aws_db_subnet_group.db_subnet.name
+    vpc_security_group_ids = [aws_security_group.db.id]
+
+    # Management
+    apply_immediately = false  # Do not wait for a maintenance window, apply changes immediately. Default: false
+    deletion_protection = false  # The DB cannot be deleted. Default: false
+    delete_automated_backups = true  # Delete backups when the DB is deleted. Default: true
+    skip_final_snapshot = true  # Do not make a final snapshot before removing it. Default: false
+    performance_insights_enabled = true  # Watch performance. Default: false
+
+    # Maintenance window for: backups and upgrades
+    maintenance_window = "Mon:01:00-Mon:03:00"  # UTC
+    backup_window      = "00:00-00:59"          # UTC
+    backup_retention_period = 3  # Keep backups for N days. Default: 0 = disabled
+    copy_tags_to_snapshot = true  # Copy all instance Tags to snapshots. Default: false
+
+    # Upgrades during the maintenance window
+    auto_minor_version_upgrade = true   # Auto upgrade minor versions. Default: true
+    allow_major_version_upgrade = true  # Allow major upgrades. Default: false?
+
+    # Autoscaling of the hard drive
+    allocated_storage     = 10   # Gb of disk space
+    max_allocated_storage = 100  # Auto-scale disk space up to this many Gb
+}
+
+
+
+# Generate a random password.
+# Once generated, it will remain.
+resource "random_password" "db_password" {
+    length = 16
+    special = false
+}
+
+
+# Parameters
+resource "aws_db_parameter_group" "db_params" {
+    name_prefix = "db-params-postgres-"
+    family = "postgres15"
+
+    # Parameters: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Appendix.PostgreSQL.CommonDBATasks.Parameters.html
+    parameter {
+        name  = "log_connections"
+        value = "1"
+    }
+}
+
+
+
+
+# NOTE: Terraform may PLAN a change for the next maintenance window!
+
+# NOTE: See RDS Blue/Green deployments for low downtime updates: (only for MySQL/MariaDB)
+#   https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/blue-green-deployments.html
+
+```
+
+
+
+# 04-playground-deploy-aws/server-rds-postgres/network.tf
+
+```terraform
+# Create Postgres in the following subnet
+# RDS instance will be created in the VPC this subnet belongs to
+resource "aws_db_subnet_group" "db_subnet" {
+  name_prefix = "db-subnet-"
+
+  # List of VPC subnet ids to make the DB available in
+  # Example: subnet_ids = [aws_subnet.frontend.id, aws_subnet.backend.id]
+  subnet_ids = var.subnet_ids
+
+  tags = { Name = "DB Subnet" }
+}
+
+
+# Configure security groups for Postgres
+resource "aws_security_group" "db" {
+    # Name prefix: use it to make sure names stay unique
+    name_prefix   = "db-"
+
+    # VPC to define it on
+    vpc_id = var.vpc_id
+
+    # Name
+    tags = { Name = "DB Security" }
+    description = "DB security: allow PostgreSQL in, nothing out"
+}
+
+# Postgres security group: allow incoming Postgres connections
+resource "aws_vpc_security_group_ingress_rule" "db_in_postgres" {
+    security_group_id = aws_security_group.db.id
+
+    description = "Postgres in"
+    cidr_ipv4   = "0.0.0.0/0"
+    ip_protocol = "tcp"
+    from_port   = 5432
+    to_port     = 5432
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/server-rds-postgres/outputs.tf
+
+```terraform
+output "psql_internal_url" {
+    description = "Postgres connection URL, admin user, internal"
+    value = format(
+        "%s://%s:%s@%s:%s/%s",
+        aws_db_instance.db.engine,
+        aws_db_instance.db.username, aws_db_instance.db.password,
+        aws_db_instance.db.endpoint, aws_db_instance.db.port,
+        aws_db_instance.db.db_name
+    )
+}
+
+output "postgres_db" {
+    description = "Postgres database connection details"
+    value = {
+        engine = aws_db_instance.db.engine,
+        username = aws_db_instance.db.username,
+        password = sensitive(aws_db_instance.db.password),  # one value is sensitive()
+        endpoint = aws_db_instance.db.endpoint,
+        port = aws_db_instance.db.port,
+        db_name = aws_db_instance.db.db_name,
+    }
+}
+```
+
+
+
+# 04-playground-deploy-aws/server-rds-postgres/variables.tf
+
+```terraform
+variable "vpc_id" {
+    type = string
+    description = "VPC to create the database in. Used to configure subnet security groups"
+}
+
+
+variable "subnet_ids" {
+    type = list(string)
+    description = "Subnet IDs that the Database should be made available in. Must be 2+"
+    validation {
+      condition = length(var.subnet_ids) >= 2
+      error_message = <<-EOF
+        AWS limitation: an RDS instance must be in 2 or more different availability zones.
+        Please provide at least two subnets in different availability zones
+      EOF
+
+      # Here's how the error message looks like:
+      # > │ Error: creating RDS DB Subnet Group (db-subnet-2023...): DBSubnetGroupDoesNotCoverEnoughAZs:
+      # The DB subnet group doesn't meet Availability Zone (AZ) coverage requirement.
+      # Current AZ coverage: eu-central-1a. Add subnets to cover at least 2 AZs.
+    }
+}
+
+```
+
+
+
+
+
+# 04-playground-deploy-aws/app-setup-database
+
+
+# 04-playground-deploy-aws/app-setup-database/terraform.tf
+
+```terraform
+terraform {
+    required_providers {
+        postgresql = {
+            source = "cyrilgdn/postgresql"
+            version = "~> 1.18"
+        }
+    }
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/app-setup-database/main.tf
+
+```terraform
+# This module will initialize the database for the app.
+# It can connect directly to AWS RDS instances (!)
+#
+# It will create:
+# * A database, named `var.project_name`
+# * A user who owns this database, with the same name
+# * A root user: `<database>-root`
+# * For every application, a separate user with ALL permissions: `<database>-<application>`
+
+
+# Database for the app
+resource "postgresql_database" "app" {
+  name = var.project_name  # db name
+  owner = postgresql_role.owner.name  # only owner can drop it
+}
+
+
+
+
+# Root role: owns the database.
+# Only they can make changes
+resource "postgresql_role" "owner" {
+  name = var.project_name
+}
+
+# Root user. Only they can make changes to the schema: e.g. migrations
+resource "postgresql_role" "root_user" {
+  name = "${var.project_name}-root"
+  password = "${var.project_name}-root"
+  roles = [postgresql_role.owner.name]
+  login = true
+}
+
+
+
+
+# Application user: the application will use it to make queries.
+# Separate user for every app is convenient in terms of logging & monitoring
+resource "postgresql_role" "app_users" {
+  name = "${var.project_name}-${each.value}"
+  password = "${var.project_name}-${each.value}"  # TODO: perhaps a better password?
+  login = true
+
+  # Generate a user for every app
+  for_each = toset(var.applications[*])
+}
+
+# Grant ALL privileges on this database
+resource "postgresql_grant" "app_user_grants" {
+  role = each.value
+  object_type = "database"
+  database = postgresql_database.app.name
+  privileges = ["ALL"]
+
+  # Generate a grant for every user
+  for_each = toset([for user in postgresql_role.app_users: user.name])
+
+  # Postgres provider doesn't like `privileges = ALL`:
+  # every time it things that it changed to "CONNECT", "CREATE", "TEMPORARY"
+  # Let's ignore it. Because it's already "ALL": can't get any bigger that this.
+  lifecycle {
+    ignore_changes = [privileges]  # Ignore changes to this attribute
+  }
 }
 
 
 
 
 
-output "arn" {
-  description = "ARN of the bucket"
-  value       = aws_s3_bucket.s3_bucket.arn
+
+
+# Init provider: where to connect to?
+provider "postgresql" {
+    # use GoCloud to connect to AWS RDS instances (!)
+    # Set endpoint value: host = "instance.xxx.region.rds.amazonaws.com"
+    scheme   = "awspostgres"
+
+    # In Amazon RDS, we're not a superuser. Set to `false`: otherwise this error comes up:
+    # > could not read role password from Postgres as connected user postgres is not a SUPERUSER
+    superuser = false
+
+    # Connect to
+    host            = local.db_url.host
+    port            = local.db_url.port
+    username        = local.db_url.username
+    password        = local.db_url.password
+
+    # Timeout is small because we're fast :)
+    connect_timeout = 15
 }
 
-output "name" {
-  description = "Name (id) of the bucket"
-  value       = aws_s3_bucket.s3_bucket.id
+
+
+
+locals {
+  # Parse DB URL into an object: username, password, host, port[, database]
+  db_url = regex(join("", [
+      "(?:postgres|postgresql)?://?",  # postgres://, postgresql:/
+      "(?P<username>.+?)", ":(?P<password>.+?)@",  # user:password@
+      "(?P<host>.+?)", ":(?P<port>\\d+)", # host:port
+      "(?:/(?P<database>.+))?",  # optional: /database
+    ]), var.postgres_url)
 }
 
-output "domain" {
-  description = "Domain name of the bucket"
-  value       = aws_s3_bucket_website_configuration.s3_bucket.website_domain
+```
+
+
+
+# 04-playground-deploy-aws/app-setup-database/outputs.tf
+
+```terraform
+
+# Root user
+output "psql_root" {
+    description = "Postgres connection URL: connect as root user (to run migrations)"
+    value = format(
+        "postgresql://%s:%s@%s:%s/%s",
+        postgresql_role.root_user.name, postgresql_role.root_user.password,
+        local.db_url.host, local.db_url.port,
+        postgresql_database.app.name
+    )
+    sensitive = true
 }
 
 
+# Application users
+output "psql_applications" {
+    description = "Postgres connection URL: for each of your applications"
+    value = {
+        for app_name, app_user in postgresql_role.app_users:
+            app_name => format(
+                "postgresql://%s:%s@%s:%s/%s",
+                app_user.name, app_user.password,
+                local.db_url.host, local.db_url.port,
+                postgresql_database.app.name
+            )
+    }
+    sensitive = true
+}
+
+```
 
 
 
+# 04-playground-deploy-aws/app-setup-database/variables.tf
 
+```terraform
+# DB connection to manage
+variable "postgres_url" {
+    type = string
+    description = "The DB to manage. Postgres connection url: postgres://user:password@host:port/. Provide AWS Instance URL"
+}
 
+# Project name. Used as DB name
+variable "project_name" {
+    type = string
+    description = "Name of the project. Will be used as DB name"
+}
 
-
-
-
-
+# Application names.
+# Every application gets their own login.
+variable "applications" {
+    type = list(string)
+    description = "List of application names that will use the DB with their own accounts"
+}
 
 ```
 
