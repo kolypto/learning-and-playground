@@ -1,0 +1,16 @@
+01-docker-tutorial/main.tf
+02-aws-tutorial/main.tf
+02-aws-tutorial/outputs.tf
+02-aws-tutorial/variables.tf
+03-tutorial/locals.tf
+03-tutorial/main.tf
+03-tutorial/nginx/main.tf
+03-tutorial/nginx/outputs.tf
+03-tutorial/nginx/variables.tf
+03-tutorial/nginx/versions.tf
+03-tutorial/outputs.tf
+03-tutorial/variables.tf
+03-tutorial/versions.tf
+04-playground-deploy-aws/terraform.tf
+examples/example-ec2.tf
+examples/example-s3.tf
