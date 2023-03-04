@@ -8,3 +8,15 @@ output "psql_internal_url" {
         aws_db_instance.db.db_name
     )
 }
+
+output "postgres_db" {
+    description = "Postgres database connection details"
+    value = {
+        engine = aws_db_instance.db.engine,
+        username = aws_db_instance.db.username,
+        password = sensitive(aws_db_instance.db.password),  # one value is sensitive()
+        endpoint = aws_db_instance.db.endpoint,
+        port = aws_db_instance.db.port,
+        db_name = aws_db_instance.db.db_name,
+    }
+}

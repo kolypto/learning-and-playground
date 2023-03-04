@@ -1,4 +1,6 @@
 
+# === Infrastructure first === #
+
 # Create the server and its network
 module "server" {
     source = "./server-with-network"
@@ -15,4 +17,16 @@ module "db_postgres" {
     # NOTE: AWS requires that an RDS instance is in at least 2 availability zone subnets!
     vpc_id = module.server.vpc_id
     subnet_ids = module.server.vpc_server_subnet_ids
+}
+
+# === Now deploy the app to this infrastructure === #
+
+# Set up the database
+module "app-setup-database" {
+    source = "./app-setup-database"
+
+    # Manage this instance
+    postgres_url = module.db_postgres.psql_internal_url
+    project_name = "playground"
+    applications = ["goserver"]
 }

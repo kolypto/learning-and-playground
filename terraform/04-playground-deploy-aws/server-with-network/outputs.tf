@@ -6,6 +6,22 @@ output "server_public_ip" {
 }
 
 
+# Server's root user name
+output "server_ssh_user" {
+    description = "Server's SSH user"
+    value = "admin"  # hardcoded for Debian. See precondition below
+
+
+    precondition {
+        condition = startswith(data.aws_ami.linux.name, "debian")
+        error_message = <<-EOF
+            TODO: at the moment we only know the root user for Debian systems :)
+            Replace this hardcode when other systems are in use
+        EOF
+    }
+}
+
+
 # VPC id. Other resources may be created there.
 output "vpc_id" {
     description = "VPC id the server is created in"

@@ -55,7 +55,7 @@ resource "aws_instance" "server" {
     user_data = <<-EOF
         #!/bin/bash
         sudo apt-get update -yq
-        #sudo apt-get install -yq --no-install-recommends docker.io
+        sudo apt-get install -yq --no-install-recommends docker.io
     EOF
 
     # Remote command: i.e. on the server instance
@@ -106,12 +106,19 @@ resource "aws_key_pair" "ssh_key" {
 
 # data."aws_ami": find the most recent Amazon Linux image
 data "aws_ami" "linux" {
-    most_recent = true  # when multiple images are found, take the most recent one
+    # When multiple images are found, take the most recent one.
+    # Careful, be sure not to end up with a daily image!
+    most_recent = true
 
+    # Only include images from Amazon
+    owners = ["amazon"]  # Amazon
+
+    # See also: `name_regex`
     filter {
         name   = "name"
+
         # values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]  # Ubuntu Image. User: "ubuntu"
         # values = ["amzn2-ami-kernel-*-hvm-*-x86_64-gp2"]  # Amazon Image. User: "ec2-user"
-        values = ["debian-11-amd64-*-*"]  # Debian Image. User: "admin"
+        values = ["debian-11-amd64-2023*-*"]  # Debian Image. User: "admin"
     }
 }
