@@ -493,7 +493,7 @@ variable "example" {
     condition = var.example > 0
     error_message = "must be positive"
   }
-  sensitive = true  # do not output passwords
+  sensitive = true  # do not output passwords. Also use: sensitive() func to mark a value
   nullable = false  # Do not allow `null`
 }
 ```
@@ -544,4 +544,212 @@ output "something" {
 
 
 ## Expressions
+
+Variable types:
+
+* string, number, bool
+* list(string), tuple
+* map(string) key/value pairs, object
+* null
+
+Literals and strings:
+
+```terraform
+resource "something" {
+  str = "line \n line \n escaped $${} escaped $${}"
+
+  # Multi-line string.
+  heredoc = <<-EOT
+    line
+    line
+    line
+  EOT
+
+  # JSON
+  example = jsonencode({
+    a = 1
+    b = "hello"
+  })
+
+  # Interpolation
+  greeting = "Hello, ${var.name}!"
+
+  # Directives: if, for
+  greeting = "Hello, %{ if var.name != "" }${var.name}%{ else }unnamed%{ endif }!"
+  servers = <<-EOT
+  %{ for ip in aws_instance.example.*.private_ip }
+  server ${ip}
+  %{ endfor }
+  EOT
+}
+```
+
+### References
+
+Refer to resources:
+
+* `resource_type.name`
+* `var.name`
+* `local.name`
+* `module.name`
+* `data.data_type.name`
+
+### Automatic Variables
+
+These values are also available:
+
+* `path.module`: filesystem path of this module
+* `path.root`: fs path of the root module
+* `path.cwd`: fs path of the original working directory: i.e. before `-chdir` is applied
+* `terraform.workspace`: name of the current [workspace](https://developer.hashicorp.com/terraform/language/state/workspaces)
+
+Example use of workspaces:
+
+```terraform
+module "example" {
+  # ...
+
+  name_prefix = "app-${terraform.workspace}"
+}
+```
+
+Block-Local values:
+
+* `count.index`: current iteration of the `count` meta-argument
+* `each.key`, `each.value`: current item of the `for_each` meta-argument
+* `self`: in `provisioner` and `connection` blocks — refers to the current resource
+
+### Operators
+
+Available operators:
+
+* Math: `+`, `-`, `*`, `/`, `%`, `-a`
+* Equality: `==`, `!=`
+* Comparison: `<`, `<=`, `>=`, `>`
+* Logical: `||`, `&&`, `!`
+
+Ternary operator:
+
+```terraform
+var.example ? tostring(12) : "hello"
+```
+
+### Function Calls
+
+See [Built-in functions](https://developer.hashicorp.com/terraform/language/functions):
+numbers, strings, collections, encoding, filesystem, date and time, hash, ip, type conversion
+
+```terraform
+# Expand tuples
+min([55, 2453, 2]...)
+```
+
+
+
+### For Expressions
+
+Loops:
+
+```terraform
+# Lists
+[for s in var.list : upper(s)]
+[for i, v in var.list : "#${i} is ${v}"]  # with indexing
+
+# Maps
+[for k, v in var.map : length(k) + length(v)]
+
+# Object comprehension:
+# Produce an object, not a list
+{for s in var.list : s => upper(s)}
+
+# Filtering
+[for s in var.list : upper(s) if s != ""]
+admin_users = {
+  for name, user in var.users : name => user
+  if user.is_admin
+}
+
+# Use arbitrary ordering (set)
+toset([for e in var.set : e.example])
+
+# Grouping: duplicate values won't overwrite. They'll be put into a list.
+users_by_role = {
+  for name, user in var.users : user.role => name...
+}
+```
+
+### Splat Expression
+
+Equivalent:
+
+```terraform
+# Same result
+[for o in var.list : o.id]
+var.list[*].id
+
+# Same result
+var.list[*].interfaces[0].name
+[for o in var.list : o.interfaces[0].name]
+```
+
+
+## Dynamic Blocks
+
+Some nested blocks can be repeated, like `setting`:
+
+```terraform
+resource "aws_elastic_beanstalk_environment" "tfenvtest" {
+  name                = "tf-test-name"
+  application         = "${aws_elastic_beanstalk_application.tftest.name}"
+  solution_stack_name = "64bit Amazon Linux 2018.03 v2.11.4 running Go 1.12.6"
+
+  # Produce multiple "setting" blocks
+  # dynamic "block_name" { ... content { } }
+  dynamic "setting" {
+    for_each = var.settings
+    #iterator = "setting"  # rename the iterator variable
+    #labels =
+
+    content {
+      namespace = setting.value["namespace"]
+      name = setting.value["name"]
+      value = setting.value["value"]
+    }
+  }
+}
+```
+
+
+
+## Validation and Preconditions
+
+Variable with validation:
+
+```terraform
+variable "image_id" {
+  type        = string
+  description = "The id of the machine image (AMI) to use for the server."
+
+  validation {
+    condition     = length(var.image_id) > 4 && substr(var.image_id, 0, 4) == "ami-"
+    error_message = "The image_id value must be a valid AMI id, starting with \"ami-\"."
+  }
+}
+```
+
+Resource with a precondition/postcondition:
+
+```terraform
+data "aws_ami" "example" {
+  id = var.aws_ami_id
+
+  lifecycle {
+    # The AMI ID must refer to an existing AMI that has the tag "nomad-server".
+    postcondition {
+      condition     = self.tags["Component"] == "nomad-server"
+      error_message = "tags[\"Component\"] must be \"nomad-server\"."
+    }
+  }
+}
+```
 

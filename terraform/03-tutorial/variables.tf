@@ -48,9 +48,10 @@ variable "cors_rules" {
 
 
 # Other variable types:
-# * bool
-# * list(string)
-# * map(string) key/value pairs
+# * string, number, bool
+# * list(string), tuple
+# * map(string) key/value pairs, object
+# * null
 
 
 # Use:

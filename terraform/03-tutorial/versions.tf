@@ -4,7 +4,7 @@ terraform {
   # Operators:
   # * "0.15.0" static
   # * ">= 0.15" any version greater than this one
-  # * "~> 0.15.0" any version 0.15.x, but not 1.0 or later
+  # * "~> 0.15.0" any version 0.15.x. The operator allows only the (!) rightmost version component to increment.
   # * ">= 0.15, < 2.0.0" specific
   # Best practice: "~>"
   required_version = "~> 1.3.5"
