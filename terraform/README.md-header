@@ -1,42 +1,6 @@
+# Terraform
 
-
-# Use Yandex mirror in Russia
-
-Put this into `~/.terraformrc` to use a different mirror:
-
-```terraform
-provider_installation {
-  network_mirror {
-    url = "https://terraform-mirror.yandexcloud.net/"
-    include = ["registry.terraform.io/*/*"]
-  }
-  direct {
-    exclude = ["registry.terraform.io/*/*"]
-  }
-}
-```
-
-
-# Use with Docker
-
-You don't have to set it up.
-Let's use Docker:
-
-```console
-$ docker run --rm -it -v $PWD:/ops -w /ops/ hashicorp/terraform -chdir=folder/ci init
-```
-
-Additional features you may want to add:
-
-```
---env-file=.env
--v ~/.terraformrc:/root/.terraformrc
---privileged=true -v /var/run/docker.sock:/var/run/docker.sock
--v ~/.docker/config.json:/root/.docker/config.json
-```
-
-
-# Apply changes
+# Command-Line Interface
 
 Load providers:
 
@@ -757,6 +721,45 @@ data "aws_ami" "example" {
 
 
 
+
+
+
+# Recipes
+
+## Use Yandex mirror in Russia
+
+Put this into `~/.terraformrc` to use a different mirror:
+
+```terraform
+provider_installation {
+  network_mirror {
+    url = "https://terraform-mirror.yandexcloud.net/"
+    include = ["registry.terraform.io/*/*"]
+  }
+  direct {
+    exclude = ["registry.terraform.io/*/*"]
+  }
+}
+```
+
+
+## Use with Docker (without local setup)
+
+You don't have to set it up.
+Let's use Docker:
+
+```console
+$ docker run --rm -it -v $PWD:/ops -w /ops/ hashicorp/terraform -chdir=folder/ci init
+```
+
+Additional features you may want to add:
+
+```
+--env-file=.env
+-v ~/.terraformrc:/root/.terraformrc
+--privileged=true -v /var/run/docker.sock:/var/run/docker.sock
+-v ~/.docker/config.json:/root/.docker/config.json
+```
 
 
 
