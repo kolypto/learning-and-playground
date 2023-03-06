@@ -16,10 +16,10 @@
 module "ecr_registry" {
   source = "./ecr-docker-registry"
 
-  registry_name = var.ecr_registry.name
+  registry_name = var.target_ecr_image_name
   registry_aws_iam_arns = {
-    push_users = var.ecr_registry.push_users
-    pull_servers = var.ecr_registry.pull_servers
+    push_users = var.ecr_registry_permissions.push_users
+    pull_servers = var.ecr_registry_permissions.pull_servers
   }
 }
 
@@ -82,100 +82,3 @@ resource "docker_registry_image" "dst_ecr_image" {
     "sha256" : docker_tag.dst_ecr_image_tag.source_image_id
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# module "cerebellum-server" {
-#   source = "../modules/cerebellum-server"
-
-#   env                   = local.env
-#   db                    = local.db
-#   docker-host           = data.terraform_remote_state.machine.outputs.public_ip
-#   docker-image-server   = module.server-image.image
-#   docker-image-ui       = module.ui-image.image
-#   docker-image-rabbitmq = "rabbitmq:3.11.9-management"
-# }
-
-
-# data "docker_network" "bridge" {
-#   name = "bridge"
-# }
-
-# data "docker_network" "traefik" {
-#   name = "traefik"
-# }
-
-# data "docker_plugin" "loki" {
-#   alias = "loki"
-# }
-
-
-# data "docker_registry_image" "cerebellum-ui" {
-#   name = var.docker-image-ui
-# }
-
-# resource "docker_image" "cerebellum-ui" {
-#   name          = var.docker-image-ui
-#   pull_triggers = [data.docker_registry_image.cerebellum-ui.sha256_digest]
-# }
-
-# resource "docker_container" "cerebellum-ui" {
-#   image    = docker_image.cerebellum-ui.image_id
-#   name     = "cerebellum-ui"
-#   must_run = false
-
-#   networks_advanced {
-#     name = data.docker_network.traefik.name
-#   }
-
-#   env = [
-#     "API_URL=https://${aws_route53_record.a["device"].fqdn}/api/v1",
-#   ]
-
-#   labels {
-#     label = "traefik.enable"
-#     value = "true"
-#   }
-
-#   labels {
-#     label = "traefik.http.routers.cerebellum-ui.rule"
-#     value = "Host(`app.${var.env}.medthings.no`)"
-#   }
-
-#   labels {
-#     label = "traefik.http.routers.cerebellum-ui.entrypoints"
-#     value = "websecure"
-#   }
-
-#   labels {
-#     label = "traefik.http.routers.cerebellum-ui.tls.certresolver"
-#     value = "route53"
-#   }
-
-#   labels {
-#     label = "traefik.http.services.cerebellum-ui.loadbalancer.server.port"
-#     value = "4200"
-#   }
-# }

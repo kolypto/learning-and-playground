@@ -46,7 +46,5 @@ provider "aws" {
   # See blocks: `assume_role`, `assume_role_with_web_identity`,
 }
 
-provider "docker" {}
-
 # Data source: current AWS region
 data "aws_region" "current" {}

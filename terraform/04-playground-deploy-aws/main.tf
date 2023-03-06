@@ -26,6 +26,9 @@ module "server" {
     # because providers from the root module propagate into other modules!
     project_name = var.project_name
     server_name = var.project_name
+    server_open_ports = [80,443,8888]
+
+    # The SSH public key we want to use for it
     ssh_public_key_file = pathexpand("~/.ssh/id_rsa.pub")
 }
 
@@ -63,16 +66,36 @@ module "app_setup_database" {
 module "app_docker_image" {
     source = "./app/app-docker-image"
 
-    # Server to run the container on
-    server_ssh_connection_url = "ssh://${module.server.server_ssh_user}@${module.server.server_public_ip}"
-
     # The image to push
     docker_image = "ghcr.io/medthings/cerebellum-server:main"
 
+    # Name of the ECR image
+    target_ecr_image_name = "${var.project_name}/app"
+
     # ECR Registry in the cloud
-    ecr_registry = {
-        name = "${var.project_name}/app"
+    ecr_registry_permissions = {
         push_users = var.app_docker_image_ecr_permissions.push_users
         pull_servers = var.app_docker_image_ecr_permissions.pull_servers
     }
+
+    # Use our Docker config to sign into registries
+    docker_auth_registry_names = ["ghcr.io", "352980582205.dkr.ecr.eu-central-1.amazonaws.com"]
+}
+
+
+# Deploy the docker container on the server
+module "app_docker_deploy_container" {
+    source = "./app/app-docker-containers"
+
+    # Server to run the container on
+    server_ssh_connection_url = "ssh://${module.server.server_ssh_user}@${module.server.server_public_ip}"
+
+    # The image to deploy
+    docker_registry_address = "352980582205.dkr.ecr.eu-central-1.amazonaws.com" #module.app_docker_image.docker_registry_url
+    docker_image_name = module.app_docker_image.pushed_image_name
+
+    # DB URLs.
+    # Note that key names in this parameter match those requested from "app_setup_database":
+    # - "goserver"
+    app_database_urls = module.app_setup_database.psql_applications
 }

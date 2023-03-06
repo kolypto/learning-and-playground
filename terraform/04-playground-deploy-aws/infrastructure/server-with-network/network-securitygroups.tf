@@ -35,20 +35,13 @@ resource "aws_vpc_security_group_egress_rule" "server_any_out" {
 resource "aws_vpc_security_group_ingress_rule" "server_in_http" {
     security_group_id = aws_security_group.server.id
 
-    description = "HTTP in"
+    # Create a rule for every exposed port
+    for_each = toset([for port in var.server_open_ports: tostring(port)])
+
+    description = "TCP/${each.value} in"
     cidr_ipv4   = "0.0.0.0/0"  # any network
     ip_protocol = "tcp"
     # Port range: from (value) to (value)
-    from_port   = 80
-    to_port     = 80
-}
-
-resource "aws_vpc_security_group_ingress_rule" "server_in_ssh" {
-    security_group_id = aws_security_group.server.id
-
-    description = "SSH in"
-    cidr_ipv4   = "0.0.0.0/0"
-    ip_protocol = "tcp"
-    from_port   = 22
-    to_port     = 22
+    from_port   = each.value
+    to_port     = each.value
 }

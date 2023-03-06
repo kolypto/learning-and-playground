@@ -20,3 +20,10 @@ variable "server_name" {
     type = string
     description = "Name of the server. Object names will depend on it"
 }
+
+
+# Server: open ports
+variable "server_open_ports" {
+    type = list(number)
+    description = "The list of ports to keep open (via AWS security group rules)"
+}

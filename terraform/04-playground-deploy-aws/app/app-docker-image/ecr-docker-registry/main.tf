@@ -45,7 +45,15 @@ data "aws_iam_policy_document" "repo_policy" {
             "ecr:BatchGetImage",
             "ecr:BatchDeleteImage",
             "ecr:DescribeImages",
-            "ecr:GetDownloadUrlForLayer",
+            "ecr:GetDownloadUrlForLayer",  # Pre-signed URL
+            "ecr:TagResource",
+            "ecr:UntagResource",
+            "ecr:InitiateLayerUpload",
+            "ecr:UploadLayerPart",
+            "ecr:CompleteLayerUpload",
+            "ecr:DescribeRepositories",
+            "ecr:ListTagsForResource",
+            "ecr:BatchCheckLayerAvailability",
         ]
     }
 
@@ -60,7 +68,14 @@ data "aws_iam_policy_document" "repo_policy" {
 
         actions = [
             "ecr:BatchGetImage",
-            "ecr:ListImages"
+            "ecr:ListImages",
+            "ecr:DescribeImages",
+            "ecr:ListTagsForResource",
+            "ecr:BatchCheckLayerAvailability",
+            "ecr:GetDownloadUrlForLayer",
+            "ecr:DescribeRepositories",
+            "ecr:DescribeImageScanFindings"
+
         ]
     }
 }
