@@ -2,6 +2,7 @@
 # * AWS instance
 # * Network: VPC + subbet
 # * SecurityGroup
+# * EC2 server with Docker pre-installed
 
 
 
@@ -50,7 +51,8 @@ resource "aws_instance" "server" {
     key_name = aws_key_pair.ssh_key.key_name
 
     # Use `user_data` script to initialize the instance
-    # user_data = templatefile("user_data.tftpl", { username = var.user_name })
+    # user_data = templatefile("user_data.tftpl", { username = var.user_name })  # example: template
+    # Install Docker
     user_data_replace_on_change = true
     user_data = <<-EOF
         #!/bin/bash

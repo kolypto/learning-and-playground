@@ -1,3 +1,9 @@
+variable "project_name" {
+  type = string
+  description = "Name of the project. Will be used as the DB server name"
+}
+
+
 variable "vpc_id" {
     type = string
     description = "VPC to create the database in. Used to configure subnet security groups"

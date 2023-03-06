@@ -1,5 +1,6 @@
 # This module will create:
 # * Postgres instance in a subnet
+# * One root user with random password
 
 
 
@@ -10,7 +11,7 @@
 resource "aws_db_instance" "db" {
     engine = "postgres"
     engine_version = "15.2"
-    identifier_prefix = "db-"
+    identifier_prefix = "${var.project_name}-db-"
 
     # Postgres
     username = "postgres"
@@ -22,6 +23,9 @@ resource "aws_db_instance" "db" {
     instance_class    = "db.t3.micro"
     storage_encrypted = true  # Encypt data on disk. Default: false
     publicly_accessible = true  # Is it publicly accessible? Default: false
+
+    # Name
+    tags = { Name = "${var.project_name} db" }
 
     # Network
     db_subnet_group_name   = aws_db_subnet_group.db_subnet.name
@@ -61,7 +65,7 @@ resource "random_password" "db_password" {
 
 # Parameters
 resource "aws_db_parameter_group" "db_params" {
-    name_prefix = "db-params-postgres-"
+    name_prefix = "${var.project_name}-db-params-"
     family = "postgres15"
 
     # Parameters: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Appendix.PostgreSQL.CommonDBATasks.Parameters.html
@@ -69,6 +73,9 @@ resource "aws_db_parameter_group" "db_params" {
         name  = "log_connections"
         value = "1"
     }
+
+    # Name
+    tags = { Name = "${var.project_name} db" }
 }
 
 

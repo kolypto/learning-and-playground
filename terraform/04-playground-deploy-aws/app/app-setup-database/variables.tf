@@ -8,6 +8,11 @@ variable "postgres_url" {
 variable "project_name" {
     type = string
     description = "Name of the project. Will be used as DB name"
+
+    validation {
+        condition = lower(var.project_name) == var.project_name
+        error_message = "Project name must be lowercase"
+    }
 }
 
 # Application names.

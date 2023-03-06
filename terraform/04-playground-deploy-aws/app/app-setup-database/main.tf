@@ -75,6 +75,10 @@ provider "postgresql" {
     # Set endpoint value: host = "instance.xxx.region.rds.amazonaws.com"
     scheme   = "awspostgres"
 
+    # This may workaround some issues with "Error: error detecting capabilities: error PostgreSQL version"
+    # If it does not help, try: `$ terraform state rm 'module.app-setup-database.postgresql_database.app'`
+    # expected_version = "15.2"
+
     # In Amazon RDS, we're not a superuser. Set to `false`: otherwise this error comes up:
     # > could not read role password from Postgres as connected user postgres is not a SUPERUSER
     superuser = false
