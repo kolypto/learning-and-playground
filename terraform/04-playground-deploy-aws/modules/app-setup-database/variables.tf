@@ -4,6 +4,7 @@ variable "postgres_url" {
     description = "The DB to manage. Postgres connection url: postgres://user:password@host:port/. Provide AWS Instance URL"
 }
 
+
 # Project name. Used as DB name
 variable "project_name" {
     type = string

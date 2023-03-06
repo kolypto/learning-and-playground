@@ -12,13 +12,16 @@ terraform {
     }
   }
 
-  # # Save Terraform state into AWS S3
-  # # This makes the state shared. Allows to break everything into sub-modules.
-  # backend "s3" {
-  #   bucket = "e8c97168-94e4-47d7-8a62-f44c30cad519"
-  #   key    = "tfstate/${var.project_name}"
-  #   # region = "eu-central-1"
-  # }
+  # Save Terraform state into AWS S3
+  # This makes the state shared. Allows to break everything into sub-modules.
+  backend "s3" {
+    # NOTE: Terraform will ask this value interactively!
+    # You get it after you run the "init" target that creates a bucket for you.
+    # bucket = "tfstate-2023..."
+
+    key    = "playground/infrastructure"
+    region = "eu-central-1"
+  }
 }
 
 provider "aws" {
@@ -45,6 +48,3 @@ provider "aws" {
   # If provided with a role ARN, assume this role
   # See blocks: `assume_role`, `assume_role_with_web_identity`,
 }
-
-# Data source: current AWS region
-data "aws_region" "current" {}

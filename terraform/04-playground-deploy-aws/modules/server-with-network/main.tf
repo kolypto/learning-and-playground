@@ -54,12 +54,7 @@ resource "aws_instance" "server" {
     # user_data = templatefile("user_data.tftpl", { username = var.user_name })  # example: template
     # Install Docker
     user_data_replace_on_change = true
-    user_data = <<-EOF
-        #!/bin/bash
-        sudo apt-get update -yq
-        sudo apt-get install -yq --no-install-recommends docker.io
-        sudo adduser admin docker
-    EOF
+    user_data = templatefile("${path.module}/template.server-init.sh", {})
 
     # Remote command: i.e. on the server instance
     # provisioner "remote-exec" {

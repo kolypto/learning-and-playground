@@ -49,29 +49,7 @@ resource "docker_container" "traefik" {
 
   # Configure
   upload {
-    content = <<-EOF
-    logLevel = "DEBUG"
-    defaultEntryPoints = ["http", "https"]
-
-    [log]
-      level = "DEBUG"
-
-    [entryPoints]
-      [entryPoints.http]
-      address = ":80"
-      [entryPoints.https]
-      address = ":443"
-      [entryPoints.mqqts]
-      address = ":8883"
-
-    [api]
-    insecure = true
-    dashboard = true
-
-    [providers]
-      [docker]
-      exposedByDefault = false
-    EOF
+    content = templatefile("${path.module}/template.traefik.toml", {})
     file = "/etc/traefik/traefik.toml"
   }
 

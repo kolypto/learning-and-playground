@@ -1,0 +1,17 @@
+[log]
+    level = "DEBUG"
+
+[entryPoints]
+    [entryPoints.web]
+        address = ":80"
+    [entryPoints.websecure]
+        address = ":443"
+    [entryPoints.mqqts]
+        address = ":8883"
+
+[api]
+insecure = true
+dashboard = true
+
+[providers.docker]
+exposedByDefault = false
