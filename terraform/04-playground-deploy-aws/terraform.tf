@@ -12,11 +12,11 @@ terraform {
     }
   }
 
-  # Save Terraform state into AWS S3
-  # This makes the state shared.
+  # # Save Terraform state into AWS S3
+  # # This makes the state shared. Allows to break everything into sub-modules.
   # backend "s3" {
   #   bucket = "e8c97168-94e4-47d7-8a62-f44c30cad519"
-  #   key    = "terraform/${var.project_name}"
+  #   key    = "tfstate/${var.project_name}"
   #   # region = "eu-central-1"
   # }
 }

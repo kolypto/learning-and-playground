@@ -83,6 +83,14 @@ module "app_docker_image" {
 }
 
 
+# TODO: This module depends on the IP address of the target host, and while it's not available, fails to inititalize the "docker" provider:
+# > Error initializing Docker client: unable to parse docker host ``
+# You might need to comment it out when you run the module for the first time.
+# Alternatively, you can break the whole solution into two independent modules:
+# 1. First run: init infrastructure
+# 2. Second run: deploy applications (load infrastructure as a module)
+# Alternatively, people suggest to use remote state. This also works.
+
 # Deploy the docker container on the server
 module "app_docker_deploy_container" {
     source = "./app/app-docker-containers"

@@ -21,7 +21,7 @@ provider "docker" {
     dynamic "registry_auth" {
         for_each = var.docker_auth_registry_names
         content {
-          address = setting.value
+          address = registry_auth.value
         }
     }
 
