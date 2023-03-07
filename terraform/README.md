@@ -1276,6 +1276,73 @@ terraform {
 
 
 # 04-playground-deploy-aws
+# === AWS Deployed Application ===
+
+A complete application, deployed to AWS:
+
+* VPC network, EC2 instance, RDS instance
+* Docker image pull/push, container, Traefik
+* Remote state stored in S3 bucket
+
+## Layout
+
+This is how files are organized
+
+* `./modules` are modules for include. Don't use.
+* `./targets` is where you run Terraform apply
+
+## Targets
+
+The `./targets` folder contains modules that you can `apply` in.
+
+### Init
+
+Create the S3 bucket for configuration storage backend:
+
+```console
+$ terraform -chdir targets/init init
+$ terraform -chdir targets/init apply
+```
+
+Init the infrastructure. Give it the name of the bucket you've just created:
+
+## Infrastructure
+
+The Infrastructure module deploys networks and servers, and stores its local state into S3.
+You need to specify the bucket that you've created in the "init" step:
+just provide it once to the "apply" command, and your terraform state will remember it.
+
+```console
+$ terraform -chdir targets/infrastructure init
+$ terraform -chdir targets/infrastructure apply
+```
+
+## App
+
+App is separate from infrastructure because this way it's faster, and has fewer inter-dependencies.
+For instance, I've found out that `provider "docker" { }` configuration actually requires a working server
+to SSH into: so unless the infrastructure is up, the dependency does not really resolve correctly.
+
+So, we have a two-step deploy here: first, the infrastructure, and second, the app.
+This app module reads remote state from S3, so give it the same bucket you've already provided.
+
+Deploy or reploy the app:
+
+```console
+$ terraform -chdir targets/app init
+$ terraform -chdir targets/app apply
+```
+
+# Other Notes
+
+See `*.tfvars` files: an easy DRY:
+
+```console
+$ terraform -chdir targets/app init -backend-config=../../backend.tfvars
+$ terraform -chdir targets/app apply -var-file=../../app.tfvars
+```
+
+
 
 
 # 04-playground-deploy-aws/app.tfvars
@@ -1340,556 +1407,684 @@ bucket = "tfstate-20230306213054377200000001"
 
 
 
-# 04-playground-deploy-aws/modules/app-docker-image/ecr-docker-registry
+# 04-playground-deploy-aws/targets/init
 
 
-# 04-playground-deploy-aws/modules/app-docker-image/ecr-docker-registry/main.tf
-
-```terraform
-# This module will create an ECR Container Registry.
-#
-# There will be two groups of users:
-# * Human users can push
-# * Server users can pull
-#
-# Note that you must create a separate registry for every image!
-
-# Docker Registry
-resource "aws_ecr_repository" "repo" {
-    # Name. Must be unique.
-    name = var.registry_name
-
-    # Delete the registry even if it contains images. Default: false
-    force_delete = true
-
-    # Name
-    tags = { Name = "${var.registry_name} Images" }
-}
-
-# Registry Policy.
-# Don't use JSON: here's a first class policy.
-data "aws_iam_policy_document" "repo_policy" {
-    statement {
-        # Identifier
-        sid = "Push for users"
-        # "Allow" or "Deny"
-        effect = "Allow"
-
-        # See: `principals`, `resources` ; `not_principals`, `not_resources`
-
-        # Principals: to whom the statement applies
-        principals {
-            # Type: "AWS", "Service", "Federated", "CanonicalUser", "*"
-            type = "AWS"
-            # List of identifiers.
-            # With type = "AWS": IAM principal ARNs. See IAM Users: https://console.aws.amazon.com/iamv2/home#/users
-            identifiers = var.registry_aws_iam_arns.push_users
-        }
-
-        # List of actions to Allow
-        actions = [
-            "ecr:ListImages",
-            "ecr:PutImage",
-            "ecr:BatchGetImage",
-            "ecr:BatchDeleteImage",
-            "ecr:DescribeImages",
-            "ecr:GetDownloadUrlForLayer",  # Pre-signed URL
-            "ecr:TagResource",
-            "ecr:UntagResource",
-            "ecr:InitiateLayerUpload",
-            "ecr:UploadLayerPart",
-            "ecr:CompleteLayerUpload",
-            "ecr:DescribeRepositories",
-            "ecr:ListTagsForResource",
-            "ecr:BatchCheckLayerAvailability",
-        ]
-    }
-
-    statement {
-        sid = "Pull for servers"
-        effect = "Allow"
-
-        principals {
-            type = "AWS"
-            identifiers = var.registry_aws_iam_arns.pull_servers
-        }
-
-        actions = [
-            "ecr:BatchGetImage",
-            "ecr:ListImages",
-            "ecr:DescribeImages",
-            "ecr:ListTagsForResource",
-            "ecr:BatchCheckLayerAvailability",
-            "ecr:GetDownloadUrlForLayer",
-            "ecr:DescribeRepositories",
-            "ecr:DescribeImageScanFindings"
-
-        ]
-    }
-}
-
-# Associate the policy with the registry.
-# Note that a registry can have only one policy!
-resource "aws_ecr_repository_policy" "repo_policy" {
-    repository = aws_ecr_repository.repo.name
-
-    # Policy: JSON formatted string {"Statement": [...]}
-    # It can be a literal JSON string, a `file()` interpolation, or "aws_iam_policy_document" data source.
-    # NOTE: AWS IAM policy document supports its own "&{}"" interpolation syntax!
-    policy = data.aws_iam_policy_document.repo_policy.json
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/modules/app-docker-image/ecr-docker-registry/outputs.tf
-
-```terraform
-output "docker_registry_url" {
-    description = "Docker URL for this ECR registry"
-    value = aws_ecr_repository.repo.repository_url
-}
-```
-
-
-
-# 04-playground-deploy-aws/modules/app-docker-image/ecr-docker-registry/variables.tf
-
-```terraform
-variable "registry_name" {
-  description = "Name of registry. Must be unique!"
-  type = string
-}
-
-variable "registry_aws_iam_arns" {
-  description = "Users who can: push images to the registry, and push images to the registry (AWS IAM ARNs)"
-  type = object({
-    # These users can push images (users)
-    # Example: "arn:aws:iam::352980582205:user/human"
-    push_users = list(string)
-
-    # These users can pull images (servers)
-    # Example: "arn:aws:iam::352980582205:user/server"
-    pull_servers = list(string)
-  })
-}
-
-```
-
-
-
-
-
-# 04-playground-deploy-aws/modules/app-docker-image
-
-
-# 04-playground-deploy-aws/modules/app-docker-image/main.tf
-
-```terraform
-# This module will:
-# * Init an ECR registry
-# * Pull image from a registry using local Docker
-# * Push image to ECR
-#
-# Example workflow:
-# * ECR registry: 123456.dkr.ecr.eu-central-1.amazonaws.com/playground/app
-# * Source image: ghcr.io/company/app:main
-# * Intermediate ECR image: 123456.dkr.ecr.eu-central-1.amazonaws.com/playground/app:main
-
-
-
-
-# Create the intermediate ECR registry
-# Note that one ECR can contain only one Docker image, so we create an ECR for the image
-module "ecr_registry" {
-  source = "./ecr-docker-registry"
-
-  registry_name = var.target_ecr_image_name
-  registry_aws_iam_arns = {
-    push_users = var.ecr_registry_permissions.push_users
-    pull_servers = var.ecr_registry_permissions.pull_servers
-  }
-}
-
-
-
-
-
-# Pull local image ("src") and push it to the intermediate ECR repository ("dst")
-
-# Get the latest image id from the source
-data "docker_registry_image" "source_image" {
-  provider = docker.local
-
-  # The image to check
-  name = var.docker_image
-}
-
-
-# Source: pull this image every time it's updated
-# "docker_image": Pulls a Docker image to a given Docker host from a Docker Registry.
-resource "docker_image" "pulled_source_image" {
-  # Find and download this image
-  provider = docker.local
-
-  # The image to pull
-  name = data.docker_registry_image.source_image.name
-
-  # Keep the image up to date on the latest available version
-  pull_triggers = [data.docker_registry_image.source_image.sha256_digest]
-
-  # README: you can also use this resource to build an image. See `build`
-}
-
-locals {
-  # ECR will have the same docker image tag as the source image
-  # I.e. if it had ":main", the ECR image will also have ":main"
-  ecr_docker_image_tag = split(":", data.docker_registry_image.source_image.name)[1]
-}
-
-# Retag the image: it will bear the name of the target registry.
-# The name of the image defines which registry it will go to!
-resource "docker_tag" "dst_ecr_image_tag" {
-  provider = docker.local
-
-  # Retag the image
-  source_image = docker_image.pulled_source_image.image_id
-  target_image = "${module.ecr_registry.docker_registry_url}:${local.ecr_docker_image_tag}"
-}
-
-
-# Target: Push it
-# "docker_registry_image": Manage an image: e.g. push
-resource "docker_registry_image" "dst_ecr_image" {
-  # Push this image
-  provider = docker.local
-  name = docker_tag.dst_ecr_image_tag.target_image
-
-  # On change, force push. Can be used to repush a local image (e.g. tag updated)
-  triggers = {
-    "sha256" : docker_tag.dst_ecr_image_tag.source_image_id
-  }
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/modules/app-docker-image/outputs.tf
-
-```terraform
-output "pushed_image_id" {
-    description = "Image id that we've deployed"
-    # Image hash.
-    # Example: "sha256:c5750c07180a4b35d0933f863c815d91fadd0664fbf2256f8c95ac8eae485d98"
-    value = docker_image.pulled_source_image.image_id
-}
-
-output "pushed_image_name" {
-    description = "Pushed image name in the ECR repository"
-    # Image name.
-    # Example: "123456.dkr.ecr.eu-central-1.amazonaws.com/playground/app:main"
-    value = docker_registry_image.dst_ecr_image.name
-}
-
-
-# Docker registry URL.
-# You will need it to configure Docker pulling with provider "docker" { registry_auth { ... } }
-output "docker_registry_url" {
-    description = "Docker URL for this ECR registry"
-    value = module.ecr_registry.docker_registry_url
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/modules/app-docker-image/terraform.tf
+# 04-playground-deploy-aws/targets/init/terraform.tf
 
 ```terraform
 terraform {
+  required_version = "~> 1.3.9"
+
   required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.57"
+    }
+
+  }
+}
+
+provider "aws" {
+  region = "eu-central-1"
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/targets/init/main.tf
+
+```terraform
+# This module will INITIALIZE the workflow:
+# it will create an S3 bucket to store youre remote state
+
+
+
+# NOTE and TODO:
+# Because Terraform stores outputs into state, we may actually use this module as an INTERACTIVE MODULE
+# that asks all the parameters from you ONCE, and then we just use its state as variable storage.
+# This may be fun, but a `*.tfvars` file is definitely easier to support :) So we don't.
+#
+# However, some, just some, parameters may be stored here alright.
+
+
+
+# Create an S3 bucket to store remote state
+resource "aws_s3_bucket" "terraform_state" {
+  bucket_prefix = "tfstate-"
+
+  # Prevent accidental removal
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  tags = { Name = "Terraform State" }
+}
+
+# Configure versioning
+resource "aws_s3_bucket_versioning" "terraform_state" {
+    bucket = aws_s3_bucket.terraform_state.id
+
+    versioning_configuration {
+      status = "Enabled"
+    }
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/targets/init/output.tf
+
+```terraform
+# Path to the S3 bucket used for storing tfstates
+output "s3_backend" {
+    description = "Terraform tfstate backend storage to use with other targets"
+    value = aws_s3_bucket.terraform_state.id
+}
+
+
+```
+
+
+
+
+
+# 04-playground-deploy-aws/targets/infrastructure
+
+
+# 04-playground-deploy-aws/targets/infrastructure/terraform.tf
+
+```terraform
+terraform {
+  required_version = "~> 1.3.9"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.57"
+    }
     docker = {
       source = "kreuzwerker/docker"
       version = "~> 3.0"
     }
   }
-}
 
+  # Save Terraform state into AWS S3
+  # This makes the state shared. Allows to break everything into sub-modules.
+  backend "s3" {
+    # NOTE: Terraform will ask this value interactively!
+    # You get it after you run the "init" target that creates a bucket for you.
+    # bucket = "tfstate-2023..."
 
-
-# Our local Docker daemon.
-# We'll use it to pull & push images
-provider "docker" {
-    alias = "local"
-
-    # Docker host: connect to local Docker
-    # host = "unix:///var/run/docker.sock"
-
-    # Pull images from a remote repository (github) using our local Docker
-    dynamic "registry_auth" {
-        for_each = var.docker_auth_registry_names
-        content {
-          address = registry_auth.value
-        }
-    }
-
-    # TODO: we can pull the image directly from the server by using our local Docker config, like this:
-    # registry_auth {
-    #   address = "ghcr.io"
-    #   config_file_content = file(....)
-    # }
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/modules/app-docker-image/variables.tf
-
-```terraform
-
-# The image to push to the server
-variable "docker_image" {
-    description = "The image to push"
-    type = string
-}
-
-
-# Docker authentication
-variable "docker_auth_registry_names" {
-    description = <<-EOF
-        Docker auth key names to use -- from your ~/.docker/config.json.
-        It needs to have access both to the source and the target registries
-    EOF
-    type = list(string)
-}
-
-
-
-# The ECR registry name
-variable "target_ecr_image_name" {
-    description = "ECR registry name for the image. Feel free to use /"
-    type = string
-}
-
-# ECR registry name and permissions
-variable "ecr_registry_permissions" {
-    description = "Intermediate ECR registry to push/pull the image through"
-    type = object({
-        # These users can push images (users)
-        # Example: "arn:aws:iam::352980582205:user/human"
-        push_users = list(string)
-
-        # These users can pull images (servers)
-        # Example: "arn:aws:iam::352980582205:user/server"
-        pull_servers = list(string)
-    })
-}
-
-```
-
-
-
-
-
-# 04-playground-deploy-aws/modules/app-setup-database
-
-
-# 04-playground-deploy-aws/modules/app-setup-database/main.tf
-
-```terraform
-# This module will initialize the database for the app.
-# It can connect directly to AWS RDS instances (!)
-#
-# It will create:
-# * A database, named `var.project_name`
-# * A user who owns this database, with the same name
-# * A root user: `<database>-root`
-# * For every application, a separate user with ALL permissions: `<database>-<application>`
-
-
-# Database for the app
-resource "postgresql_database" "app" {
-  name = var.project_name  # db name
-  owner = postgresql_role.owner.name  # only owner can drop it
-}
-
-
-
-
-# Root role: owns the database.
-# Only they can make changes
-resource "postgresql_role" "owner" {
-  name = var.project_name
-}
-
-# Root user. Only they can make changes to the schema: e.g. migrations
-resource "postgresql_role" "root_user" {
-  name = "${var.project_name}-root"
-  password = "${var.project_name}-root"
-  roles = [postgresql_role.owner.name]
-  login = true
-}
-
-
-
-
-# Application user: the application will use it to make queries.
-# Separate user for every app is convenient in terms of logging & monitoring
-resource "postgresql_role" "app_users" {
-  name = "${var.project_name}-${each.value}"
-  password = "${var.project_name}-${each.value}"  # TODO: perhaps a better password?
-  login = true
-
-  # Generate a user for every app
-  for_each = toset(var.applications[*])
-}
-
-# Grant ALL privileges on this database
-resource "postgresql_grant" "app_user_grants" {
-  role = each.value
-  object_type = "database"
-  database = postgresql_database.app.name
-  privileges = ["ALL"]
-
-  # Generate a grant for every user
-  for_each = toset([for user in postgresql_role.app_users: user.name])
-
-  # Postgres provider doesn't like `privileges = ALL`:
-  # every time it things that it changed to "CONNECT", "CREATE", "TEMPORARY"
-  # Let's ignore it. Because it's already "ALL": can't get any bigger that this.
-  lifecycle {
-    ignore_changes = [privileges]  # Ignore changes to this attribute
+    key    = "playground/infrastructure"
+    region = "eu-central-1"
   }
 }
 
+provider "aws" {
+  # The region to use
+  region = "eu-central-1"
 
+  # Access key can be provided here
+  # access_key = "my-access-key"
+  # secret_key = "my-secret-key"
 
+  # The provider can use credentials from ~/.aws/credentials and ~/.aws/config:
+  # profile = "default"  # default profile name (from the credentials file)
 
+  # Environment config:
+  # $ export AWS_REGION="us-west-2"
+  # $ export AWS_ACCESS_KEY_ID="anaccesskey"
+  # $ export AWS_SECRET_ACCESS_KEY="asecretkey"
 
+  # Environment, use config file:
+  # $ export AWS_CONFIG_FILE=~/.aws/config
+  # $ export AWS_SHARED_CREDENTIALS_FILE=~/.aws/credentials
+  # $ export AWS_PROFILE="default"
 
-
-# Init provider: where to connect to?
-provider "postgresql" {
-    # use GoCloud to connect to AWS RDS instances (!)
-    # Set endpoint value: host = "instance.xxx.region.rds.amazonaws.com"
-    scheme   = "awspostgres"
-
-    # This may workaround some issues with "Error: error detecting capabilities: error PostgreSQL version"
-    # If it does not help, try: `$ terraform state rm 'module.app-setup-database.postgresql_database.app'`
-    # expected_version = "15.2"
-
-    # In Amazon RDS, we're not a superuser. Set to `false`: otherwise this error comes up:
-    # > could not read role password from Postgres as connected user postgres is not a SUPERUSER
-    superuser = false
-
-    # Connect to
-    host            = local.db_url.host
-    port            = local.db_url.port
-    username        = local.db_url.username
-    password        = local.db_url.password
-
-    # Timeout is small because we're fast :)
-    connect_timeout = 15
-}
-
-
-
-
-locals {
-  # Parse DB URL into an object: username, password, host, port[, database]
-  db_url = regex(join("", [
-      "(?:postgres|postgresql)?://?",  # postgres://, postgresql:/
-      "(?P<username>.+?)", ":(?P<password>.+?)@",  # user:password@
-      "(?P<host>.+?)", ":(?P<port>\\d+)", # host:port
-      "(?:/(?P<database>.+))?",  # optional: /database
-    ]), var.postgres_url)
+  # If provided with a role ARN, assume this role
+  # See blocks: `assume_role`, `assume_role_with_web_identity`,
 }
 
 ```
 
 
 
-# 04-playground-deploy-aws/modules/app-setup-database/outputs.tf
+# 04-playground-deploy-aws/targets/infrastructure/variables.tf
 
 ```terraform
 
-# Root user
-output "psql_root" {
-    description = "Postgres connection URL: connect as root user (to run migrations)"
-    value = format(
-        "postgresql://%s:%s@%s:%s/%s",
-        postgresql_role.root_user.name, postgresql_role.root_user.password,
-        local.db_url.host, local.db_url.port,
-        postgresql_database.app.name
-    )
-    sensitive = true
-}
+# NOTE: if you're tired of entering the same variables every time,
+# export them as environment variables:
+#
+#   TF_VAR_project_name=playground
+#   TF_VAR_server_open_ports=[80,443,8080]
+#
+# Or use -var-file
+#   $ terraform -chdir targets/infrastructure apply -var-file=../../playground.tfvars
 
-
-# Application users
-output "psql_applications" {
-    description = "Postgres connection URL: for each of your applications"
-    value = {
-        for app_name, app_user in postgresql_role.app_users:
-            app_name => format(
-                "postgresql://%s:%s@%s:%s/%s",
-                app_user.name, app_user.password,
-                local.db_url.host, local.db_url.port,
-                postgresql_database.app.name
-            )
-    }
-    sensitive = true
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/modules/app-setup-database/terraform.tf
-
-```terraform
-terraform {
-    required_providers {
-        postgresql = {
-            source = "cyrilgdn/postgresql"
-            version = "~> 1.18"
-        }
-    }
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/modules/app-setup-database/variables.tf
-
-```terraform
-# DB connection to manage
-variable "postgres_url" {
+variable "project_name" {
+    description = "Name of the project to use. Lowercase."
     type = string
-    description = "The DB to manage. Postgres connection url: postgres://user:password@host:port/. Provide AWS Instance URL"
+}
+
+variable "server_open_ports" {
+    description = "Ports to keep open on the server. Example: [22, 80, 443]"
+    type = list(number)
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/targets/infrastructure/main.tf
+
+```terraform
+# This module will bring the infrastructure up
+# * Create an EC2 server
+# * Create an RDS Postgres database
+
+# First run: init S3 bucket for renote state:
+#   $ terraform -chdir targets/infrastructure init -backend=false
+#   $ terraform -chdir targets/infrastructure apply -target=module.remote_state
+#   $ terraform -chdir targets/infrastructure init -reconfigure
+# Now feel free to:
+#   $ terraform apply
+#
+# Make sure you have the environment configured:
+#   $ export AWS_REGION="us-west-2"
+#   $ export AWS_ACCESS_KEY_ID="anaccesskey"
+#   $ export AWS_SECRET_ACCESS_KEY="asecretkey"
+
+
+# Create the server and its network
+module "server" {
+    source = "./../../modules/server-with-network"
+
+    # NOTE: we do not need to initialize providers within a module:
+    # because providers from the root module propagate into other modules!
+    project_name = var.project_name
+    server_name = var.project_name
+    server_open_ports = var.server_open_ports
+
+    # The SSH public key we want to use for it
+    ssh_public_key_file = pathexpand("~/.ssh/id_rsa.pub")
 }
 
 
-# Project name. Used as DB name
+# Create a database
+module "db_postgres" {
+    source = "./../../modules/server-rds-postgres"
+
+    # Put it into the same subnets the server is in
+    # NOTE: AWS requires that an RDS instance is in at least 2 availability zone subnets!
+    project_name = var.project_name
+    vpc_id = module.server.vpc_id
+    subnet_ids = module.server.vpc_server_subnet_ids
+
+    # Experimental.
+    # Postgres needs a server for GoCloud to use as a proxy. If the server's missing, we can't connect.
+    depends_on = [module.server]
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/targets/infrastructure/outputs.tf
+
+```terraform
+# Server IP
+output "server_public_ip" {
+    description = "Server IP address. You can SSH into it."
+    value = module.server.server_public_ip
+}
+
+# Server SSH user
+output "server_ssh_user" {
+    description = "Server SSH user"
+    value = module.server.server_ssh_user
+}
+
+# Database internal connection URL
+output "postgres_psql_root" {
+    description = "Postgres root user connection URL: postgres://user:pass@host:post/db"
+    value = module.db_postgres.psql_internal_url
+    sensitive = true
+}
+
+
+# Passthough some variables: just store them
+
+# Project name
+output "project_name" {
+    description = "Project name (passthrough)"
+    value = var.project_name
+}
+
+
+```
+
+
+
+
+
+# 04-playground-deploy-aws/modules/server-with-network
+
+
+# 04-playground-deploy-aws/modules/server-with-network/variables.tf
+
+```terraform
+# Your public key file.
+# You will use it to SSH into the server.
+variable "ssh_public_key_file" {
+    type        = string
+    description = "SSH public key to add to the instance. You will use it to SSH into it."
+    default     = "~/.ssh/id_rsa.pub"
+}
+
+
+# Project name
 variable "project_name" {
     type = string
-    description = "Name of the project. Will be used as DB name"
+    description = "Name of the project. Networks will have it."
+}
 
-    validation {
-        condition = lower(var.project_name) == var.project_name
-        error_message = "Project name must be lowercase"
+
+
+# Server name
+variable "server_name" {
+    type = string
+    description = "Name of the server. Object names will depend on it"
+}
+
+
+# Server: open ports
+variable "server_open_ports" {
+    type = list(number)
+    description = "The list of ports to keep open (via AWS security group rules)"
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/modules/server-with-network/main.tf
+
+```terraform
+# This module will create:
+# * AWS instance
+# * Network: VPC + subbet
+# * SecurityGroup
+# * EC2 server with Docker pre-installed
+
+
+
+# "aws_instance": provides a EC2 instance resource
+resource "aws_instance" "server" {
+    # AMI image to run
+    # ami = "ami-0c0933ae5caf0f5f9"  # Hardcoded image id
+    ami = data.aws_ami.linux.id  # pick the most recent image from the data source
+
+    # Intance type
+    # t2: nano 0.5G, micro 1G, small 2G, medium 4G, large 8G
+    # t3a: 2x more expensive, have 2 vCPU, better network performance
+    # Use "A1" or "T4g" for ARM instances
+    instance_type = "t2.micro"
+
+    # Use a specific availability zone
+    availability_zone = "eu-central-1a"  # NOTE: our network interface must also be configured in there!
+
+    # Tags to assign: i.e. the "Name" of the instance.
+    # Yes. Name is a tag.
+    tags = { Name = var.server_name }
+
+    # CPU credits: "standard" or "unlimited".
+    # T2 instances are launched as "standard" by default
+    # T3 instances are launched as "unlimited" by default:
+    #   a burstable performance instance can sustain high CPU utilization for any period of time.
+    credit_specification { cpu_credits = "standard" }
+
+    # Give it access to a network.
+    # The network has an IP list a security group associated (~ firewall)
+    network_interface {
+        # The "server_ips" provides some IP addresses within a VPC.
+        # There may be multiple addresses: so we pick the first one: #0
+        network_interface_id = aws_network_interface.server_ips.id
+        device_index         = 0  # from the ip list
+    }
+
+    # Easy way to get a public IP address
+    # associate_public_ip_address = true
+
+    # SSH Key Pair to use with this server.
+    # See "aws_key_pair" resource
+    # Use data source:
+    #   key_name = data.aws_key_pair.aws_ssh.key_name
+    # or create one:
+    key_name = aws_key_pair.ssh_key.key_name
+
+    # Use `user_data` script to initialize the instance
+    # user_data = templatefile("user_data.tftpl", { username = var.user_name })  # example: template
+    # Install Docker
+    user_data_replace_on_change = true
+    user_data = templatefile("${path.module}/template.server-init.sh", {})
+
+    # Remote command: i.e. on the server instance
+    # provisioner "remote-exec" {
+    #     # Run remotely
+    #     inline = [
+    #         "sudo adduser --disabled-password kolypto",
+    #         "sudo apt-get update -yq",
+    #         "sudo apt-get install -yq --no-install-recommends docker.io"
+    #     ]
+    #     connection {
+    #         host        = self.public_ip
+    #         type        = "ssh"
+    #         user        = "ec2-user"
+    #         private_key = file(var.ssh_private_key_file)
+    #     }
+    # }
+
+}
+
+
+# Give it a public IP address
+resource "aws_eip" "server_ip" {
+    instance = aws_instance.server.id
+    vpc      = true
+    # NOTE: you can associate it with a `network_interface` instead of an `instance`.
+    # network_interface = aws_network_interface.server_ips.id
+
+    # NOTE: "aws_eip" may require an IGW to exist prior to association!
+    # Declare it explicitly:
+    depends_on = [ aws_internet_gateway.gw ]
+}
+
+
+
+
+# SSH key to access the server with
+resource "aws_key_pair" "ssh_key" {
+  # Use `key_name` for a static unique name, use `key_name_prefix` for a generated unique name
+  key_name_prefix = "${var.server_name}-ssh-key-"
+  public_key = file(var.ssh_public_key_file)  # read from file
+}
+
+
+
+
+
+
+# data."aws_ami": find the most recent Amazon Linux image
+data "aws_ami" "linux" {
+    # When multiple images are found, take the most recent one.
+    # Careful, be sure not to end up with a daily image!
+    most_recent = true
+
+    # Only include images from Amazon
+    owners = ["amazon"]  # Amazon
+
+    # See also: `name_regex`
+    filter {
+        name   = "name"
+
+        # values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]  # Ubuntu Image. User: "ubuntu"
+        # values = ["amzn2-ami-kernel-*-hvm-*-x86_64-gp2"]  # Amazon Image. User: "ec2-user"
+        values = ["debian-11-amd64-2023*-*"]  # Debian Image. User: "admin"
     }
 }
 
-# Application names.
-# Every application gets their own login.
-variable "applications" {
-    type = list(string)
-    description = "List of application names that will use the DB with their own accounts"
+```
+
+
+
+# 04-playground-deploy-aws/modules/server-with-network/template.server-init.sh
+
+```bash
+#!/bin/bash
+sudo apt-get update -yq
+sudo apt-get install -yq --no-install-recommends docker.io
+sudo adduser admin docker
+
+```
+
+
+
+# 04-playground-deploy-aws/modules/server-with-network/availability-zones.tf
+
+```terraform
+
+# We want to generate a subnet for every availability zone.
+#
+# Availability zones can be listed using `data.aws_availability_zones.available`:
+#   ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
+#
+# Let's generate an object
+
+locals {
+    # Availability zones:
+    # [ { id: 0, char: "a", name: "eu_central-1a"}, ... ]
+    availability_zones = [
+        for i, az_name in sort(data.aws_availability_zones.available.names) :
+            {
+                id: i,  # index: 0, 1, ...
+                char: substr("abcdefgh", i, 1), # char: "a", "b", ...
+                name: az_name,  # az name: "eu_central-1a", ...
+            }
+    ]
+}
+
+
+# List all availability zones in the current region
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/modules/server-with-network/network.tf
+
+```terraform
+# "aws_network_interface": a network interaface that an Instance can use
+# A ENI (Elastic Network Interface) is defined as a network device (~ an IP address) in a subnet of a VPC.
+resource "aws_network_interface" "server_ips" {
+    # Use one subnet: availability zone "a"
+    subnet_id   = aws_subnet.server_vpc_subnets["a"].id   # NOTE!!! hardcoded primary subnet :)
+
+    # Give it an IP address inside this network.
+    # Note: this list is unordered!
+    private_ips = [
+        # it may be hardcoded:
+        #   "172.16.0.10",
+        # but let's calculate a valid IP address using CIDR block:
+        cidrhost(aws_subnet.server_vpc_subnets["a"].cidr_block, 10),   # NOTE!!! hardcoded primary subnet :)
+    ]
+
+    # Security groups for the interface.
+    # It's a sort of a firewall: decides which ports can be open
+    security_groups = [
+        aws_security_group.server.id,
+    ]
+
+    # Name
+    tags = { Name = "${var.server_name}-primary-network" }
+    description = "Internal network for the server and its services"
+}
+
+
+
+
+
+
+
+
+# "aws_vpc": VPC: Logically Isolated Virtual Private Cloud. A virtual network.
+resource "aws_vpc" "server_vpc" {
+    # Network: IP range
+    cidr_block = "172.16.0.0/16"
+
+    # Defaults:
+    enable_dns_support = true  # Enabled DNS support in the VPC. Default: true
+    enable_dns_hostnames = true # Enabled DNS hostnames. Default: false
+
+    # Name
+    tags = { Name = "${var.project_name} VPC" }
+}
+
+# "aws_subnet": a subnet within a VPC
+# We actually generate multiple subnets: one for each availability zone.
+# So aws_subnet.server_vpc_subnets["a"] is the primary one, in the first availability zone
+resource "aws_subnet" "server_vpc_subnets" {
+    # Within this VPC
+    vpc_id            = aws_vpc.server_vpc.id
+
+    # Let's create a subnet for every availability zone: primary, and secondary
+    cidr_block        = each.value.cidr_block
+    availability_zone = each.value.availability_zone
+    for_each = {
+        # We could have hardcoded them:
+        #   "a" : { cidr_block = "172.16.0.0/24", availability_zone = "eu-central-1a"},
+        #   "b" : { cidr_block = "172.16.1.0/24", availability_zone = "eu-central-1b"},
+        # But let's generate:
+        for az in local.availability_zones:
+            az.char => {
+                cidr_block = cidrsubnet("172.16.0.0/16", 8, az.id),  # automatic calculation
+                availability_zone = az.name,  # availability zone name
+            }
+    }
+
+    # Name
+    tags = { Name = "${var.project_name}-net-${each.key}" }
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/modules/server-with-network/network-gateway.tf
+
+```terraform
+# If an instance needs a public IP, the VPC must contain a public gateway
+
+# "aws_internet_gateway": provides a VPC access to the Internet
+# See also: "aws_egress_only_internet_gateway"
+resource "aws_internet_gateway" "gw" {
+    vpc_id = aws_vpc.server_vpc.id
+    tags = { Name = "${var.project_name} gateway" }
+}
+
+# "aws_route": creates a routing entry in a VPC routing table
+# See also: "aws_route_table" to have multiple inline routes
+resource "aws_route" "gw_route" {
+    route_table_id         = aws_vpc.server_vpc.main_route_table_id
+    gateway_id             = aws_internet_gateway.gw.id
+    destination_cidr_block = "0.0.0.0/0"
+
+    # It can be used to give access to another VPC
+    # vpc_peering_connection_id = "pcx-45ff3dc1"
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/modules/server-with-network/network-securitygroups.tf
+
+```terraform
+# NOTE: Amazon had issues with "aws_security_group", and it's now DEPRECATED ⚠️
+# All new setups should use "aws_vpc_security_group_egress_rule" and "aws_vpc_security_group_ingress_rule"
+# See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group
+
+
+# We have just one server, so it does not say "server-api" or "server-frontend"
+resource "aws_security_group" "server" {
+    # Name prefix: use it to make sure names stay unique
+    name_prefix   = "${var.server_name}-server-security-"
+
+    # VPC to define it on
+    vpc_id = aws_vpc.server_vpc.id
+
+    # Name
+    tags = { Name = "${var.server_name} server security" }
+    description = "Allows HTTP and SSH in"
+}
+
+
+# Define inbound / outbound rules, allows certain ports only
+
+resource "aws_vpc_security_group_egress_rule" "server_any_out" {
+    security_group_id = aws_security_group.server.id
+
+    description = "Any outbound traffic is ok"
+    cidr_ipv4   = "0.0.0.0/0"
+    ip_protocol = "-1"  # all protocols: TCP and UDP
+    # Use from_port=0 to_port=0 to allow all ports.
+    # AWS, however, insists that the values should be "-1"
+    from_port   = -1
+    to_port     = -1
+}
+
+
+resource "aws_vpc_security_group_ingress_rule" "server_in_http" {
+    security_group_id = aws_security_group.server.id
+
+    # Create a rule for every exposed port
+    for_each = toset([for port in var.server_open_ports: tostring(port)])
+
+    description = "TCP/${each.value} in"
+    cidr_ipv4   = "0.0.0.0/0"  # any network
+    ip_protocol = "tcp"
+    # Port range: from (value) to (value)
+    from_port   = each.value
+    to_port     = each.value
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/modules/server-with-network/outputs.tf
+
+```terraform
+
+# Server's public IP. You can SSH into it.
+output "server_public_ip" {
+    description = "IP address of the server"
+    value       = aws_eip.server_ip.public_ip
+}
+
+
+# Server's root user name
+output "server_ssh_user" {
+    description = "Server's SSH user"
+    value = "admin"  # hardcoded for Debian. See precondition below
+
+
+    precondition {
+        condition = startswith(data.aws_ami.linux.name, "debian")
+        error_message = <<-EOF
+            TODO: at the moment we only know the root user for Debian systems :)
+            Replace this hardcode when other systems are in use
+        EOF
+    }
+}
+
+
+# VPC id. Other resources may be created there.
+output "vpc_id" {
+    description = "VPC id the server is created in"
+    value = aws_vpc.server_vpc.id
+}
+
+# The subnet the server's in
+output "vpc_server_subnet_ids" {
+    description = "The subnet id the server's in"
+    value = [for subnet in aws_subnet.server_vpc_subnets: subnet.id]
 }
 
 ```
@@ -1899,6 +2094,59 @@ variable "applications" {
 
 
 # 04-playground-deploy-aws/modules/server-rds-postgres
+
+
+# 04-playground-deploy-aws/modules/server-rds-postgres/terraform.tf
+
+```terraform
+terraform {
+    required_providers {
+        # Used to generate a random password for Postgres
+        random = {
+            source = "hashicorp/random"
+            version = "~> 3.4"
+        }
+    }
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/modules/server-rds-postgres/variables.tf
+
+```terraform
+variable "project_name" {
+  type = string
+  description = "Name of the project. Will be used as the DB server name"
+}
+
+
+variable "vpc_id" {
+    type = string
+    description = "VPC to create the database in. Used to configure subnet security groups"
+}
+
+
+variable "subnet_ids" {
+    type = list(string)
+    description = "Subnet IDs that the Database should be made available in. Must be 2+"
+    validation {
+      condition = length(var.subnet_ids) >= 2
+      error_message = <<-EOF
+        AWS limitation: an RDS instance must be in 2 or more different availability zones.
+        Please provide at least two subnets in different availability zones
+      EOF
+
+      # Here's how the error message looks like:
+      # > │ Error: creating RDS DB Subnet Group (db-subnet-2023...): DBSubnetGroupDoesNotCoverEnoughAZs:
+      # The DB subnet group doesn't meet Availability Zone (AZ) coverage requirement.
+      # Current AZ coverage: eu-central-1a. Add subnets to cover at least 2 AZs.
+    }
+}
+
+```
+
 
 
 # 04-playground-deploy-aws/modules/server-rds-postgres/main.tf
@@ -2069,616 +2317,238 @@ output "postgres_db" {
 
 
 
-# 04-playground-deploy-aws/modules/server-rds-postgres/terraform.tf
+
+
+# 04-playground-deploy-aws/targets/app
+
+
+# 04-playground-deploy-aws/targets/app/terraform.tf
 
 ```terraform
 terraform {
-    required_providers {
-        # Used to generate a random password for Postgres
-        random = {
-            source = "hashicorp/random"
-            version = "~> 3.4"
-        }
-    }
-}
+  required_version = "~> 1.3.9"
 
-```
-
-
-
-# 04-playground-deploy-aws/modules/server-rds-postgres/variables.tf
-
-```terraform
-variable "project_name" {
-  type = string
-  description = "Name of the project. Will be used as the DB server name"
-}
-
-
-variable "vpc_id" {
-    type = string
-    description = "VPC to create the database in. Used to configure subnet security groups"
-}
-
-
-variable "subnet_ids" {
-    type = list(string)
-    description = "Subnet IDs that the Database should be made available in. Must be 2+"
-    validation {
-      condition = length(var.subnet_ids) >= 2
-      error_message = <<-EOF
-        AWS limitation: an RDS instance must be in 2 or more different availability zones.
-        Please provide at least two subnets in different availability zones
-      EOF
-
-      # Here's how the error message looks like:
-      # > │ Error: creating RDS DB Subnet Group (db-subnet-2023...): DBSubnetGroupDoesNotCoverEnoughAZs:
-      # The DB subnet group doesn't meet Availability Zone (AZ) coverage requirement.
-      # Current AZ coverage: eu-central-1a. Add subnets to cover at least 2 AZs.
-    }
-}
-
-```
-
-
-
-
-
-# 04-playground-deploy-aws/modules/server-with-network
-
-
-# 04-playground-deploy-aws/modules/server-with-network/availability-zones.tf
-
-```terraform
-
-# We want to generate a subnet for every availability zone.
-#
-# Availability zones can be listed using `data.aws_availability_zones.available`:
-#   ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
-#
-# Let's generate an object
-
-locals {
-    # Availability zones:
-    # [ { id: 0, char: "a", name: "eu_central-1a"}, ... ]
-    availability_zones = [
-        for i, az_name in sort(data.aws_availability_zones.available.names) :
-            {
-                id: i,  # index: 0, 1, ...
-                char: substr("abcdefgh", i, 1), # char: "a", "b", ...
-                name: az_name,  # az name: "eu_central-1a", ...
-            }
-    ]
-}
-
-
-# List all availability zones in the current region
-data "aws_availability_zones" "available" {
-  state = "available"
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/modules/server-with-network/main.tf
-
-```terraform
-# This module will create:
-# * AWS instance
-# * Network: VPC + subbet
-# * SecurityGroup
-# * EC2 server with Docker pre-installed
-
-
-
-# "aws_instance": provides a EC2 instance resource
-resource "aws_instance" "server" {
-    # AMI image to run
-    # ami = "ami-0c0933ae5caf0f5f9"  # Hardcoded image id
-    ami = data.aws_ami.linux.id  # pick the most recent image from the data source
-
-    # Intance type
-    # t2: nano 0.5G, micro 1G, small 2G, medium 4G, large 8G
-    # t3a: 2x more expensive, have 2 vCPU, better network performance
-    # Use "A1" or "T4g" for ARM instances
-    instance_type = "t2.micro"
-
-    # Use a specific availability zone
-    availability_zone = "eu-central-1a"  # NOTE: our network interface must also be configured in there!
-
-    # Tags to assign: i.e. the "Name" of the instance.
-    # Yes. Name is a tag.
-    tags = { Name = var.server_name }
-
-    # CPU credits: "standard" or "unlimited".
-    # T2 instances are launched as "standard" by default
-    # T3 instances are launched as "unlimited" by default:
-    #   a burstable performance instance can sustain high CPU utilization for any period of time.
-    credit_specification { cpu_credits = "standard" }
-
-    # Give it access to a network.
-    # The network has an IP list a security group associated (~ firewall)
-    network_interface {
-        # The "server_ips" provides some IP addresses within a VPC.
-        # There may be multiple addresses: so we pick the first one: #0
-        network_interface_id = aws_network_interface.server_ips.id
-        device_index         = 0  # from the ip list
-    }
-
-    # Easy way to get a public IP address
-    # associate_public_ip_address = true
-
-    # SSH Key Pair to use with this server.
-    # See "aws_key_pair" resource
-    # Use data source:
-    #   key_name = data.aws_key_pair.aws_ssh.key_name
-    # or create one:
-    key_name = aws_key_pair.ssh_key.key_name
-
-    # Use `user_data` script to initialize the instance
-    # user_data = templatefile("user_data.tftpl", { username = var.user_name })  # example: template
-    # Install Docker
-    user_data_replace_on_change = true
-    user_data = templatefile("${path.module}/template.server-init.sh", {})
-
-    # Remote command: i.e. on the server instance
-    # provisioner "remote-exec" {
-    #     # Run remotely
-    #     inline = [
-    #         "sudo adduser --disabled-password kolypto",
-    #         "sudo apt-get update -yq",
-    #         "sudo apt-get install -yq --no-install-recommends docker.io"
-    #     ]
-    #     connection {
-    #         host        = self.public_ip
-    #         type        = "ssh"
-    #         user        = "ec2-user"
-    #         private_key = file(var.ssh_private_key_file)
-    #     }
-    # }
-
-}
-
-
-# Give it a public IP address
-resource "aws_eip" "server_ip" {
-    instance = aws_instance.server.id
-    vpc      = true
-    # NOTE: you can associate it with a `network_interface` instead of an `instance`.
-    # network_interface = aws_network_interface.server_ips.id
-
-    # NOTE: "aws_eip" may require an IGW to exist prior to association!
-    # Declare it explicitly:
-    depends_on = [ aws_internet_gateway.gw ]
-}
-
-
-
-
-# SSH key to access the server with
-resource "aws_key_pair" "ssh_key" {
-  # Use `key_name` for a static unique name, use `key_name_prefix` for a generated unique name
-  key_name_prefix = "${var.server_name}-ssh-key-"
-  public_key = file(var.ssh_public_key_file)  # read from file
-}
-
-
-
-
-
-
-# data."aws_ami": find the most recent Amazon Linux image
-data "aws_ami" "linux" {
-    # When multiple images are found, take the most recent one.
-    # Careful, be sure not to end up with a daily image!
-    most_recent = true
-
-    # Only include images from Amazon
-    owners = ["amazon"]  # Amazon
-
-    # See also: `name_regex`
-    filter {
-        name   = "name"
-
-        # values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]  # Ubuntu Image. User: "ubuntu"
-        # values = ["amzn2-ami-kernel-*-hvm-*-x86_64-gp2"]  # Amazon Image. User: "ec2-user"
-        values = ["debian-11-amd64-2023*-*"]  # Debian Image. User: "admin"
-    }
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/modules/server-with-network/network-gateway.tf
-
-```terraform
-# If an instance needs a public IP, the VPC must contain a public gateway
-
-# "aws_internet_gateway": provides a VPC access to the Internet
-# See also: "aws_egress_only_internet_gateway"
-resource "aws_internet_gateway" "gw" {
-    vpc_id = aws_vpc.server_vpc.id
-    tags = { Name = "${var.project_name} gateway" }
-}
-
-# "aws_route": creates a routing entry in a VPC routing table
-# See also: "aws_route_table" to have multiple inline routes
-resource "aws_route" "gw_route" {
-    route_table_id         = aws_vpc.server_vpc.main_route_table_id
-    gateway_id             = aws_internet_gateway.gw.id
-    destination_cidr_block = "0.0.0.0/0"
-
-    # It can be used to give access to another VPC
-    # vpc_peering_connection_id = "pcx-45ff3dc1"
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/modules/server-with-network/network-securitygroups.tf
-
-```terraform
-# NOTE: Amazon had issues with "aws_security_group", and it's now DEPRECATED ⚠️
-# All new setups should use "aws_vpc_security_group_egress_rule" and "aws_vpc_security_group_ingress_rule"
-# See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group
-
-
-# We have just one server, so it does not say "server-api" or "server-frontend"
-resource "aws_security_group" "server" {
-    # Name prefix: use it to make sure names stay unique
-    name_prefix   = "${var.server_name}-server-security-"
-
-    # VPC to define it on
-    vpc_id = aws_vpc.server_vpc.id
-
-    # Name
-    tags = { Name = "${var.server_name} server security" }
-    description = "Allows HTTP and SSH in"
-}
-
-
-# Define inbound / outbound rules, allows certain ports only
-
-resource "aws_vpc_security_group_egress_rule" "server_any_out" {
-    security_group_id = aws_security_group.server.id
-
-    description = "Any outbound traffic is ok"
-    cidr_ipv4   = "0.0.0.0/0"
-    ip_protocol = "-1"  # all protocols: TCP and UDP
-    # Use from_port=0 to_port=0 to allow all ports.
-    # AWS, however, insists that the values should be "-1"
-    from_port   = -1
-    to_port     = -1
-}
-
-
-resource "aws_vpc_security_group_ingress_rule" "server_in_http" {
-    security_group_id = aws_security_group.server.id
-
-    # Create a rule for every exposed port
-    for_each = toset([for port in var.server_open_ports: tostring(port)])
-
-    description = "TCP/${each.value} in"
-    cidr_ipv4   = "0.0.0.0/0"  # any network
-    ip_protocol = "tcp"
-    # Port range: from (value) to (value)
-    from_port   = each.value
-    to_port     = each.value
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/modules/server-with-network/network.tf
-
-```terraform
-# "aws_network_interface": a network interaface that an Instance can use
-# A ENI (Elastic Network Interface) is defined as a network device (~ an IP address) in a subnet of a VPC.
-resource "aws_network_interface" "server_ips" {
-    # Use one subnet: availability zone "a"
-    subnet_id   = aws_subnet.server_vpc_subnets["a"].id   # NOTE!!! hardcoded primary subnet :)
-
-    # Give it an IP address inside this network.
-    # Note: this list is unordered!
-    private_ips = [
-        # it may be hardcoded:
-        #   "172.16.0.10",
-        # but let's calculate a valid IP address using CIDR block:
-        cidrhost(aws_subnet.server_vpc_subnets["a"].cidr_block, 10),   # NOTE!!! hardcoded primary subnet :)
-    ]
-
-    # Security groups for the interface.
-    # It's a sort of a firewall: decides which ports can be open
-    security_groups = [
-        aws_security_group.server.id,
-    ]
-
-    # Name
-    tags = { Name = "${var.server_name}-primary-network" }
-    description = "Internal network for the server and its services"
-}
-
-
-
-
-
-
-
-
-# "aws_vpc": VPC: Logically Isolated Virtual Private Cloud. A virtual network.
-resource "aws_vpc" "server_vpc" {
-    # Network: IP range
-    cidr_block = "172.16.0.0/16"
-
-    # Defaults:
-    enable_dns_support = true  # Enabled DNS support in the VPC. Default: true
-    enable_dns_hostnames = true # Enabled DNS hostnames. Default: false
-
-    # Name
-    tags = { Name = "${var.project_name} VPC" }
-}
-
-# "aws_subnet": a subnet within a VPC
-# We actually generate multiple subnets: one for each availability zone.
-# So aws_subnet.server_vpc_subnets["a"] is the primary one, in the first availability zone
-resource "aws_subnet" "server_vpc_subnets" {
-    # Within this VPC
-    vpc_id            = aws_vpc.server_vpc.id
-
-    # Let's create a subnet for every availability zone: primary, and secondary
-    cidr_block        = each.value.cidr_block
-    availability_zone = each.value.availability_zone
-    for_each = {
-        # We could have hardcoded them:
-        #   "a" : { cidr_block = "172.16.0.0/24", availability_zone = "eu-central-1a"},
-        #   "b" : { cidr_block = "172.16.1.0/24", availability_zone = "eu-central-1b"},
-        # But let's generate:
-        for az in local.availability_zones:
-            az.char => {
-                cidr_block = cidrsubnet("172.16.0.0/16", 8, az.id),  # automatic calculation
-                availability_zone = az.name,  # availability zone name
-            }
-    }
-
-    # Name
-    tags = { Name = "${var.project_name}-net-${each.key}" }
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/modules/server-with-network/outputs.tf
-
-```terraform
-
-# Server's public IP. You can SSH into it.
-output "server_public_ip" {
-    description = "IP address of the server"
-    value       = aws_eip.server_ip.public_ip
-}
-
-
-# Server's root user name
-output "server_ssh_user" {
-    description = "Server's SSH user"
-    value = "admin"  # hardcoded for Debian. See precondition below
-
-
-    precondition {
-        condition = startswith(data.aws_ami.linux.name, "debian")
-        error_message = <<-EOF
-            TODO: at the moment we only know the root user for Debian systems :)
-            Replace this hardcode when other systems are in use
-        EOF
-    }
-}
-
-
-# VPC id. Other resources may be created there.
-output "vpc_id" {
-    description = "VPC id the server is created in"
-    value = aws_vpc.server_vpc.id
-}
-
-# The subnet the server's in
-output "vpc_server_subnet_ids" {
-    description = "The subnet id the server's in"
-    value = [for subnet in aws_subnet.server_vpc_subnets: subnet.id]
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/modules/server-with-network/variables.tf
-
-```terraform
-# Your public key file.
-# You will use it to SSH into the server.
-variable "ssh_public_key_file" {
-    type        = string
-    description = "SSH public key to add to the instance. You will use it to SSH into it."
-    default     = "~/.ssh/id_rsa.pub"
-}
-
-
-# Project name
-variable "project_name" {
-    type = string
-    description = "Name of the project. Networks will have it."
-}
-
-
-
-# Server name
-variable "server_name" {
-    type = string
-    description = "Name of the server. Object names will depend on it"
-}
-
-
-# Server: open ports
-variable "server_open_ports" {
-    type = list(number)
-    description = "The list of ports to keep open (via AWS security group rules)"
-}
-
-```
-
-
-
-
-
-# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik
-
-
-# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/main.tf
-
-```terraform
-# This module will start Traefik container
-
-
-# Traefik container
-resource "docker_container" "traefik" {
-  image      = docker_image.traefik.image_id
-  name       = "traefik"
-
-  logs = true
-  wait = false  # TODO: `wait = true` segfaults. Change to `true` when a new version comes out.
-  must_run = true
-  restart = "on-failure"
-  max_retry_count = 3
-
-  # HTTP, HTTPS ports
-  ports {
-    internal = 80
-    external = 80
-  }
-  ports {
-    internal = 443
-    external = 443
-  }
-  # MQTT port
-  ports {
-    internal = 8883
-    external = 8883
-  }
-  # Traefik manager
-  ports {
-    internal = 8080
-    external = 8080
-  }
-
-  # command = [
-  #   "--log.level=DEBUG",
-  #   "--api.insecure=true",
-  #   "--providers.docker=true",
-  #   "--providers.docker.exposedbydefault=false",
-  #   "--entrypoints.http.address=:80",
-  #   "--entrypoints.https.address=:443",
-  #   # "--entrypoints.web.http.redirections.entrypoint.to=websecure",
-  #   # "--entrypoints.web.http.redirections.entrypoint.scheme=https",
-  #   "--entrypoints.mqtts.address=:8883",
-  #   # "--certificatesresolvers.route53.acme.tlschallenge=true",
-  #   # "--certificatesresolvers.route53.acme.email=root@medthings.no",
-  #   # "--certificatesresolvers.route53.acme.storage=/config/letsencrypt/acme.json",
-  # ]
-
-  # Configure
-  upload {
-    content = templatefile("${path.module}/template.traefik.toml", {})
-    file = "/etc/traefik/traefik.toml"
-  }
-
-  # Network
-  networks_advanced {
-    name = docker_network.traefik.name
-  }
-
-  # Mount a volume: /config/letsencrypt will contain LetsEncrypt HTTPS certificates
-  volumes {
-    container_path = "/config"
-    volume_name    = docker_volume.traefik_config.name
-  }
-
-  # Bind mount the Docker socket: give Traefik access to local Docker
-  mounts {
-    source    = "/var/run/docker.sock"
-    target    = "/var/run/docker.sock"
-    type      = "bind"
-    read_only = true
-  }
-}
-
-
-# Create a network for traefik
-resource "docker_network" "traefik" {
-  # Network name
-  name = "traefik"
-
-  # TODO: ?
-  ipam_config {
-    gateway = "172.20.0.1"
-    subnet  = "172.20.0.0/16"
-  }
-}
-
-
-# Pull Traefik image
-resource "docker_image" "traefik" {
-  name = var.traefik_docker_image
-}
-
-
-# Create a volume for persistent config.
-# Letsencrypt certificates will be put here.
-resource "docker_volume" "traefik_config" {
-  name = "traefik-config"
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/outputs.tf
-
-```terraform
-output "traefik_network_name" {
-    description = "Traefik Docker network name. Use in networks_advanced { name }"
-    value = docker_network.traefik.name
-}
-```
-
-
-
-# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/terraform.tf
-
-```terraform
-terraform {
   required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.57"
+    }
     docker = {
       source = "kreuzwerker/docker"
+      version = "~> 3.0"
     }
+  }
+
+  backend "s3" {
+    # NOTE: Terraform will ask this value interactively!
+    # You get it after you run the "init" target that creates a bucket for you.
+    # bucket = "tfstate-2023..."
+
+    key    = "playground/app"
+    region = "eu-central-1"
   }
 }
 
+provider "aws" {
+  # The region to use
+  region = "eu-central-1"
+}
 
 ```
 
 
 
-# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/variables.tf
+# 04-playground-deploy-aws/targets/app/variables.tf
 
 ```terraform
-variable "traefik_docker_image" {
-    description = "Traefik Docker image to run"
+# If you're tired of entering these values every time:
+# 1. Use -var-file=../../playground.tfvars
+# 2. Or createa a "playground.auto.tfvars" in the current folder
+
+
+variable "app_docker_source_image_name" {
+    description = "The source image to pull"
     type = string
 }
+
+variable "app_docker_ecr_registry_address" {
+    description = "The ECT Registry to push the image to"
+    type = string
+}
+
+variable "app_docker_image_ecr_permissions" {
+    description = "AWS users who can pull & push Docker images to the ECR intermediate registry. List of IAM ARNs."
+    type = object({
+        # List of user ARNs who can PUSH images to the server
+        push_users = list(string)
+        # List of server ARNs who can PULL images from the intermediate ECR registry
+        pull_servers = list(string)
+    })
+}
+
+variable "app_docker_registry_names" {
+    description = "Docker registries to use the credentials for (from your ~/.docker/config.json)"
+    type = list(string)
+}
+
+# Remote state
+variable "remote_state_s3_bucket" {
+    description = "The bucket to read the remote state from"
+    type = string
+}
+variable "remote_state_infrastructure" {
+    description = "Path to the state file in the bucket"
+    type = string
+}
+
+```
+
+
+
+
+
+# 04-playground-deploy-aws/targets/app/remote-state
+
+
+# 04-playground-deploy-aws/targets/app/remote-state/variables.tf
+
+```terraform
+
+# Remote state
+variable "remote_state_s3_bucket" {
+    description = "The bucket to read the remote state from"
+    type = string
+}
+variable "remote_state_infrastructure" {
+    description = "Path to the state file in the bucket"
+    type = string
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/targets/app/remote-state/data.tf
+
+```terraform
+# Data module.
+# It only reports data about the current infrastructure.
+
+data "terraform_remote_state" "infrastructure" {
+    backend = "s3"
+    config = {
+        bucket = var.remote_state_s3_bucket
+        key    = var.remote_state_infrastructure
+        region = data.aws_region.current.name
+    }
+}
+
+data "aws_region" "current" {}
+
+```
+
+
+
+# 04-playground-deploy-aws/targets/app/remote-state/outputs.tf
+
+```terraform
+output infrastructure {
+    value = {
+        server_ssh_user     = data.terraform_remote_state.infrastructure.outputs.server_ssh_user
+        server_public_ip    = data.terraform_remote_state.infrastructure.outputs.server_public_ip
+        project_name        = data.terraform_remote_state.infrastructure.outputs.project_name
+        postgres_psql_root  = data.terraform_remote_state.infrastructure.outputs.postgres_psql_root
+    }
+}
+
+```
+
+
+
+
+
+# 04-playground-deploy-aws/targets/app
+
+
+# 04-playground-deploy-aws/targets/app/main.tf
+
+```terraform
+# This module will deploy the application on to the existing infrastructure
+
+
+# * Create an ECR docker registry
+# * Pull image from GitHub, push it to ECR
+# * Start a container
+# Prerequisites for pulling images from GitHub:
+#   $ docker login ghcr.io -u kolypto -p 'ghp_...'
+# Prerequisites for using ECR:
+#   Add this line to ~/.docker/config.json:
+#        "credHelpers": { "352980582205.dkr.ecr.eu-central-1.amazonaws.com": "ecr-login", "public.ecr.aws": "ecr-login" }
+#   Now run:
+#   $ apt install amazon-ecr-credential-helper
+#   $ aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin 352980582205.dkr.ecr.eu-central-1.amazonaws.com
+
+
+
+# Load infrastructure data module: remote state
+module "data" {
+    source = "./remote-state"
+    remote_state_s3_bucket = var.remote_state_s3_bucket
+    remote_state_infrastructure = var.remote_state_infrastructure
+}
+
+
+# Set up the database
+module "app_setup_database" {
+    source = "./../../modules/app-setup-database"
+
+    # Manage this instance
+    postgres_url = module.data.infrastructure.postgres_psql_root
+    project_name = module.data.infrastructure.project_name
+    applications = ["goserver"]
+}
+
+
+# Push new Docker images
+# Run only this target:
+#   $ terraform -chdir=04-playground-deploy-aws apply -target=module.app_docker_image
+module "app_docker_image" {
+    source = "./../../modules/app-docker-image"
+
+    # The image to push
+    docker_image = var.app_docker_source_image_name
+
+    # Name of the ECR image
+    target_ecr_image_name = "${module.data.infrastructure.project_name}/app"
+
+    # ECR Registry in the cloud
+    ecr_registry_permissions = {
+        push_users = var.app_docker_image_ecr_permissions.push_users
+        pull_servers = var.app_docker_image_ecr_permissions.pull_servers
+    }
+
+    # Use our Docker config to sign into registries
+    docker_auth_registry_names = var.app_docker_registry_names
+}
+
+
+# Deploy the docker container on the server
+module "app_docker_deploy_container" {
+    source = "./app-docker-containers"
+
+    # Server to run the container on
+    server_ssh_connection_url = "ssh://${module.data.infrastructure.server_ssh_user}@${module.data.infrastructure.server_public_ip}"
+
+    # The image to deploy
+    docker_registry_address = var.app_docker_ecr_registry_address # TODO: module.app_docker_image.docker_registry_url?
+    docker_image_name = module.app_docker_image.pushed_image_name
+
+    # DB URLs.
+    # Note that key names in this parameter match those requested from "app_setup_database":
+    # - "goserver"
+    app_database_urls = module.app_setup_database.psql_applications
+}
+
 ```
 
 
@@ -2686,6 +2556,43 @@ variable "traefik_docker_image" {
 
 
 # 04-playground-deploy-aws/targets/app/app-docker-containers
+
+
+# 04-playground-deploy-aws/targets/app/app-docker-containers/variables.tf
+
+```terraform
+# SSH into this server to push images
+variable "server_ssh_connection_url" {
+    description = "SSH connection url to a server to manage containers on: ssh://user@host"
+    type = string
+
+    validation {
+        condition = startswith(var.server_ssh_connection_url, "ssh://")
+        error_message = "Must start with ssh://"
+    }
+}
+
+# Docker registry address to pull the image from
+variable "docker_registry_address" {
+    description = "Docker registry address to pull the image from"
+    type = string
+}
+
+# The image to pull and deploy
+variable "docker_image_name" {
+    description = "Docker image to pull and deploy"
+    type = string
+}
+
+# DB URLs for applications
+variable "app_database_urls" {
+    description = "DB URLs for our applications"
+    type = object({
+        goserver = string
+    })
+}
+```
+
 
 
 # 04-playground-deploy-aws/targets/app/app-docker-containers/main.tf
@@ -2859,537 +2766,734 @@ provider "docker" {
 
 
 
-# 04-playground-deploy-aws/targets/app/app-docker-containers/variables.tf
-
-```terraform
-# SSH into this server to push images
-variable "server_ssh_connection_url" {
-    description = "SSH connection url to a server to manage containers on: ssh://user@host"
-    type = string
-
-    validation {
-        condition = startswith(var.server_ssh_connection_url, "ssh://")
-        error_message = "Must start with ssh://"
-    }
-}
-
-# Docker registry address to pull the image from
-variable "docker_registry_address" {
-    description = "Docker registry address to pull the image from"
-    type = string
-}
-
-# The image to pull and deploy
-variable "docker_image_name" {
-    description = "Docker image to pull and deploy"
-    type = string
-}
-
-# DB URLs for applications
-variable "app_database_urls" {
-    description = "DB URLs for our applications"
-    type = object({
-        goserver = string
-    })
-}
-```
 
 
+# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik
 
 
-
-# 04-playground-deploy-aws/targets/app
-
-
-# 04-playground-deploy-aws/targets/app/main.tf
-
-```terraform
-# This module will deploy the application on to the existing infrastructure
-
-
-# * Create an ECR docker registry
-# * Pull image from GitHub, push it to ECR
-# * Start a container
-# Prerequisites for pulling images from GitHub:
-#   $ docker login ghcr.io -u kolypto -p 'ghp_...'
-# Prerequisites for using ECR:
-#   Add this line to ~/.docker/config.json:
-#        "credHelpers": { "352980582205.dkr.ecr.eu-central-1.amazonaws.com": "ecr-login", "public.ecr.aws": "ecr-login" }
-#   Now run:
-#   $ apt install amazon-ecr-credential-helper
-#   $ aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin 352980582205.dkr.ecr.eu-central-1.amazonaws.com
-
-
-
-# Load infrastructure data module: remote state
-module "data" {
-    source = "./remote-state"
-    remote_state_s3_bucket = var.remote_state_s3_bucket
-    remote_state_infrastructure = var.remote_state_infrastructure
-}
-
-
-# Set up the database
-module "app_setup_database" {
-    source = "./../../modules/app-setup-database"
-
-    # Manage this instance
-    postgres_url = module.data.infrastructure.postgres_psql_root
-    project_name = module.data.infrastructure.project_name
-    applications = ["goserver"]
-}
-
-
-# Push new Docker images
-# Run only this target:
-#   $ terraform -chdir=04-playground-deploy-aws apply -target=module.app_docker_image
-module "app_docker_image" {
-    source = "./../../modules/app-docker-image"
-
-    # The image to push
-    docker_image = var.app_docker_source_image_name
-
-    # Name of the ECR image
-    target_ecr_image_name = "${module.data.infrastructure.project_name}/app"
-
-    # ECR Registry in the cloud
-    ecr_registry_permissions = {
-        push_users = var.app_docker_image_ecr_permissions.push_users
-        pull_servers = var.app_docker_image_ecr_permissions.pull_servers
-    }
-
-    # Use our Docker config to sign into registries
-    docker_auth_registry_names = var.app_docker_registry_names
-}
-
-
-# Deploy the docker container on the server
-module "app_docker_deploy_container" {
-    source = "./app-docker-containers"
-
-    # Server to run the container on
-    server_ssh_connection_url = "ssh://${module.data.infrastructure.server_ssh_user}@${module.data.infrastructure.server_public_ip}"
-
-    # The image to deploy
-    docker_registry_address = var.app_docker_ecr_registry_address # TODO: module.app_docker_image.docker_registry_url?
-    docker_image_name = module.app_docker_image.pushed_image_name
-
-    # DB URLs.
-    # Note that key names in this parameter match those requested from "app_setup_database":
-    # - "goserver"
-    app_database_urls = module.app_setup_database.psql_applications
-}
-
-```
-
-
-
-
-
-# 04-playground-deploy-aws/targets/app/remote-state
-
-
-# 04-playground-deploy-aws/targets/app/remote-state/data.tf
-
-```terraform
-# Data module.
-# It only reports data about the current infrastructure.
-
-data "terraform_remote_state" "infrastructure" {
-    backend = "s3"
-    config = {
-        bucket = var.remote_state_s3_bucket
-        key    = var.remote_state_infrastructure
-        region = data.aws_region.current.name
-    }
-}
-
-data "aws_region" "current" {}
-
-```
-
-
-
-# 04-playground-deploy-aws/targets/app/remote-state/outputs.tf
-
-```terraform
-output infrastructure {
-    value = {
-        server_ssh_user     = data.terraform_remote_state.infrastructure.outputs.server_ssh_user
-        server_public_ip    = data.terraform_remote_state.infrastructure.outputs.server_public_ip
-        project_name        = data.terraform_remote_state.infrastructure.outputs.project_name
-        postgres_psql_root  = data.terraform_remote_state.infrastructure.outputs.postgres_psql_root
-    }
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/targets/app/remote-state/variables.tf
-
-```terraform
-
-# Remote state
-variable "remote_state_s3_bucket" {
-    description = "The bucket to read the remote state from"
-    type = string
-}
-variable "remote_state_infrastructure" {
-    description = "Path to the state file in the bucket"
-    type = string
-}
-
-```
-
-
-
-
-
-# 04-playground-deploy-aws/targets/app
-
-
-# 04-playground-deploy-aws/targets/app/terraform.tf
+# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/terraform.tf
 
 ```terraform
 terraform {
-  required_version = "~> 1.3.9"
-
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 4.57"
+    docker = {
+      source = "kreuzwerker/docker"
     }
+  }
+}
+
+
+```
+
+
+
+# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/variables.tf
+
+```terraform
+variable "traefik_docker_image" {
+    description = "Traefik Docker image to run"
+    type = string
+}
+```
+
+
+
+# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/main.tf
+
+```terraform
+# This module will start Traefik container
+
+
+# Traefik container
+resource "docker_container" "traefik" {
+  image      = docker_image.traefik.image_id
+  name       = "traefik"
+
+  logs = true
+  wait = false  # TODO: `wait = true` segfaults. Change to `true` when a new version comes out.
+  must_run = true
+  restart = "on-failure"
+  max_retry_count = 3
+
+  # HTTP, HTTPS ports
+  ports {
+    internal = 80
+    external = 80
+  }
+  ports {
+    internal = 443
+    external = 443
+  }
+  # MQTT port
+  ports {
+    internal = 8883
+    external = 8883
+  }
+  # Traefik manager
+  ports {
+    internal = 8080
+    external = 8080
+  }
+
+  # command = [
+  #   "--log.level=DEBUG",
+  #   "--api.insecure=true",
+  #   "--providers.docker=true",
+  #   "--providers.docker.exposedbydefault=false",
+  #   "--entrypoints.http.address=:80",
+  #   "--entrypoints.https.address=:443",
+  #   # "--entrypoints.web.http.redirections.entrypoint.to=websecure",
+  #   # "--entrypoints.web.http.redirections.entrypoint.scheme=https",
+  #   "--entrypoints.mqtts.address=:8883",
+  #   # "--certificatesresolvers.route53.acme.tlschallenge=true",
+  #   # "--certificatesresolvers.route53.acme.email=root@medthings.no",
+  #   # "--certificatesresolvers.route53.acme.storage=/config/letsencrypt/acme.json",
+  # ]
+
+  # Configure
+  upload {
+    content = templatefile("${path.module}/template.traefik.toml", {})
+    file = "/etc/traefik/traefik.toml"
+  }
+
+  # Network
+  networks_advanced {
+    name = docker_network.traefik.name
+  }
+
+  # Mount a volume: /config/letsencrypt will contain LetsEncrypt HTTPS certificates
+  volumes {
+    container_path = "/config"
+    volume_name    = docker_volume.traefik_config.name
+  }
+
+  # Bind mount the Docker socket: give Traefik access to local Docker
+  mounts {
+    source    = "/var/run/docker.sock"
+    target    = "/var/run/docker.sock"
+    type      = "bind"
+    read_only = true
+  }
+}
+
+
+# Create a network for traefik
+resource "docker_network" "traefik" {
+  # Network name
+  name = "traefik"
+
+  # TODO: ?
+  ipam_config {
+    gateway = "172.20.0.1"
+    subnet  = "172.20.0.0/16"
+  }
+}
+
+
+# Pull Traefik image
+resource "docker_image" "traefik" {
+  name = var.traefik_docker_image
+}
+
+
+# Create a volume for persistent config.
+# Letsencrypt certificates will be put here.
+resource "docker_volume" "traefik_config" {
+  name = "traefik-config"
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/template.traefik.toml
+
+```toml
+[log]
+    level = "DEBUG"
+
+[entryPoints]
+    [entryPoints.web]
+        address = ":80"
+    [entryPoints.websecure]
+        address = ":443"
+    [entryPoints.mqqts]
+        address = ":8883"
+
+[api]
+insecure = true
+dashboard = true
+
+[providers.docker]
+exposedByDefault = false
+
+```
+
+
+
+# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/outputs.tf
+
+```terraform
+output "traefik_network_name" {
+    description = "Traefik Docker network name. Use in networks_advanced { name }"
+    value = docker_network.traefik.name
+}
+```
+
+
+
+
+
+# 04-playground-deploy-aws/modules/app-docker-image/ecr-docker-registry
+
+
+# 04-playground-deploy-aws/modules/app-docker-image/ecr-docker-registry/variables.tf
+
+```terraform
+variable "registry_name" {
+  description = "Name of registry. Must be unique!"
+  type = string
+}
+
+variable "registry_aws_iam_arns" {
+  description = "Users who can: push images to the registry, and push images to the registry (AWS IAM ARNs)"
+  type = object({
+    # These users can push images (users)
+    # Example: "arn:aws:iam::352980582205:user/human"
+    push_users = list(string)
+
+    # These users can pull images (servers)
+    # Example: "arn:aws:iam::352980582205:user/server"
+    pull_servers = list(string)
+  })
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/modules/app-docker-image/ecr-docker-registry/main.tf
+
+```terraform
+# This module will create an ECR Container Registry.
+#
+# There will be two groups of users:
+# * Human users can push
+# * Server users can pull
+#
+# Note that you must create a separate registry for every image!
+
+# Docker Registry
+resource "aws_ecr_repository" "repo" {
+    # Name. Must be unique.
+    name = var.registry_name
+
+    # Delete the registry even if it contains images. Default: false
+    force_delete = true
+
+    # Name
+    tags = { Name = "${var.registry_name} Images" }
+}
+
+# Registry Policy.
+# Don't use JSON: here's a first class policy.
+data "aws_iam_policy_document" "repo_policy" {
+    statement {
+        # Identifier
+        sid = "Push for users"
+        # "Allow" or "Deny"
+        effect = "Allow"
+
+        # See: `principals`, `resources` ; `not_principals`, `not_resources`
+
+        # Principals: to whom the statement applies
+        principals {
+            # Type: "AWS", "Service", "Federated", "CanonicalUser", "*"
+            type = "AWS"
+            # List of identifiers.
+            # With type = "AWS": IAM principal ARNs. See IAM Users: https://console.aws.amazon.com/iamv2/home#/users
+            identifiers = var.registry_aws_iam_arns.push_users
+        }
+
+        # List of actions to Allow
+        actions = [
+            "ecr:ListImages",
+            "ecr:PutImage",
+            "ecr:BatchGetImage",
+            "ecr:BatchDeleteImage",
+            "ecr:DescribeImages",
+            "ecr:GetDownloadUrlForLayer",  # Pre-signed URL
+            "ecr:TagResource",
+            "ecr:UntagResource",
+            "ecr:InitiateLayerUpload",
+            "ecr:UploadLayerPart",
+            "ecr:CompleteLayerUpload",
+            "ecr:DescribeRepositories",
+            "ecr:ListTagsForResource",
+            "ecr:BatchCheckLayerAvailability",
+        ]
+    }
+
+    statement {
+        sid = "Pull for servers"
+        effect = "Allow"
+
+        principals {
+            type = "AWS"
+            identifiers = var.registry_aws_iam_arns.pull_servers
+        }
+
+        actions = [
+            "ecr:BatchGetImage",
+            "ecr:ListImages",
+            "ecr:DescribeImages",
+            "ecr:ListTagsForResource",
+            "ecr:BatchCheckLayerAvailability",
+            "ecr:GetDownloadUrlForLayer",
+            "ecr:DescribeRepositories",
+            "ecr:DescribeImageScanFindings"
+
+        ]
+    }
+}
+
+# Associate the policy with the registry.
+# Note that a registry can have only one policy!
+resource "aws_ecr_repository_policy" "repo_policy" {
+    repository = aws_ecr_repository.repo.name
+
+    # Policy: JSON formatted string {"Statement": [...]}
+    # It can be a literal JSON string, a `file()` interpolation, or "aws_iam_policy_document" data source.
+    # NOTE: AWS IAM policy document supports its own "&{}"" interpolation syntax!
+    policy = data.aws_iam_policy_document.repo_policy.json
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/modules/app-docker-image/ecr-docker-registry/outputs.tf
+
+```terraform
+output "docker_registry_url" {
+    description = "Docker URL for this ECR registry"
+    value = aws_ecr_repository.repo.repository_url
+}
+```
+
+
+
+
+
+# 04-playground-deploy-aws/modules/app-docker-image
+
+
+# 04-playground-deploy-aws/modules/app-docker-image/terraform.tf
+
+```terraform
+terraform {
+  required_providers {
     docker = {
       source = "kreuzwerker/docker"
       version = "~> 3.0"
     }
   }
-
-  backend "s3" {
-    # NOTE: Terraform will ask this value interactively!
-    # You get it after you run the "init" target that creates a bucket for you.
-    # bucket = "tfstate-2023..."
-
-    key    = "playground/app"
-    region = "eu-central-1"
-  }
 }
 
-provider "aws" {
-  # The region to use
-  region = "eu-central-1"
+
+
+# Our local Docker daemon.
+# We'll use it to pull & push images
+provider "docker" {
+    alias = "local"
+
+    # Docker host: connect to local Docker
+    # host = "unix:///var/run/docker.sock"
+
+    # Pull images from a remote repository (github) using our local Docker
+    dynamic "registry_auth" {
+        for_each = var.docker_auth_registry_names
+        content {
+          address = registry_auth.value
+        }
+    }
+
+    # TODO: we can pull the image directly from the server by using our local Docker config, like this:
+    # registry_auth {
+    #   address = "ghcr.io"
+    #   config_file_content = file(....)
+    # }
 }
 
 ```
 
 
 
-# 04-playground-deploy-aws/targets/app/variables.tf
+# 04-playground-deploy-aws/modules/app-docker-image/variables.tf
 
 ```terraform
-# If you're tired of entering these values every time:
-# 1. Use -var-file=../../playground.tfvars
-# 2. Or createa a "playground.auto.tfvars" in the current folder
 
-
-variable "app_docker_source_image_name" {
-    description = "The source image to pull"
+# The image to push to the server
+variable "docker_image" {
+    description = "The image to push"
     type = string
 }
 
-variable "app_docker_ecr_registry_address" {
-    description = "The ECT Registry to push the image to"
+
+# Docker authentication
+variable "docker_auth_registry_names" {
+    description = <<-EOF
+        Docker auth key names to use -- from your ~/.docker/config.json.
+        It needs to have access both to the source and the target registries
+    EOF
+    type = list(string)
+}
+
+
+
+# The ECR registry name
+variable "target_ecr_image_name" {
+    description = "ECR registry name for the image. Feel free to use /"
     type = string
 }
 
-variable "app_docker_image_ecr_permissions" {
-    description = "AWS users who can pull & push Docker images to the ECR intermediate registry. List of IAM ARNs."
+# ECR registry name and permissions
+variable "ecr_registry_permissions" {
+    description = "Intermediate ECR registry to push/pull the image through"
     type = object({
-        # List of user ARNs who can PUSH images to the server
+        # These users can push images (users)
+        # Example: "arn:aws:iam::352980582205:user/human"
         push_users = list(string)
-        # List of server ARNs who can PULL images from the intermediate ECR registry
+
+        # These users can pull images (servers)
+        # Example: "arn:aws:iam::352980582205:user/server"
         pull_servers = list(string)
     })
 }
 
-variable "app_docker_registry_names" {
-    description = "Docker registries to use the credentials for (from your ~/.docker/config.json)"
-    type = list(string)
-}
-
-# Remote state
-variable "remote_state_s3_bucket" {
-    description = "The bucket to read the remote state from"
-    type = string
-}
-variable "remote_state_infrastructure" {
-    description = "Path to the state file in the bucket"
-    type = string
-}
-
 ```
 
 
 
-
-
-# 04-playground-deploy-aws/targets/infrastructure
-
-
-# 04-playground-deploy-aws/targets/infrastructure/main.tf
+# 04-playground-deploy-aws/modules/app-docker-image/main.tf
 
 ```terraform
-# This module will bring the infrastructure up
-# * Create an EC2 server
-# * Create an RDS Postgres database
-
-# First run: init S3 bucket for renote state:
-#   $ terraform -chdir targets/infrastructure init -backend=false
-#   $ terraform -chdir targets/infrastructure apply -target=module.remote_state
-#   $ terraform -chdir targets/infrastructure init -reconfigure
-# Now feel free to:
-#   $ terraform apply
+# This module will:
+# * Init an ECR registry
+# * Pull image from a registry using local Docker
+# * Push image to ECR
 #
-# Make sure you have the environment configured:
-#   $ export AWS_REGION="us-west-2"
-#   $ export AWS_ACCESS_KEY_ID="anaccesskey"
-#   $ export AWS_SECRET_ACCESS_KEY="asecretkey"
+# Example workflow:
+# * ECR registry: 123456.dkr.ecr.eu-central-1.amazonaws.com/playground/app
+# * Source image: ghcr.io/company/app:main
+# * Intermediate ECR image: 123456.dkr.ecr.eu-central-1.amazonaws.com/playground/app:main
 
 
-# Create the server and its network
-module "server" {
-    source = "./../../modules/server-with-network"
 
-    # NOTE: we do not need to initialize providers within a module:
-    # because providers from the root module propagate into other modules!
-    project_name = var.project_name
-    server_name = var.project_name
-    server_open_ports = var.server_open_ports
 
-    # The SSH public key we want to use for it
-    ssh_public_key_file = pathexpand("~/.ssh/id_rsa.pub")
+# Create the intermediate ECR registry
+# Note that one ECR can contain only one Docker image, so we create an ECR for the image
+module "ecr_registry" {
+  source = "./ecr-docker-registry"
+
+  registry_name = var.target_ecr_image_name
+  registry_aws_iam_arns = {
+    push_users = var.ecr_registry_permissions.push_users
+    pull_servers = var.ecr_registry_permissions.pull_servers
+  }
 }
 
 
-# Create a database
-module "db_postgres" {
-    source = "./../../modules/server-rds-postgres"
 
-    # Put it into the same subnets the server is in
-    # NOTE: AWS requires that an RDS instance is in at least 2 availability zone subnets!
-    project_name = var.project_name
-    vpc_id = module.server.vpc_id
-    subnet_ids = module.server.vpc_server_subnet_ids
 
-    # Experimental.
-    # Postgres needs a server for GoCloud to use as a proxy. If the server's missing, we can't connect.
-    depends_on = [module.server]
+
+# Pull local image ("src") and push it to the intermediate ECR repository ("dst")
+
+# Get the latest image id from the source
+data "docker_registry_image" "source_image" {
+  provider = docker.local
+
+  # The image to check
+  name = var.docker_image
+}
+
+
+# Source: pull this image every time it's updated
+# "docker_image": Pulls a Docker image to a given Docker host from a Docker Registry.
+resource "docker_image" "pulled_source_image" {
+  # Find and download this image
+  provider = docker.local
+
+  # The image to pull
+  name = data.docker_registry_image.source_image.name
+
+  # Keep the image up to date on the latest available version
+  pull_triggers = [data.docker_registry_image.source_image.sha256_digest]
+
+  # README: you can also use this resource to build an image. See `build`
+}
+
+locals {
+  # ECR will have the same docker image tag as the source image
+  # I.e. if it had ":main", the ECR image will also have ":main"
+  ecr_docker_image_tag = split(":", data.docker_registry_image.source_image.name)[1]
+}
+
+# Retag the image: it will bear the name of the target registry.
+# The name of the image defines which registry it will go to!
+resource "docker_tag" "dst_ecr_image_tag" {
+  provider = docker.local
+
+  # Retag the image
+  source_image = docker_image.pulled_source_image.image_id
+  target_image = "${module.ecr_registry.docker_registry_url}:${local.ecr_docker_image_tag}"
+}
+
+
+# Target: Push it
+# "docker_registry_image": Manage an image: e.g. push
+resource "docker_registry_image" "dst_ecr_image" {
+  # Push this image
+  provider = docker.local
+  name = docker_tag.dst_ecr_image_tag.target_image
+
+  # On change, force push. Can be used to repush a local image (e.g. tag updated)
+  triggers = {
+    "sha256" : docker_tag.dst_ecr_image_tag.source_image_id
+  }
 }
 
 ```
 
 
 
-# 04-playground-deploy-aws/targets/infrastructure/outputs.tf
+# 04-playground-deploy-aws/modules/app-docker-image/outputs.tf
 
 ```terraform
-# Server IP
-output "server_public_ip" {
-    description = "Server IP address. You can SSH into it."
-    value = module.server.server_public_ip
+output "pushed_image_id" {
+    description = "Image id that we've deployed"
+    # Image hash.
+    # Example: "sha256:c5750c07180a4b35d0933f863c815d91fadd0664fbf2256f8c95ac8eae485d98"
+    value = docker_image.pulled_source_image.image_id
 }
 
-# Server SSH user
-output "server_ssh_user" {
-    description = "Server SSH user"
-    value = module.server.server_ssh_user
+output "pushed_image_name" {
+    description = "Pushed image name in the ECR repository"
+    # Image name.
+    # Example: "123456.dkr.ecr.eu-central-1.amazonaws.com/playground/app:main"
+    value = docker_registry_image.dst_ecr_image.name
 }
 
-# Database internal connection URL
-output "postgres_psql_root" {
-    description = "Postgres root user connection URL: postgres://user:pass@host:post/db"
-    value = module.db_postgres.psql_internal_url
+
+# Docker registry URL.
+# You will need it to configure Docker pulling with provider "docker" { registry_auth { ... } }
+output "docker_registry_url" {
+    description = "Docker URL for this ECR registry"
+    value = module.ecr_registry.docker_registry_url
+}
+
+```
+
+
+
+
+
+# 04-playground-deploy-aws/modules/app-setup-database
+
+
+# 04-playground-deploy-aws/modules/app-setup-database/terraform.tf
+
+```terraform
+terraform {
+    required_providers {
+        postgresql = {
+            source = "cyrilgdn/postgresql"
+            version = "~> 1.18"
+        }
+    }
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/modules/app-setup-database/variables.tf
+
+```terraform
+# DB connection to manage
+variable "postgres_url" {
+    type = string
+    description = "The DB to manage. Postgres connection url: postgres://user:password@host:port/. Provide AWS Instance URL"
+}
+
+
+# Project name. Used as DB name
+variable "project_name" {
+    type = string
+    description = "Name of the project. Will be used as DB name"
+
+    validation {
+        condition = lower(var.project_name) == var.project_name
+        error_message = "Project name must be lowercase"
+    }
+}
+
+# Application names.
+# Every application gets their own login.
+variable "applications" {
+    type = list(string)
+    description = "List of application names that will use the DB with their own accounts"
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/modules/app-setup-database/main.tf
+
+```terraform
+# This module will initialize the database for the app.
+# It can connect directly to AWS RDS instances (!)
+#
+# It will create:
+# * A database, named `var.project_name`
+# * A user who owns this database, with the same name
+# * A root user: `<database>-root`
+# * For every application, a separate user with ALL permissions: `<database>-<application>`
+
+
+# Database for the app
+resource "postgresql_database" "app" {
+  name = var.project_name  # db name
+  owner = postgresql_role.owner.name  # only owner can drop it
+}
+
+
+
+
+# Root role: owns the database.
+# Only they can make changes
+resource "postgresql_role" "owner" {
+  name = var.project_name
+}
+
+# Root user. Only they can make changes to the schema: e.g. migrations
+resource "postgresql_role" "root_user" {
+  name = "${var.project_name}-root"
+  password = "${var.project_name}-root"
+  roles = [postgresql_role.owner.name]
+  login = true
+}
+
+
+
+
+# Application user: the application will use it to make queries.
+# Separate user for every app is convenient in terms of logging & monitoring
+resource "postgresql_role" "app_users" {
+  name = "${var.project_name}-${each.value}"
+  password = "${var.project_name}-${each.value}"  # TODO: perhaps a better password?
+  login = true
+
+  # Generate a user for every app
+  for_each = toset(var.applications[*])
+}
+
+# Grant ALL privileges on this database
+resource "postgresql_grant" "app_user_grants" {
+  role = each.value
+  object_type = "database"
+  database = postgresql_database.app.name
+  privileges = ["ALL"]
+
+  # Generate a grant for every user
+  for_each = toset([for user in postgresql_role.app_users: user.name])
+
+  # Postgres provider doesn't like `privileges = ALL`:
+  # every time it things that it changed to "CONNECT", "CREATE", "TEMPORARY"
+  # Let's ignore it. Because it's already "ALL": can't get any bigger that this.
+  lifecycle {
+    ignore_changes = [privileges]  # Ignore changes to this attribute
+  }
+}
+
+
+
+
+
+
+
+# Init provider: where to connect to?
+provider "postgresql" {
+    # use GoCloud to connect to AWS RDS instances (!)
+    # Set endpoint value: host = "instance.xxx.region.rds.amazonaws.com"
+    scheme   = "awspostgres"
+
+    # This may workaround some issues with "Error: error detecting capabilities: error PostgreSQL version"
+    # If it does not help, try: `$ terraform state rm 'module.app-setup-database.postgresql_database.app'`
+    # expected_version = "15.2"
+
+    # In Amazon RDS, we're not a superuser. Set to `false`: otherwise this error comes up:
+    # > could not read role password from Postgres as connected user postgres is not a SUPERUSER
+    superuser = false
+
+    # Connect to
+    host            = local.db_url.host
+    port            = local.db_url.port
+    username        = local.db_url.username
+    password        = local.db_url.password
+
+    # Timeout is small because we're fast :)
+    connect_timeout = 15
+}
+
+
+
+
+locals {
+  # Parse DB URL into an object: username, password, host, port[, database]
+  db_url = regex(join("", [
+      "(?:postgres|postgresql)?://?",  # postgres://, postgresql:/
+      "(?P<username>.+?)", ":(?P<password>.+?)@",  # user:password@
+      "(?P<host>.+?)", ":(?P<port>\\d+)", # host:port
+      "(?:/(?P<database>.+))?",  # optional: /database
+    ]), var.postgres_url)
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/modules/app-setup-database/outputs.tf
+
+```terraform
+
+# Root user
+output "psql_root" {
+    description = "Postgres connection URL: connect as root user (to run migrations)"
+    value = format(
+        "postgresql://%s:%s@%s:%s/%s",
+        postgresql_role.root_user.name, postgresql_role.root_user.password,
+        local.db_url.host, local.db_url.port,
+        postgresql_database.app.name
+    )
     sensitive = true
 }
 
 
-# Passthough some variables: just store them
-
-# Project name
-output "project_name" {
-    description = "Project name (passthrough)"
-    value = var.project_name
-}
-
-
-```
-
-
-
-# 04-playground-deploy-aws/targets/infrastructure/terraform.tf
-
-```terraform
-terraform {
-  required_version = "~> 1.3.9"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 4.57"
+# Application users
+output "psql_applications" {
+    description = "Postgres connection URL: for each of your applications"
+    value = {
+        for app_name, app_user in postgresql_role.app_users:
+            app_name => format(
+                "postgresql://%s:%s@%s:%s/%s",
+                app_user.name, app_user.password,
+                local.db_url.host, local.db_url.port,
+                postgresql_database.app.name
+            )
     }
-    docker = {
-      source = "kreuzwerker/docker"
-      version = "~> 3.0"
-    }
-  }
-
-  # Save Terraform state into AWS S3
-  # This makes the state shared. Allows to break everything into sub-modules.
-  backend "s3" {
-    # NOTE: Terraform will ask this value interactively!
-    # You get it after you run the "init" target that creates a bucket for you.
-    # bucket = "tfstate-2023..."
-
-    key    = "playground/infrastructure"
-    region = "eu-central-1"
-  }
-}
-
-provider "aws" {
-  # The region to use
-  region = "eu-central-1"
-
-  # Access key can be provided here
-  # access_key = "my-access-key"
-  # secret_key = "my-secret-key"
-
-  # The provider can use credentials from ~/.aws/credentials and ~/.aws/config:
-  # profile = "default"  # default profile name (from the credentials file)
-
-  # Environment config:
-  # $ export AWS_REGION="us-west-2"
-  # $ export AWS_ACCESS_KEY_ID="anaccesskey"
-  # $ export AWS_SECRET_ACCESS_KEY="asecretkey"
-
-  # Environment, use config file:
-  # $ export AWS_CONFIG_FILE=~/.aws/config
-  # $ export AWS_SHARED_CREDENTIALS_FILE=~/.aws/credentials
-  # $ export AWS_PROFILE="default"
-
-  # If provided with a role ARN, assume this role
-  # See blocks: `assume_role`, `assume_role_with_web_identity`,
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/targets/infrastructure/variables.tf
-
-```terraform
-
-# NOTE: if you're tired of entering the same variables every time,
-# export them as environment variables:
-#
-#   TF_VAR_project_name=playground
-#   TF_VAR_server_open_ports=[80,443,8080]
-#
-# Or use -var-file
-#   $ terraform -chdir targets/infrastructure apply -var-file=../../playground.tfvars
-
-variable "project_name" {
-    description = "Name of the project to use. Lowercase."
-    type = string
-}
-
-variable "server_open_ports" {
-    description = "Ports to keep open on the server. Example: [22, 80, 443]"
-    type = list(number)
-}
-
-```
-
-
-
-
-
-# 04-playground-deploy-aws/targets/init
-
-
-# 04-playground-deploy-aws/targets/init/main.tf
-
-```terraform
-# This module will INITIALIZE the workflow:
-# it will create an S3 bucket to store youre remote state
-
-
-
-# NOTE and TODO:
-# Because Terraform stores outputs into state, we may actually use this module as an INTERACTIVE MODULE
-# that asks all the parameters from you ONCE, and then we just use its state as variable storage.
-# This may be fun, but a `*.tfvars` file is definitely easier to support :) So we don't.
-#
-# However, some, just some, parameters may be stored here alright.
-
-
-
-# Create an S3 bucket to store remote state
-resource "aws_s3_bucket" "terraform_state" {
-  bucket_prefix = "tfstate-"
-
-  # Prevent accidental removal
-  lifecycle {
-    prevent_destroy = true
-  }
-
-  tags = { Name = "Terraform State" }
-}
-
-# Configure versioning
-resource "aws_s3_bucket_versioning" "terraform_state" {
-    bucket = aws_s3_bucket.terraform_state.id
-
-    versioning_configuration {
-      status = "Enabled"
-    }
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/targets/init/output.tf
-
-```terraform
-# Path to the S3 bucket used for storing tfstates
-output "s3_backend" {
-    description = "Terraform tfstate backend storage to use with other targets"
-    value = aws_s3_bucket.terraform_state.id
-}
-
-
-```
-
-
-
-# 04-playground-deploy-aws/targets/init/terraform.tf
-
-```terraform
-terraform {
-  required_version = "~> 1.3.9"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 4.57"
-    }
-
-  }
-}
-
-provider "aws" {
-  region = "eu-central-1"
+    sensitive = true
 }
 
 ```
