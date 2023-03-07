@@ -23,6 +23,8 @@ def main(files: list[str]):
                 md_highlight = {
                     '.tf': 'terraform',
                     '.tfvars': 'terraform',
+                    '.sh': 'bash',
+                    '.toml': 'toml',
                 }[file.suffix]
 
 

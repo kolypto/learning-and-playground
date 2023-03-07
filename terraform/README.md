@@ -1276,6 +1276,45 @@ terraform {
 
 
 # 04-playground-deploy-aws
+# AWS Deployed Application
+
+Layout:
+
+* `./modules` are modules for include. Don't use.
+* `./targets` is where you run Terraform apply
+
+Targets:
+
+Create the S3 bucket for configuration storage backend:
+
+```console
+$ terraform -chdir targets/init init
+$ terraform -chdir targets/init apply
+```
+
+Init the infrastructure. Give it the name of the bucket you've just created:
+
+
+```console
+$ terraform -chdir targets/infrastructure init
+$ terraform -chdir targets/infrastructure apply
+```
+
+Deploy or reploy the app:
+
+```console
+$ terraform -chdir targets/app init
+$ terraform -chdir targets/app apply
+```
+
+See `*.tfvars` files: an easy DRY:
+
+```console
+$ terraform -chdir targets/app init -backend-config=../../backend.tfvars
+$ terraform -chdir targets/app apply -var-file=../../app.tfvars
+```
+
+
 
 
 # 04-playground-deploy-aws/app.tfvars
@@ -1576,6 +1615,43 @@ output "project_name" {
 # 04-playground-deploy-aws/modules/server-with-network
 
 
+# 04-playground-deploy-aws/modules/server-with-network/variables.tf
+
+```terraform
+# Your public key file.
+# You will use it to SSH into the server.
+variable "ssh_public_key_file" {
+    type        = string
+    description = "SSH public key to add to the instance. You will use it to SSH into it."
+    default     = "~/.ssh/id_rsa.pub"
+}
+
+
+# Project name
+variable "project_name" {
+    type = string
+    description = "Name of the project. Networks will have it."
+}
+
+
+
+# Server name
+variable "server_name" {
+    type = string
+    description = "Name of the server. Object names will depend on it"
+}
+
+
+# Server: open ports
+variable "server_open_ports" {
+    type = list(number)
+    description = "The list of ports to keep open (via AWS security group rules)"
+}
+
+```
+
+
+
 # 04-playground-deploy-aws/modules/server-with-network/main.tf
 
 ```terraform
@@ -1706,38 +1782,13 @@ data "aws_ami" "linux" {
 
 
 
-# 04-playground-deploy-aws/modules/server-with-network/variables.tf
+# 04-playground-deploy-aws/modules/server-with-network/template.server-init.sh
 
-```terraform
-# Your public key file.
-# You will use it to SSH into the server.
-variable "ssh_public_key_file" {
-    type        = string
-    description = "SSH public key to add to the instance. You will use it to SSH into it."
-    default     = "~/.ssh/id_rsa.pub"
-}
-
-
-# Project name
-variable "project_name" {
-    type = string
-    description = "Name of the project. Networks will have it."
-}
-
-
-
-# Server name
-variable "server_name" {
-    type = string
-    description = "Name of the server. Object names will depend on it"
-}
-
-
-# Server: open ports
-variable "server_open_ports" {
-    type = list(number)
-    description = "The list of ports to keep open (via AWS security group rules)"
-}
+```bash
+#!/bin/bash
+sudo apt-get update -yq
+sudo apt-get install -yq --no-install-recommends docker.io
+sudo adduser admin docker
 
 ```
 
@@ -2998,158 +3049,55 @@ variable "remote_state_infrastructure" {
 
 
 
-# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik
+# 04-playground-deploy-aws/targets/app/app-docker-containers
 
 
-# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/main.tf
-
-```terraform
-# This module will start Traefik container
-
-
-# Traefik container
-resource "docker_container" "traefik" {
-  image      = docker_image.traefik.image_id
-  name       = "traefik"
-
-  logs = true
-  wait = false  # TODO: `wait = true` segfaults. Change to `true` when a new version comes out.
-  must_run = true
-  restart = "on-failure"
-  max_retry_count = 3
-
-  # HTTP, HTTPS ports
-  ports {
-    internal = 80
-    external = 80
-  }
-  ports {
-    internal = 443
-    external = 443
-  }
-  # MQTT port
-  ports {
-    internal = 8883
-    external = 8883
-  }
-  # Traefik manager
-  ports {
-    internal = 8080
-    external = 8080
-  }
-
-  # command = [
-  #   "--log.level=DEBUG",
-  #   "--api.insecure=true",
-  #   "--providers.docker=true",
-  #   "--providers.docker.exposedbydefault=false",
-  #   "--entrypoints.http.address=:80",
-  #   "--entrypoints.https.address=:443",
-  #   # "--entrypoints.web.http.redirections.entrypoint.to=websecure",
-  #   # "--entrypoints.web.http.redirections.entrypoint.scheme=https",
-  #   "--entrypoints.mqtts.address=:8883",
-  #   # "--certificatesresolvers.route53.acme.tlschallenge=true",
-  #   # "--certificatesresolvers.route53.acme.email=root@medthings.no",
-  #   # "--certificatesresolvers.route53.acme.storage=/config/letsencrypt/acme.json",
-  # ]
-
-  # Configure
-  upload {
-    content = templatefile("${path.module}/template.traefik.toml", {})
-    file = "/etc/traefik/traefik.toml"
-  }
-
-  # Network
-  networks_advanced {
-    name = docker_network.traefik.name
-  }
-
-  # Mount a volume: /config/letsencrypt will contain LetsEncrypt HTTPS certificates
-  volumes {
-    container_path = "/config"
-    volume_name    = docker_volume.traefik_config.name
-  }
-
-  # Bind mount the Docker socket: give Traefik access to local Docker
-  mounts {
-    source    = "/var/run/docker.sock"
-    target    = "/var/run/docker.sock"
-    type      = "bind"
-    read_only = true
-  }
-}
-
-
-# Create a network for traefik
-resource "docker_network" "traefik" {
-  # Network name
-  name = "traefik"
-
-  # TODO: ?
-  ipam_config {
-    gateway = "172.20.0.1"
-    subnet  = "172.20.0.0/16"
-  }
-}
-
-
-# Pull Traefik image
-resource "docker_image" "traefik" {
-  name = var.traefik_docker_image
-}
-
-
-# Create a volume for persistent config.
-# Letsencrypt certificates will be put here.
-resource "docker_volume" "traefik_config" {
-  name = "traefik-config"
-}
-
-```
-
-
-
-# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/outputs.tf
-
-```terraform
-output "traefik_network_name" {
-    description = "Traefik Docker network name. Use in networks_advanced { name }"
-    value = docker_network.traefik.name
-}
-```
-
-
-
-# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/terraform.tf
+# 04-playground-deploy-aws/targets/app/app-docker-containers/terraform.tf
 
 ```terraform
 terraform {
   required_providers {
     docker = {
       source = "kreuzwerker/docker"
+      version = "~> 3.0"
     }
   }
 }
 
 
-```
 
+# The Docker daemon running on the remote server
+provider "docker" {
+    # Docker host: connect to Docker via SSH
+    host = var.server_ssh_connection_url
+    ssh_opts = ["-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null"]
 
+    # How to authenticate into the Docker registry?
+    registry_auth {
+        # Auth using config file (default)
+        # You can also use: $DOCKER_CONFIG to provide a different Docker config
+        # You can also use: $DOCKER_REGISTRY_USER, $DOCKER_REGISTRY_PASS
+        address = var.docker_registry_address
+    }
 
-# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/variables.tf
-
-```terraform
-variable "traefik_docker_image" {
-    description = "Traefik Docker image to run"
-    type = string
+    # # Examples:
+    # registry_auth {
+    #     # Example: config file auth
+    #     # NOTE: credentials from the config file have precedence! They will override any login/passwords!
+    #     address     = "registry-1.docker.io"
+    #     config_file = pathexpand("~/.docker/config.json") # Or use: `config_file_content`
+    # }
+    # registry_auth {
+    #     # Example: username/password auth
+    #     # You can also use: $DOCKER_REGISTRY_USER, $DOCKER_REGISTRY_PASS
+    #     address  = "quay.io:8181"
+    #     username = "someuser"
+    #     password = "somepass"
+    # }
 }
+
 ```
 
-
-
-
-
-# 04-playground-deploy-aws/targets/app/app-docker-containers
 
 
 # 04-playground-deploy-aws/targets/app/app-docker-containers/main.tf
@@ -3275,54 +3223,6 @@ data "docker_network" "bridge" {
 
 
 
-# 04-playground-deploy-aws/targets/app/app-docker-containers/terraform.tf
-
-```terraform
-terraform {
-  required_providers {
-    docker = {
-      source = "kreuzwerker/docker"
-      version = "~> 3.0"
-    }
-  }
-}
-
-
-
-# The Docker daemon running on the remote server
-provider "docker" {
-    # Docker host: connect to Docker via SSH
-    host = var.server_ssh_connection_url
-    ssh_opts = ["-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null"]
-
-    # How to authenticate into the Docker registry?
-    registry_auth {
-        # Auth using config file (default)
-        # You can also use: $DOCKER_CONFIG to provide a different Docker config
-        # You can also use: $DOCKER_REGISTRY_USER, $DOCKER_REGISTRY_PASS
-        address = var.docker_registry_address
-    }
-
-    # # Examples:
-    # registry_auth {
-    #     # Example: config file auth
-    #     # NOTE: credentials from the config file have precedence! They will override any login/passwords!
-    #     address     = "registry-1.docker.io"
-    #     config_file = pathexpand("~/.docker/config.json") # Or use: `config_file_content`
-    # }
-    # registry_auth {
-    #     # Example: username/password auth
-    #     # You can also use: $DOCKER_REGISTRY_USER, $DOCKER_REGISTRY_PASS
-    #     address  = "quay.io:8181"
-    #     username = "someuser"
-    #     password = "somepass"
-    # }
-}
-
-```
-
-
-
 # 04-playground-deploy-aws/targets/app/app-docker-containers/variables.tf
 
 ```terraform
@@ -3355,6 +3255,182 @@ variable "app_database_urls" {
     type = object({
         goserver = string
     })
+}
+```
+
+
+
+
+
+# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik
+
+
+# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/terraform.tf
+
+```terraform
+terraform {
+  required_providers {
+    docker = {
+      source = "kreuzwerker/docker"
+    }
+  }
+}
+
+
+```
+
+
+
+# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/variables.tf
+
+```terraform
+variable "traefik_docker_image" {
+    description = "Traefik Docker image to run"
+    type = string
+}
+```
+
+
+
+# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/main.tf
+
+```terraform
+# This module will start Traefik container
+
+
+# Traefik container
+resource "docker_container" "traefik" {
+  image      = docker_image.traefik.image_id
+  name       = "traefik"
+
+  logs = true
+  wait = false  # TODO: `wait = true` segfaults. Change to `true` when a new version comes out.
+  must_run = true
+  restart = "on-failure"
+  max_retry_count = 3
+
+  # HTTP, HTTPS ports
+  ports {
+    internal = 80
+    external = 80
+  }
+  ports {
+    internal = 443
+    external = 443
+  }
+  # MQTT port
+  ports {
+    internal = 8883
+    external = 8883
+  }
+  # Traefik manager
+  ports {
+    internal = 8080
+    external = 8080
+  }
+
+  # command = [
+  #   "--log.level=DEBUG",
+  #   "--api.insecure=true",
+  #   "--providers.docker=true",
+  #   "--providers.docker.exposedbydefault=false",
+  #   "--entrypoints.http.address=:80",
+  #   "--entrypoints.https.address=:443",
+  #   # "--entrypoints.web.http.redirections.entrypoint.to=websecure",
+  #   # "--entrypoints.web.http.redirections.entrypoint.scheme=https",
+  #   "--entrypoints.mqtts.address=:8883",
+  #   # "--certificatesresolvers.route53.acme.tlschallenge=true",
+  #   # "--certificatesresolvers.route53.acme.email=root@medthings.no",
+  #   # "--certificatesresolvers.route53.acme.storage=/config/letsencrypt/acme.json",
+  # ]
+
+  # Configure
+  upload {
+    content = templatefile("${path.module}/template.traefik.toml", {})
+    file = "/etc/traefik/traefik.toml"
+  }
+
+  # Network
+  networks_advanced {
+    name = docker_network.traefik.name
+  }
+
+  # Mount a volume: /config/letsencrypt will contain LetsEncrypt HTTPS certificates
+  volumes {
+    container_path = "/config"
+    volume_name    = docker_volume.traefik_config.name
+  }
+
+  # Bind mount the Docker socket: give Traefik access to local Docker
+  mounts {
+    source    = "/var/run/docker.sock"
+    target    = "/var/run/docker.sock"
+    type      = "bind"
+    read_only = true
+  }
+}
+
+
+# Create a network for traefik
+resource "docker_network" "traefik" {
+  # Network name
+  name = "traefik"
+
+  # TODO: ?
+  ipam_config {
+    gateway = "172.20.0.1"
+    subnet  = "172.20.0.0/16"
+  }
+}
+
+
+# Pull Traefik image
+resource "docker_image" "traefik" {
+  name = var.traefik_docker_image
+}
+
+
+# Create a volume for persistent config.
+# Letsencrypt certificates will be put here.
+resource "docker_volume" "traefik_config" {
+  name = "traefik-config"
+}
+
+```
+
+
+
+# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/template.traefik.toml
+
+```toml
+[log]
+    level = "DEBUG"
+
+[entryPoints]
+    [entryPoints.web]
+        address = ":80"
+    [entryPoints.websecure]
+        address = ":443"
+    [entryPoints.mqqts]
+        address = ":8883"
+
+[api]
+insecure = true
+dashboard = true
+
+[providers.docker]
+exposedByDefault = false
+
+```
+
+
+
+# 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/outputs.tf
+
+```terraform
+output "traefik_network_name" {
+    description = "Traefik Docker network name. Use in networks_advanced { name }"
+    value = docker_network.traefik.name
 }
 ```
 
