@@ -2,7 +2,7 @@ SHELL=/bin/bash
 
 all: README.md
 
-SOURCES=$(shell find */ -name '*.tf' -o -name '*.tfvars')
+SOURCES=$(shell find */ -type f -not -path "*/.*")
 
 README.md-files: ${SOURCES}
 	find */ -name '*.tf' -o -name '*.tfvars' | sort > README.md-files
