@@ -3303,6 +3303,13 @@ variable "server_open_ports" {
 
 
 
+# NOTE and TODO:
+# Because Terraform stores outputs into state, we may actually use this module as an INTERACTIVE MODULE
+# that asks all the parameters from you ONCE, and then we just use its state as variable storage.
+# This may be fun, but a `*.tfvars` file is definitely easier to support :) So we don't.
+
+
+
 # Create an S3 bucket to store remote state
 resource "aws_s3_bucket" "terraform_state" {
   bucket_prefix = "tfstate-"
