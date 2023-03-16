@@ -36,9 +36,12 @@
 04-playground-deploy-aws/modules/server-with-network/network-securitygroups.tf
 04-playground-deploy-aws/modules/server-with-network/network.tf
 04-playground-deploy-aws/modules/server-with-network/outputs.tf
+04-playground-deploy-aws/modules/server-with-network/template.server-init.sh
 04-playground-deploy-aws/modules/server-with-network/variables.tf
+04-playground-deploy-aws/README.md
 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/main.tf
 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/outputs.tf
+04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/template.traefik.toml
 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/terraform.tf
 04-playground-deploy-aws/targets/app/app-docker-containers/container-traefik/variables.tf
 04-playground-deploy-aws/targets/app/app-docker-containers/main.tf

@@ -2665,32 +2665,23 @@ resource "docker_container" "app" {
         name = module.traefik.traefik_network_name
     }
 
-    labels {
-        label = "traefik.enable"
-        value = "true"
+    # Generate label{} blocks for every Traefik label
+    dynamic "labels" {
+        for_each = {
+            "traefik.enable": "true",
+            "traefik.http.routers.api.rule": "PathPrefix(`/api/v1`)",
+            "traefik.http.routers.playground.entrypoints": "http",
+            # "traefik.http.routers.playground.tls.certresolver": "route53",
+            # # By default, Traefik uses the first exposed port of a container.
+            # # Use "traefik.http.services.xxx.loadbalancer.server.port" to override this behavior
+            # "traefik.http.services.playground.loadbalancer.server.port": "8888",
+
+        }
+        content {
+            label = labels.key
+            value = labels.value
+        }
     }
-
-    labels {
-        label = "traefik.http.routers.api.rule"
-        value = "PathPrefix(`/api/v1`)"
-    }
-
-    labels {
-        label = "traefik.http.routers.playground.entrypoints"
-        value = "http"
-    }
-
-    # labels {
-    #     label = "traefik.http.routers.playground.tls.certresolver"
-    #     value = "route53"
-    # }
-
-    # # By default, Traefik uses the first exposed port of a container.
-    # # Use "traefik.http.services.xxx.loadbalancer.server.port" to override this behavior
-    # labels {
-    #     label = "traefik.http.services.playground.loadbalancer.server.port"
-    #     value = "8888"
-    # }
 }
 
 
