@@ -1788,6 +1788,15 @@ resource "aws_instance" "server" {
     #     }
     # }
 
+    # Custom MOTD: users will see this when the SSH
+    provisioner "file" {
+        destination = "/etc/motd"
+        content = <<-EOF
+            ########## WARNING WARNING WARNING ##########
+                THIS IS A PRODUCTION SERVER
+            ########## WARNING WARNING WARNING ##########
+        EOF
+    }
 }
 
 
