@@ -1,0 +1,36 @@
+version: '3'
+
+services:
+
+  # Edge router
+  # This is the only container that has published ports.
+  traefik:
+    image: traefik:v2.9
+
+    ports:
+      # Incoming requests
+      - "80:80"
+      # Web UI (enabled by --api.insecure=true)
+      - "8080:8080"
+
+    # Listed to Docker.
+    # Enable Web UI
+    command: --api.insecure=true --providers.docker
+
+    volumes:
+      # Listen to Docker daemon
+      - /var/run/docker.sock:/var/run/docker.sock
+
+
+  # Services
+
+  # Whoami: 
+  #   When Host = whoami.localhost
+  #   Echo IP address
+  whoami:
+    # Whoami: shows its IP address
+    image: traefik/whoami
+    labels:
+      # Define: http.router: name="whoami"
+      # Rule: Hostname match: "whoami.localhost"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.localhost`)"
