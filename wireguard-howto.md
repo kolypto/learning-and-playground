@@ -14,31 +14,31 @@ $ sudo apt install docker.io
 $ mkdir -p ~/wireguard/config
 $ cd ~/wireguard/
 $ cat <<EOF > docker-compose.yml
-version: "2.1"
+version: "3.8"
 services:
   wireguard:
-    image: lscr.io/linuxserver/wireguard
+    image: linuxserver/wireguard
     container_name: wireguard
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
     environment:
       # Set your server hostname. It must be accessible from the Internet
-      - SERVERURL=82.146.56.135
+      - SERVERURL=78.153.130.167
       - SERVERPORT=51820
       # List: names of users to generate accounts for
       # Alternative: write '10' to generate 10 accounts without names
       - PEERS=10
       - PEERDNS=auto
       # Process and network
-      - PUID=$UID
-      - PGID=$UID
+      - PUID=${UID}
+      - PGID=${UID}
       - TZ=Europe/Moscow
       - INTERNAL_SUBNET=10.13.13.0
       - ALLOWEDIPS=0.0.0.0/0
     volumes:
       # Replaces $USER with your home folder
-      - /home/$USER/wireguard/config:/config
+      - /home/${USER}/wireguard/config:/config
       - /lib/modules:/lib/modules
     ports:
       - 51820:51820/udp
