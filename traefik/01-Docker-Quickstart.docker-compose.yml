@@ -12,10 +12,16 @@ services:
       - "80:80"
       # Web UI (enabled by --api.insecure=true)
       - "8080:8080"
+      # HUB
+      - "8000:8000"
+      - "9900:9900"
 
     # Listed to Docker.
-    # Enable Web UI
-    command: --api.insecure=true --providers.docker
+    # Enable Web UI (port 8080)
+    # Enable experimental HUB (port 9900)
+    command: >
+      --providers.docker --api.insecure=true 
+      --experimental.hub --hub.tls.insecure --metrics.prometheus.addrouterslabels
 
     volumes:
       # Listen to Docker daemon
