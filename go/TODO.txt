@@ -45,6 +45,11 @@ Dependency Injection:
     https://github.com/uber-go/fx
     https://github.com/uber-go/dig
 
+JSON get:
+    https://github.com/tidwall/gjson
+    https://github.com/Jeffail/gabs
+    https://github.com/thedevsaddam/gojsonq
+
 GUI:
     List: Native GUI & HTML GUI bindings: https://github.com/go-graphics/go-gui-projects
 
