@@ -38,6 +38,14 @@ class MyApp extends StatelessWidget {
 class MyAppState extends ChangeNotifier {
   // Random word pair
   var current = WordPair.random();
+
+  // Behavior: get a new word
+  void getNext() {
+    current = WordPair.random();
+
+    // notify everyone listening to changes
+    notifyListeners();
+  }
 }
 
 // A Widget
@@ -49,6 +57,7 @@ class MyHomePage extends StatelessWidget {
     // Tracks changes to the app's state using `watch()`
     var appState = context.watch<MyAppState>();
 
+    // Widget
     return Scaffold(
       // Column: most basic layout widget.
       // Puts children into a column, from top to bottom.
@@ -62,6 +71,8 @@ class MyHomePage extends StatelessWidget {
           ElevatedButton(
               onPressed: () {
                 print('button pressed!');
+                // Get a new pair
+                appState.getNext();
               },
               child: Text('Next'))
         ],
