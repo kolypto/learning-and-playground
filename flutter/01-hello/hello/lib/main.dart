@@ -57,25 +57,75 @@ class MyHomePage extends StatelessWidget {
     // Tracks changes to the app's state using `watch()`
     var appState = context.watch<MyAppState>();
 
+    var pair = appState.current;
+
     // Widget
     return Scaffold(
       // Column: most basic layout widget.
       // Puts children into a column, from top to bottom.
-      body: Column(
-        children: [
-          // Two text elements
-          Text('A random idea:'),
-          Text(appState.current.asLowerCase), // takes an app state
+      body: Center(
+        child: Column(
+          // Centered
+          mainAxisAlignment: MainAxisAlignment.center,
+          // Widgets
+          children: [
+            // Two text elements
+            Text('A random idea:'),
+            BigCard(pair: pair), // takes an app state
 
-          // Add a button
-          ElevatedButton(
-              onPressed: () {
-                print('button pressed!');
-                // Get a new pair
-                appState.getNext();
-              },
-              child: Text('Next'))
-        ],
+            // Space between
+            SizedBox(height: 10),
+
+            // Add a button
+            ElevatedButton(
+                onPressed: () {
+                  print('button pressed!');
+                  // Get a new pair
+                  appState.getNext();
+                },
+                child: Text('Next'))
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Widget: piece of text
+class BigCard extends StatelessWidget {
+  const BigCard({
+    super.key,
+    required this.pair,
+  });
+
+  final WordPair pair;
+
+  @override
+  Widget build(BuildContext context) {
+    // Get theme
+    final theme = Theme.of(context);
+
+    // Improve
+    // `displayMedium` is a large style for display text. For short, important text.
+    final style = theme.textTheme.displayMedium!.copyWith(
+      color: theme.colorScheme.onPrimary,
+    );
+
+    // Added with refactoring: wrap with widget, wrap with padding
+    return Card(
+      // Colorize
+      color: theme.colorScheme.primary,
+      // color: Colors.blue,
+
+      // Children
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Text(
+          pair.asLowerCase,
+          style: style,
+          // For screen readers: make sure that "madcat" is read as "mad cat"
+          semanticsLabel: "${pair.first} ${pair.second}",
+        ),
       ),
     );
   }
