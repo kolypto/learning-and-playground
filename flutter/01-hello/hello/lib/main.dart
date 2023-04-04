@@ -61,7 +61,7 @@ class MyAppState extends ChangeNotifier {
 }
 
 // A Widget
-class MyHomePage extends StatelessWidget {
+class GeneratorPage extends StatelessWidget {
   // build() is called every time the widget's circumstances change.
   // Must return a widget.
   @override
@@ -81,44 +81,42 @@ class MyHomePage extends StatelessWidget {
     }
 
     // Widget
-    return Scaffold(
-      // Column: most basic layout widget.
-      // Puts children into a column, from top to bottom.
-      body: Center(
-        child: Column(
-          // Centered
-          mainAxisAlignment: MainAxisAlignment.center,
-          // Widgets
-          children: [
-            // Two text elements
-            Text('A random idea:'),
-            BigCard(pair: pair), // takes an app state
+    // Column: most basic layout widget.
+    // Puts children into a column, from top to bottom.
+    return Center(
+      child: Column(
+        // Centered
+        mainAxisAlignment: MainAxisAlignment.center,
+        // Widgets
+        children: [
+          // Two text elements
+          Text('A random idea:'),
+          BigCard(pair: pair), // takes an app state
 
-            // Space between
-            SizedBox(height: 10),
+          // Space between
+          SizedBox(height: 10),
 
-            // Buttons row
-            Row(
-              mainAxisSize: MainAxisSize.min, // center
-              children: [
-                ElevatedButton.icon(
-                    icon: Icon(icon),
-                    onPressed: () {
-                      appState.toggleFavorite();
-                    },
-                    label: Text('Like')),
-                ElevatedButton(
+          // Buttons row
+          Row(
+            mainAxisSize: MainAxisSize.min, // center
+            children: [
+              ElevatedButton.icon(
+                  icon: Icon(icon),
                   onPressed: () {
-                    print('button pressed!');
-                    // Get a new pair
-                    appState.getNext();
+                    appState.toggleFavorite();
                   },
-                  child: Text('Next'),
-                ),
-              ],
-            )
-          ],
-        ),
+                  label: Text('Like')),
+              ElevatedButton(
+                onPressed: () {
+                  print('button pressed!');
+                  // Get a new pair
+                  appState.getNext();
+                },
+                child: Text('Next'),
+              ),
+            ],
+          )
+        ],
       ),
     );
   }
@@ -162,4 +160,92 @@ class BigCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// Home screen:
+// LEFT: menu
+// RIGHT: current page
+// Stateful widget: a widget that has State.
+class _MyHomePageState extends State<MyHomePage> {
+  // Current page
+  var selectedIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    // Choose a widget
+    Widget page;
+    switch (selectedIndex) {
+      case 0:
+        page = GeneratorPage();
+        break;
+      case 1:
+        // Placeholder() displays a mock box
+        page = Placeholder();
+        break;
+      // Fail-fast
+      default:
+        throw UnimplementedError('not widget for $selectedIndex');
+    }
+
+    // Builder
+    return LayoutBuilder(
+        // builder() is called every time the constraints change: window resized, phone rotated, a widget grows in size, etc
+        builder: (context, constraints) {
+      // Scaffold
+      return Scaffold(
+        // Row() with two children: SafeArea() and Expanded()
+        body: Row(
+          children: [
+            // SafeArea() ensures that its child is not obscured by a hardware notch or a status bar
+            SafeArea(
+              // NavigationRail()
+              child: NavigationRail(
+                // extended: `true` to show labels next to icons
+                // Depends on "virtual pixels" size
+                extended: constraints.maxWidth >= 600,
+
+                // Destinations
+                destinations: [
+                  NavigationRailDestination(
+                    icon: Icon(Icons.home),
+                    label: Text('Home'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.favorite),
+                    label: Text('Favorites'),
+                  ),
+                ],
+
+                // Current selected destination
+                selectedIndex: selectedIndex, // depends
+                // When selected: do this
+                onDestinationSelected: (value) {
+                  // setState() makes sure that the change is actually recorded
+                  setState(() {
+                    selectedIndex = value;
+                    print('selected: $value');
+                  });
+                },
+              ),
+            ),
+            // Expanded() expresses a layout where a child takes as much of the remaining room as possible
+            Expanded(
+              // Container() is colored
+              child: Container(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                // Child: the current page
+                child: page,
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+}
+
+// MyHomePage widget
+class MyHomePage extends StatefulWidget {
+  @override
+  State<MyHomePage> createState() => _MyHomePageState();
 }
