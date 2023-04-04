@@ -1,3 +1,10 @@
+# Flutter
+
+
+
+
+
+# readme-files
 Flutter
 =======
 
@@ -45,5 +52,83 @@ Create an emulator:
 
 ```console
 $ /opt/android-sdk/cmdline-tools/latest/bin/avdmanager create avd -n PixelXL -d "pixel_xl" --abi google_apis/x86_64 -k "system-images;android-33;google_apis;x86_64"
+```
+
+
+
+
+
+
+# 01-hello/hello/lib
+
+
+# 01-hello/hello/lib/main.dart
+
+```dart
+import 'package:english_words/english_words.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+void main() {
+  // Tell Flutter to run the app
+  runApp(MyApp());
+}
+
+// App: extends StatelessWidget. The app itself is a widget.
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // The state is provided to the app using `ChangeNotifierProvider`: allows any widget to get hold of the state
+    return ChangeNotifierProvider(
+      // Create the app state: the data app needs to function
+      create: (context) => MyAppState(),
+      // The app uses Material
+      child: MaterialApp(
+        // It has a name
+        title: 'Namer App',
+        // Theme settings
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
+        ),
+        // set the "home" widget
+        home: MyHomePage(),
+      ),
+    );
+  }
+}
+
+// App state: the data app needs to function
+// The class extends `ChangeNotifier`: it can notify others about its own changes.
+class MyAppState extends ChangeNotifier {
+  // Random word pair
+  var current = WordPair.random();
+}
+
+class MyHomePage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    var appState = context.watch<MyAppState>();
+
+    return Scaffold(
+      body: Column(
+        children: [
+          Text('A random idea:'),
+          Text(appState.current.asLowerCase),
+
+          // Add a button
+          ElevatedButton(
+              onPressed: () {
+                print('button pressed!');
+              },
+              child: Text('Next'))
+        ],
+      ),
+    );
+  }
+}
+
 ```
 
