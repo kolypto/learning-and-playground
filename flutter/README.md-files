@@ -1,2 +1,4 @@
-readme-files/01-install-flutter.md
+topics/01-install-flutter.md
 01-hello/hello/lib/main.dart
+03-dart/01-main.dart
+03-dart/syntax.md
