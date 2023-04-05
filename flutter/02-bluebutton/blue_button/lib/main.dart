@@ -31,7 +31,8 @@ class MainApp extends StatelessWidget {
 }
 
 sendRequest() async {
-  sendTelegramBotMessage('691814383', ':)'); // Me
+  sendTelegramBotMessage('691814383', 'Джастер получил 🍅'); // Me
+  sendTelegramBotMessage('227429573', 'Держи 🍅'); // Jaster
 }
 
 sendTelegramBotMessage(String chatId, String text) async {
