@@ -103,6 +103,9 @@ import 'dart:html';
 
 // The "package:" scheme specifies libraries provided by a package manager, such as the "pub" tool
 import 'package:test/test.dart';
+
+// Relative import 
+import 'src/foo_bar.dart';
 ```
 
 Library prefix:
@@ -278,3 +281,9 @@ T first<T>(List<T> ts) {
 ```
 
 
+
+TODO: 
+
+* Core libraries: <https://dart.dev/guides/libraries>
+* Packages: <https://dart.dev/guides/packages>
+* Go on
