@@ -38,22 +38,13 @@ class MyScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Material: a canvas on which the UI appears
-    return Material(
+    // We will not use this approach.
+    var oldWidget = Material(
       // Column: top bar + screen space
       child: Column(
         children: [
           // Top bar
-          const TopBar(
-            appTitle: "Example App",
-            actions: [
-              // Passing widgets as arguments is a powerful technique
-              IconButton(
-                icon: Icon(Icons.search),
-                tooltip: "Search",
-                onPressed: null, // TODO: handle
-              ),
-            ],
-          ),
+          const TopBar(title: '...', actions: []),
           // Take all available space
           // NOTE: use "flex: 2" to determine the ratio for multiple Expanded() widgets
           Expanded(
@@ -63,25 +54,53 @@ class MyScaffold extends StatelessWidget {
         ],
       ),
     );
+
+    // Instead of Material(child: Column(...)) we'll use Scaffold:
+    // it's an application template, with: app bar, body, FAB buttons, etc
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Example App"),
+        leading: const IconButton(
+          icon: Icon(Icons.menu),
+          tooltip: "Menu",
+          onPressed: null, // TODO: handle
+        ),
+        actions: const [
+          // Passing widgets as arguments is a powerful technique
+          IconButton(
+            icon: Icon(Icons.search),
+            tooltip: "Search",
+            onPressed: null, // TODO: handle
+          ),
+        ],
+      ),
+      body: HomeScreen(),
+      // FAB button (Floating Action Button)
+      floatingActionButton: FloatingActionButton(
+        tooltip: "Add", // used by screen readers
+        onPressed: null,
+        child: Icon(Icons.add),
+      ),
+    );
   }
 }
 
-// Top bar
-class TopBar extends StatelessWidget {
-  // Fields in a Widget subclass are always marked as "final"
-  final String appTitle;
+// My Top Bar. Unused, because we have `AppBar` :)
+class TopBar extends StatelessWidget implements PreferredSizeWidget {
+  // Fields in tdget subclass are always marked as "final"
+  final String title;
 
   // List of actions
   final List<Widget> actions;
 
-  const TopBar({required this.appTitle, required this.actions});
+  const TopBar({required this.title, required this.actions});
 
   @override
   Widget build(BuildContext context) {
     // Container: the box, sized
     return Container(
       // Height, in logical pixels
-      height: 56,
+      height: 560,
       // Horizontal padding
       padding: const EdgeInsets.symmetric(horizontal: 8),
       // Color: refer to the current theme
@@ -100,8 +119,8 @@ class TopBar extends StatelessWidget {
           // Spacer, title
           Expanded(
             child: Text(
-              // Large text
-              appTitle,
+              targe text
+              title,
               style: Theme.of(context).primaryTextTheme.titleLarge,
             ),
           ),
@@ -112,14 +131,15 @@ class TopBar extends StatelessWidget {
       ),
     );
   }
+
+  @override
+  Size get preferredSize => Size(-1, 56);
 }
 
 // Home page
 class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return const Placeholder(
-      child: Center(child: Text("🍅", style: TextStyle(fontSize: 250))),
-    );
+    return Center(child: Text("🍅", style: TextStyle(fontSize: 250)));
   }
 }
