@@ -605,6 +605,9 @@ import 'dart:html';
 
 // The "package:" scheme specifies libraries provided by a package manager, such as the "pub" tool
 import 'package:test/test.dart';
+
+// Relative import 
+import 'src/foo_bar.dart';
 ```
 
 Library prefix:
@@ -780,4 +783,267 @@ T first<T>(List<T> ts) {
 ```
 
 
+
+TODO: 
+
+* Core libraries: <https://dart.dev/guides/libraries>
+* Packages: <https://dart.dev/guides/packages>
+* Go on
+
+
+
+
+
+# 04-widges/intro_widgets
+# Widgets
+
+## Basic Widgets
+
+* `Text`: styled text
+* `Center`: centers an element in the middle of the screen
+* `Row`, `Column`: flexbox: horizontal and vertical layout directions.
+* `Stack`: lets you place widgets on top of one another. Use `Positioned` to move them
+* `Container`: rectangular visual element, with margins and padding, with constraints, with `BoxDecoration` to color, border, shadow.
+  Matrix 3D transformations are possible too.
+
+## Layout
+
+### Row, Column
+
+`Row` and `Column` occupy different main axes. A `Row`'s main axis is horizontal, and a `Column`'s main axis is vertical.
+
+The `mainAxisSize` determines how much space a `Row`/`Column` can occupy on their main axis.
+Two possible values: `min` (just enough) and `max` (default; all of it).
+
+The `mainAxisAlignment` determines how children are positioned in extra space:
+`start`, `end`, `center`, `spaceBetween` (evenly between), `spaceEvenly` (evenly, before and after too), `spaceAround` (evenly, reduce space before/after by half).
+
+The `crossAxisAlignment` determins positioning on the cross axis:
+`start`, `end`, `center`, `stretch` (stretch children across), `baseline` (aligns by baseline).
+
+### Flexible, Expanded
+
+`Flexible` wraps a widget so it becomes resizable.
+Widgets are resized according to:
+
+* `flex`: the fraction of remaining space it gets
+* `fit`: whether the widget fills all of its extra space: `loose` or `tight`
+
+`Expanded` wraps a widget and fills extra space.
+
+### SizedBox, Spacer
+
+`SizedBox` resizes a widget to a width and height.
+When no widget is provided, it creates empty space.
+
+`Spacer` can also create empty space: it uses "flex", not px.
+
+## Layout Widgets
+
+Standard widgets:
+
+* `Container`: adds paddings/margins, borders, background color, ...
+* `GridView`: scrollable grid (table)
+* `ListView`: scrollable list
+* `Stack`: overlaps widgets on top of another
+
+
+
+
+
+# 04-widges/intro_widgets/lib
+
+
+# 04-widges/intro_widgets/lib/main.dart
+
+```dart
+import 'package:flutter/material.dart';
+
+void main() {
+  // runApp() takes a Widget and makes it the root of a widget tree.
+  // Flutter forces the root widget to cover the screen
+  runApp(const MainApp());
+}
+
+class MainApp extends StatelessWidget {
+  const MainApp({super.key});
+
+  // A widget’s main job is to implement a build() function
+  @override
+  Widget build(BuildContext context) {
+    // Many Material Design widgets need to be inside of a MaterialApp() to display properly:
+    // e.g. inherit theme data
+    //
+    // It also includes `Navigator`: manages stack of widgets identified by "routes".
+    // Navigator lets you transition smoothly between screens of your app.
+    return MaterialApp(
+      // App title: used in the OS task switcher
+      title: "App Title",
+      // Color scheme for the whole app. We'll refer to these colors for text and fill
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+      ),
+      // SafeArea(): make sure it's not covered with a notch or something
+      home: SafeArea(
+        child: MyScaffold(),
+      ),
+    );
+  }
+}
+
+// Scaffold: the "whole" of the application
+class MyScaffold extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // Material: a canvas on which the UI appears
+    // We will not use this approach.
+    var oldWidget = Material(
+      // Column: top bar + screen space
+      child: Column(
+        children: [
+          // Top bar
+          const TopBar(title: '...', actions: []),
+          // Take all available space
+          // NOTE: use "flex: 2" to determine the ratio for multiple Expanded() widgets
+          Expanded(
+            // Default home screen
+            child: HomeScreen(),
+          ),
+        ],
+      ),
+    );
+
+    // Instead of Material(child: Column(...)) we'll use Scaffold:
+    // it's an application template, with: app bar, body, FAB buttons, etc
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Example App"),
+        leading: const IconButton(
+          icon: Icon(Icons.menu),
+          tooltip: "Menu",
+          onPressed: null, // TODO: handle
+        ),
+        actions: const [
+          // Passing widgets as arguments is a powerful technique
+          IconButton(
+            icon: Icon(Icons.search),
+            tooltip: "Search",
+            onPressed: null, // TODO: handle
+          ),
+        ],
+      ),
+      body: HomeScreen(),
+      // FAB button (Floating Action Button)
+      floatingActionButton: FloatingActionButton(
+        tooltip: "Add", // used by screen readers
+        onPressed: null,
+        child: Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+// My Top Bar. Unused, because we have `AppBar` :)
+class TopBar extends StatelessWidget implements PreferredSizeWidget {
+  // Fields in tdget subclass are always marked as "final"
+  final String title;
+
+  // List of actions
+  final List<Widget> actions;
+
+  const TopBar({required this.title, required this.actions});
+
+  @override
+  Widget build(BuildContext context) {
+    // Container: the box, sized
+    return Container(
+      // Height, in logical pixels
+      height: 560,
+      // Horizontal padding
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      // Color: refer to the current theme
+      decoration: BoxDecoration(color: Theme.of(context).primaryColorDark),
+      // Row: horizontal layout
+      child: Row(
+        children: [
+          // Icon
+          // Be sure to add this to pubspec: >> uses-material-design: true
+          const IconButton(
+            icon: Icon(Icons.menu),
+            tooltip: "Menu",
+            onPressed: null, // TODO: handle
+          ),
+
+          // Spacer, title
+          Expanded(
+            child: Text(
+              title,
+              // style: Theme.of(context).primaryTextTheme.titleLarge, // inherited from Scaffold
+            ),
+          ),
+
+          // Additional actions
+          ...actions
+        ],
+      ),
+    );
+  }
+
+  @override
+  Size get preferredSize => Size(-1, 56);
+}
+
+// Home page
+class HomeScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Tomato(),
+    );
+  }
+}
+
+// Stateful widgets know how to generate `State` objects: they are used to hold state.
+// The Widget class is the configuration for a state. Holds values provided by a parent.
+// All Widget fields are final.
+class Tomato extends StatefulWidget {
+  @override
+  State<StatefulWidget> createState() => _TomatoState();
+}
+
+// State objects are perstistent between calls to build(), allowing them to remember information.
+// Widget objects, on the other hand, are temporary: used to conduct a presentation of the application in its current state.
+// So a Widget is temporary, a State is persistent.
+class _TomatoState extends State<Tomato> {
+  double size = 50;
+
+  void increaseSize() {
+    setState(() {
+      size *= 1.2;
+    });
+  }
+
+  void resetSize() {
+    setState(() {
+      size = 50;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // GestureDetector() makes things sensitive to input gestures
+    return GestureDetector(
+      child: Text("🍅", style: TextStyle(fontSize: size)),
+      onTap: () {
+        increaseSize();
+      },
+      onLongPress: () {
+        resetSize();
+      },
+    );
+  }
+}
+
+```
 

@@ -59,7 +59,7 @@ class MyScaffold extends StatelessWidget {
     // it's an application template, with: app bar, body, FAB buttons, etc
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Example App"),
+        title: Text("Example App"),
         leading: const IconButton(
           icon: Icon(Icons.menu),
           tooltip: "Menu",
@@ -119,9 +119,8 @@ class TopBar extends StatelessWidget implements PreferredSizeWidget {
           // Spacer, title
           Expanded(
             child: Text(
-              targe text
               title,
-              style: Theme.of(context).primaryTextTheme.titleLarge,
+              // style: Theme.of(context).primaryTextTheme.titleLarge, // inherited from Scaffold
             ),
           ),
 
@@ -140,6 +139,49 @@ class TopBar extends StatelessWidget implements PreferredSizeWidget {
 class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Center(child: Text("🍅", style: TextStyle(fontSize: 250)));
+    return Center(
+      child: Tomato(),
+    );
+  }
+}
+
+// Stateful widgets know how to generate `State` objects: they are used to hold state.
+// The Widget class is the configuration for a state. Holds values provided by a parent.
+// All Widget fields are final.
+class Tomato extends StatefulWidget {
+  @override
+  State<StatefulWidget> createState() => _TomatoState();
+}
+
+// State objects are perstistent between calls to build(), allowing them to remember information.
+// Widget objects, on the other hand, are temporary: used to conduct a presentation of the application in its current state.
+// So a Widget is temporary, a State is persistent.
+class _TomatoState extends State<Tomato> {
+  double size = 50;
+
+  void increaseSize() {
+    setState(() {
+      size *= 1.2;
+    });
+  }
+
+  void resetSize() {
+    setState(() {
+      size = 50;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // GestureDetector() makes things sensitive to input gestures
+    return GestureDetector(
+      child: Text("🍅", style: TextStyle(fontSize: size)),
+      onTap: () {
+        increaseSize();
+      },
+      onLongPress: () {
+        resetSize();
+      },
+    );
   }
 }
