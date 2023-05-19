@@ -1,0 +1,139 @@
+version: "3.9"
+services:
+  postgres:
+    # Keycloak docs say it's tested with Postgres 10 only: https://www.keycloak.org/server/db
+    image: postgres:15
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - ${KEYCLOAK_POSTGRES_PORT:-5435}:5432
+    volumes:
+      - postgres:/data/postgres
+    # networks:
+    #   - postgres
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    healthcheck:
+      test: pg_isready -U postgres -d postgres
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1
+    # image: bitnami/keycloak:21
+    container_name: keycloak
+    restart: unless-stopped
+    # "start" for production
+    # "start-dev" for development (e.g. to develop a new theme): caching disabled, strict hostname check disabled
+    # In production, do "build", then "start --optimized" for speedy startup
+    # Option --import-real importa any realms from /opt/keycloak/data/import. If a realm exists, it's skipped.
+    command: >-
+      start
+      --import-realm
+      --spi-user-profile-legacy-user-profile-read-only-attributes *_RES_ACCESS_MODE
+    environment:
+      # Docs:
+      # * https://www.keycloak.org/server/all-config
+      # * https://www.keycloak.org/server/all-provider-config
+      # TODO: configure caching, logging to Kibana,
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/postgres
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: postgres
+      KC_DB_SCHEMA: public
+      # KeyCloak admin user
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      # Enable features: "preview", etc
+      KC_FEATURES:
+      # Hostname for the Keycloak server: a consistent URL for the frontend endpoints. With port number, if any.
+      KC_HOSTNAME: "keycloak.localhost:8282"
+      # Disables dynamically resolving the hostname from request headers.
+      # Should always be set to true in production, unless proxy verifies the Host header.
+      KC_HOSTNAME_STRICT: 'false'
+      # Only use https? Default: true
+      KC_HOSTNAME_STRICT_HTTPS: 'false'
+      # URLs for the backend endpoints are going to be exactly the same as the frontend endpoints.
+      # Set "true" when the server is public
+      KC_HOSTNAME_STRICT_BACKCHANNEL: 'false'
+      # HTTP listener. Default ports: 8080 and 8433
+      KC_HTTP_ENABLED: 'true'
+      KC_HTTP_RELATIVE_PATH: /
+      KC_PROXY: edge
+      # Healthcheck endpoints: /health, /health/ready and /health/live
+      KC_HEALTH_ENABLED: 'true'
+      KC_METRICS_ENABLED: 'true'
+    volumes:
+        # Import a real at start-up.
+        # NOTE: the file can use environment variables like this:   { "realm": "${MY_REALM_NAME}", ... }
+        - ./realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    ports:
+      - 8282:8080
+    # networks:
+    #   - postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://0.0.0.0:8080/health"]
+      start_period: 10s
+      interval: 30s
+      retries: 3
+      timeout: 5s
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_SERVER_JSON_FILE: /servers.json
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+      - ./pgadmin-servers.json:/servers.json:ro
+    # links:
+    #     - postgres:postgres
+    # networks:
+    #   - postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  pgweb:
+    image: sosedoff/pgweb
+    container_name: pgweb
+    restart: unless-stopped
+    environment:
+        PGWEB_DATABASE_URL: 'postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable'
+        PGWEB_AUTH_USER: admin
+        PGWEB_AUTH_PASS: admin
+    ports:
+        - "5051:8081"
+    # links:
+    #     - postgres:postgres
+    # networks:
+    #   - postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
+volumes:
+  postgres:
+  pgadmin:
+
+networks:
+  postgres:
+    driver: bridge
