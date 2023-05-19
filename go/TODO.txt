@@ -37,6 +37,9 @@ Configuration:
     https://github.com/kelseyhightower/envconfig
     https://github.com/caarlos0/env
 
+Databases:
+    XORM (dynamic query builder)
+
 Access Control:
     Powerful https://github.com/casbin/casbin (integrated with Echo)
 

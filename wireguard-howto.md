@@ -24,11 +24,11 @@ services:
       - SYS_MODULE
     environment:
       # Set your server hostname. It must be accessible from the Internet
-      - SERVERURL=78.153.130.167
+      - SERVERURL=176.124.199.2
       - SERVERPORT=51820
       # List: names of users to generate accounts for
       # Alternative: write '10' to generate 10 accounts without names
-      - PEERS=10
+      - PEERS=30
       - PEERDNS=auto
       # Process and network
       - PUID=${UID}
