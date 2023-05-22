@@ -439,7 +439,23 @@ $ http --form POST 'http://localhost:8282/realms/demo/protocol/openid-connect/to
 }
 ```
 
-Note that the "offline_access" scope is the standard way to ask for refresh tokens!
+If you have requested the `offline_access` scope, then `refresh_token` never expires: can be used to access the account when the user is not available, e.g. for background jobs:
+
+```console
+$ http --form POST 'http://localhost:8282/realms/demo/protocol/openid-connect/token' client_id=backend client_secret=$client_secret grant_type=password username=kolypto@gmail.com password=admin scope="openid offline_access"
+
+{
+    "access_token": "...",
+    "expires_in": 1800,
+    "id_token": "...",
+    "not-before-policy": 1684419856,
+    "refresh_expires_in": 0,   // <-- !!!
+    "refresh_token": "eyJhbGci...",
+    "scope": "openid attributes email user_groups profile offline_access",
+    "session_state": "737104ef-4970-41ea-a406-a5af05cd7e13",
+    "token_type": "Bearer"
+}
+```
 
 ## Password Flow
 
