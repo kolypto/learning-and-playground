@@ -225,6 +225,11 @@ They do not (yet) inherit attributes from a role, though.
 
 
 
+
+
+
+
+
 # OAuth2 + OIDC
 
 To request an "ID Token", the client ("Relying Party", RP) goes to the IdP ("Identity Provider") and provides credentials. This role is usually performed by the web browser: a popup.
@@ -237,7 +242,7 @@ OAuth2 has flows:
 
 A minimal example of how to obtain an ID token for a user from an OP ("OpenID provider") using the *authorization code flow*: the most commonly used flow by traditional web apps.
 
-## Authorization Code Flow
+## Flow: Authorization Code
 
 First step: send the browser to the OAuth2 authorization endpoint. Use 302 Found redirection:
 
@@ -389,7 +394,9 @@ $ http GET 'http://localhost:8282/realms/demo/protocol/openid-connect/userinfo' 
 ```
 
 
-## Implicit Flow (Token)
+## Flow: Implicit Flow (Token)
+
+NOTE: Deprecated! Because it exposes the access token to the browser!
 
 The implicit flow is used for SPA applications with no back-end. The app will get he `access_token` right away.
 
@@ -430,7 +437,14 @@ http://example.com/
   &state=123456
 ```
 
-## Refresh Token
+## Flow: Authorization Code + PKCE
+
+Authorization Code Flow with Proof Key for Code Exchange (PKCE).
+
+TODO: read & describe
+
+
+## Flow: Refresh Token
 
 Send the `refresh_token` and get a new `access_token`:
 
@@ -467,7 +481,7 @@ $ http --form POST 'http://localhost:8282/realms/demo/protocol/openid-connect/to
 }
 ```
 
-## Password Flow
+## Flow: Password Flow
 
 Password flow is simple: provide a login+password, get an access token in exchange:
 
@@ -488,7 +502,7 @@ $ http --form POST 'http://localhost:8282/realms/demo/protocol/openid-connect/to
 
 ```
 
-## Device Authorization
+## Flow: Device Authorization
 
 With input-constrained devices that connect to the internet, rather than authenticate the user directly, the device asks the user to go to a link on their computer or smartphone and authorize the device. This avoids a poor user experience for devices that do not have an easy way to enter text.
 
@@ -579,7 +593,7 @@ Or, if the device token has expired:
 ```
 
 
-## CIBA Authorization
+## Flow: CIBA Authorization
 
 CIBA = Client-Initiated Backchannel Authentication.
 That is, the user is authenticated via some external authentication device instead of the user's browser.
@@ -590,11 +604,21 @@ CIBA opens new possibilities. For example, a call center agent may ask a caller 
 
 TODO: read more
 
-## Token Exchange
+## Flow: Token Exchange
 
 Exhange a token that you have and get a more limited, restricted token.
 
 TODO: see [Token Exchange](https://www.keycloak.org/docs/latest/securing_apps/index.html#_token-exchange)
+
+
+
+
+
+
+
+
+
+
 
 
 
