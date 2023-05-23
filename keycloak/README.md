@@ -1,3 +1,13 @@
+# KeyCloak
+
+KeyCloak: OAuth2 + OpenID Connect with a database of users.
+
+Alternatives:
+
+* <https://github.com/ory/hydra>
+* <https://github.com/zitadel/zitadel>
+* <https://github.com/casdoor/casdoor>
+
 # Keycloak
 
 Start it with docker-compose.
