@@ -1,0 +1,39 @@
+version: "3"
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.11-management
+    ports:
+      - "5671:5671"   # AMQP (with TLS)
+      - "5672:5672"   # AMQP
+      - "5551:5551"   # RabbitMQ Stream protocol (with TLS)
+      - "5552:5552"   # RabbitMQ Stream protocol
+
+      - "61614:61614" # STOMP (with TLS)
+      - "61613:61613" # STOMP
+      - "8883:8883"   # MQTT (with TLS)
+      - "1883:1883"   # MQTT
+
+      - "15671:15671" # API, Management UI, rabbitmqadmin (with TLS)
+      - "15672:15672" # API, Management UI, rabbitmqadmin
+      - "4369:4369"   # apmd: peer discovery service
+      - "25672:25672" # Inter-node and CLI tools
+
+      - "15691:15691" # Prometheus metrics (with TLS)
+      - "15692:15692" # Prometheus metrics
+      # Also:
+      # 6000 through 6500: used by RabbitMQ Stream replication
+      # 35672-35682: used by CLI tools
+      # 15674: STOMP-over-WebSockets clients
+      # 15675: MQTT-over-WebSockets clients
+      #
+    environment:
+      RABBITMQ_DEFAULT_USER: u
+      RABBITMQ_DEFAULT_PASS: u
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      - ./rabbitmq.enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+      # - ./rabbitmq.conf:/etc/rabbitmq/conf.d/20-custom.conf:ro
+
+volumes:
+  rabbitmq-data:
