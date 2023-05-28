@@ -481,6 +481,13 @@ $ http --form POST 'http://localhost:8282/realms/demo/protocol/openid-connect/to
 }
 ```
 
+Here's how to check it:
+
+```console
+$ set offline_token (http --form POST 'http://localhost:8282/realms/demo/protocol/openid-connect/token' client_id=backend client_secret=$client_secret grant_type=password username=kolypto@gmail.com password=admin scope="openid offline_access" | jq .access_token -r)
+$ http GET 'http://localhost:8282/realms/demo/protocol/openid-connect/userinfo' Authorization:"Bearer $offline_token"
+```
+
 ## Flow: Password Flow
 
 Password flow is simple: provide a login+password, get an access token in exchange:
