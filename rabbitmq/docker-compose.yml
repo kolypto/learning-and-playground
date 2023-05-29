@@ -34,6 +34,7 @@ services:
       - rabbitmq-data:/var/lib/rabbitmq
       - ./rabbitmq.enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
       # - ./rabbitmq.conf:/etc/rabbitmq/conf.d/20-custom.conf:ro
+    healthcheck: { test: 'rabbitmqctl ping', interval: 10s, timeout: 5s, retries: 3, start_period: 10s }
 
 volumes:
   rabbitmq-data:

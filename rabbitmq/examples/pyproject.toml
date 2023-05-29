@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "rabbitmq-hello"
+name = "rabbitmq_hello"
 version = "0.1.0"
 description = ""
 authors = ["Mark Vartanyan <kolypto@gmail.com>"]
 readme = "README.md"
-packages = [{include = "rabbitmq_hello"}]
+#packages = [{include = "rabbitmq_hello"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"

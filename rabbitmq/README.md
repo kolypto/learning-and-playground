@@ -1,5 +1,7 @@
 # RabbitMQ
 
+Docs updated: May 2023
+
 RabbitMQ ports:
 
 * AMQP: 5672, 5671 TLS
@@ -8,6 +10,20 @@ RabbitMQ ports:
 * STOMP: 61613, 61614 TLS
 * Management UI: 15672, 15671 TLS
 * Prometheus metrics: 15692, 15691 TLS
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Tutorials
 
@@ -27,6 +43,9 @@ Establish a connection:
 import pika
 
 # Establish a connection
+# AMQP can multiplex:
+#  * 0.9.1 will use multiple "channels" over a single connection.
+#  * 1.0 calls them "sessions"
 connection = pika.BlockingConnection(
     pika.ConnectionParameters(
         'localhost', 5672,
@@ -173,8 +192,8 @@ Available exchange types:
 
 * "direct": use "routing_key" to pass the message to a queue by name
 * "fanout": broadcast to all bound queues
-* "topic"
-* "headers"
+* "topic": use `logs.<service>.<severity>` hierarchical names and subscribe like `logs.cron.*`
+* "headers": ?
 
 So here's what we do:
 
@@ -474,3 +493,946 @@ channel.addConfirmListener((sequenceNumber, multiple) -> {
 });
 ```
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Definitions: export & import
+
+Export definitions to a file, import definitions from a file:
+use `rabbitmqctl` or `rabbitmqadmin`:
+
+```console
+$ rabbitmqctl export_definitions /tmp/definitions.json
+$ rabbitmqctl import_definitions /tmp/definitions.json
+
+$ rabbitmqadmin export /path/to/definitions.file.json
+$ rabbitmqadmin import /path/to/definitions.file.json
+```
+
+Import definitions at boot time:
+
+```ini
+# Does not require management plugin to be enabled.
+load_definitions = /path/to/definitions/file.json
+definitions.skip_if_unchanged = true
+```
+
+Or this:
+
+```ini
+definitions.import_backend = local_filesystem
+definitions.local.path = /path/to/definitions/defs.json
+definitions.skip_if_unchanged = true
+```
+
+Definitions can be imported from a URL (HTTPS only):
+
+```inefficient
+# Does not require management plugin to be enabled.
+definitions.import_backend = https
+definitions.https.url = https://raw.githubusercontent.com/rabbitmq/sample-configs/main/queues/5k-queues.json
+definitions.skip_if_unchanged = true
+
+definitions.tls.verify     = verify_peer
+definitions.tls.fail_if_no_peer_cert = true
+definitions.tls.cacertfile = /path/to/ca_certificate.pem
+definitions.tls.certfile   = /path/to/client_certificate.pem
+definitions.tls.keyfile    = /path/to/client_key.pem
+
+
+```
+
+The definitions in the file will not overwrite anything already in the broker.
+
+Example definitions:
+
+```js
+{
+  "users": [
+    {
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "limits": {},
+      "name": "mark",
+      "password_hash": "gU9PVFWLT7Z8tsp4D9nksdIRak99s57GSyy4welVHnKbbkCa",
+      "tags": ["administrator", "management"]
+    },
+    //...
+  ],
+  "vhosts": [
+    {
+      "limits": [],
+      "metadata": { "description": "Default virtual host", "tags": []},
+      "name": "/"
+    },
+    //...
+  ],
+  "permissions": [
+    {"user": "guest", "vhost": "mark", "read": ".*", "write": ".*" "configure": ".*"},
+    //...
+  ],
+  "queues": [
+    {
+      "arguments": {},
+      "auto_delete": true,
+      "durable": true,
+      "name": "mqtt-subscription-medthings-iot-dispenser-24904381311985673540357172qos1",
+      "type": "classic",
+      "vhost": "/"
+    },
+    //...
+  ],
+  "exchanges": [],
+  "bindings": [
+    {
+      "arguments": {},
+      "destination": "mqtt-subscription-38cc12d7161a31qos0",
+      "destination_type": "queue",
+      "routing_key": "medthings.device.dispenser.from.*",
+      "source": "amq.topic",
+      "vhost": "/"
+    },
+    //...
+  ],
+  "global_parameters": [],
+  "parameters": [],
+  "policies": [],
+  "topic_permissions": [],
+}
+```
+
+Get API definitions as JSON:
+<http://localhost:15672/api/definitions>
+
+from CLI:
+
+```console
+$ curl -u {username}:{password} -X GET http://{hostname}:15672/api/definitions
+
+$ curl -u {username}:{password} -H "Content-Type: application/json" -X POST -T definitions.json http://{hostname}:15672/api/definitions
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+# CLI Tools
+
+* `rabbitmqctl`: service management
+* `rabbitmqadmin`: optional, additional tool that works over HTTP API
+* `rabbitmq-diagnostics`: diagnostics and health checking
+* `rabbitmq-plugins`: plugin management: list, enable, disable
+* `rabbitmq-queues`: maintenance on queues: e.g. quorum queues
+* `rabbitmq-streams`: maintenance on streams
+* `rabbitmq-upgrage`: upgrade tasks
+* `rabbitmq-collect-env`: collects cluster & environment information, logs
+
+For a CLI tool and a node to be able to communicate they must have the same shared secret called the Erlang cookie.
+Every cluster node must have the same cookie.
+Usually: `/var/lib/rabbitmq/.erlang.cookie`. It is necessary to place a copy of the cookie file for each user that will be using CLI tools.
+
+The Docker image uses a `RABBITMQ_ERLANG_COOKIE` environment variable to populate the cookie file.
+
+### rabbitmqctl
+
+Server status:
+
+```console
+$ rabbitmqctl status
+Uptime (seconds): 548
+Is under maintenance?: false
+RabbitMQ version: 3.11.16
+
+Enabled plugins: ...
+Data directory: ...
+Loaded config files: /etc/rabbitmq/conf.d/10-defaults.conf
+
+Total memory used: 0.162 gb
+
+Connection count: 0
+Queue count: 1
+Virtual host count: 1
+```
+
+Log level: debug, info, warning, error, critical, none. Default: info.
+
+```console
+$ rabbitmqctl set_log_level info
+```
+
+Virtual host: a logical group of entities in a multi-tenant system.
+Resource permissions are scoped per virtual host: possible to set up isolation.
+
+Add a virtual host:
+
+```console
+$ rabbitmqctl add_vhost "test"
+$ rabbitmqctl list_vhosts
+```
+
+
+User management:
+
+```console
+$ rabbitmqctl list_users
+user            tags
+username        []
+u               [administrator]
+
+$ rabbitmqctl add_user "username" "password"
+$ rabbitmqctl authenticate_user "username" "password"
+$ rabbitmqctl change_password "username" "new-password"
+$ rabbitmqctl set_user_tags "username" administrator
+# rabbitmqctl set_permissions "username" '.*' '.*' '.*'
+
+# rabbitmqctl list_permissions
+user    configure       write   read
+u       .*              .*      .*
+# rabbitmqctl set_permissions "username" '.*' '.*' '.*'
+# rabbitmqctl set_topic_permissions "username" amq.topic "^{username}-.*" "^{username}-.*"
+```
+
+See who's using it:
+
+```console
+$ rabbitmqctl list_connections
+$ rabbitmqctl list_amqp10_connections
+$ rabbitmqctl list_mqtt_connections
+$ rabbitmqctl list_stomp_connections
+$ rabbitmqctl list_channels
+$ rabbitmqctl list_consumers
+queue_name              channel_pid                             consumer_tag                    ack_required    prefetch_count  active  arguments
+mqtt-subscription-...   <rabbit@rabbitmq.1685052428.7865.0>     amq.ctag-MHW7NRTdXzxKOzNPS-KWTQ true            10              true    []
+```
+
+See definitions:
+
+```console
+$ rabbitmqctl list_exchanges
+$ rabbitmqctl list_queues
+$ rabbitmqctl list_bindings
+```
+
+
+### rabbitmq-diagnostics
+
+List alarms:
+
+```console
+$ rabbitmq-diagnostics alarms
+```
+
+Health-checks:
+
+```console
+$ rabbitmq-diagnostics check_alarms
+$ rabbitmq-diagnostics check_running
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Monitoring
+
+Enable Prometheus: add it to `enabled_plugins`, or:
+
+```console
+$ rabbitmq-plugins enable rabbitmq_prometheus
+```
+
+This URL then exports key-value metrics for Prometheus: <http://localhost:15692/metrics>
+
+Or sign into <http://localhost:15672/> to see the metrics in a web UI.
+It also lists: connections, exchanges, queues, bindings, etc.
+
+Or see information as JSON: <http://localhost:15672/api/overview>
+
+
+
+
+
+
+
+
+
+
+
+# Configuration
+
+To find where config files are located:
+
+```console
+$ rabbitmq-diagnostics status
+Config files
+ * /etc/rabbitmq/advanced.config
+ * /etc/rabbitmq/rabbitmq.conf
+```
+
+Config file format: ini-like `rabbitmq.conf`.
+The `advanced.config` uses Erlang-style config: good for deeply-nested structures.
+
+The `rabbitmq.conf` file supports environment variable interpolation:
+
+```ini
+default_user = $(SEED_USERNAME)
+```
+
+Some important settings:
+
+```ini
+# User name to create a new database from scratch
+default_user = guest
+default_pass = guest
+
+# Auth mechanisms to offer to clients
+auth_mechanisms.1 = PLAIN
+auth_mechanisms.2 = AMQPLAIN
+auth_backends.1 = internal
+
+# Logging
+log.console = true
+log.file = false
+log.console.level = info  # debug, info, warning, error, critical
+log.default.level = info
+
+```
+
+Alternatively, some settings can be provided with environment variables:
+
+```env
+RABBITMQ_DEFAULT_USER = guest
+RABBITMQ_DEFAULT_PASS = guest
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Parameters and Policies
+
+## Parameters
+
+*Parameters*: values shared across all nodes in a cluster that change at run time.
+
+Two types of parameters: vhost-scoped parameters, and global parameters.
+
+Parameters:
+
+```console
+$ rabbitmqctl set_parameter "component" "name" '"value"'
+$ rabbitmqctl clear_parameter "component" "name"
+$ rabbitmqctl list_parameters
+
+$ rabbitmqctl set_global_parameter "name" '"value"'
+$ rabbitmqctl clear_global_parameter "name"
+$ rabbitmqctl list_global_parameters
+```
+
+or HTTP API:
+
+```
+PUT /api/parameters/{component_name}/{vhost}/{name}
+GET /api/parameters
+
+PUT /api/global-parameters/name
+DELETE /api/global-parameters/name
+GET /api/global-parameters
+```
+
+A parameter is a JSON document. You'll need to quote it.
+
+## Policies
+
+Policies is the recommended way of configuring *optional arguments* for queues, exchanges, and some plugins.
+*Optional arguments*, aka "x-arguments", are a map of arbitrary key/value pairs used when a queue is declared.
+So, in addition to `durable` and `exclusive`, one can have optional `x-arguments`.
+
+Policies were introduced to eliminate pain-points: it's okay when the client defines parameters,
+but changing them required re-deployment and queue re-declaration.
+
+A policy matches queues and exchanges by name (usually a RegExp) and appends its definition to the x-arguments.
+When a policy is updated, its effect on matching exchanges and queues is almost immediate.
+
+Policies can be used to configure: federation, alternate exchanges, dead lettering, per-queue TTLs, queue length limit.
+
+Define a policy:
+
+```console
+$ rabbitmqctl set_policy federate-me  "^federated\." '{"federation-upstream-set":"all"}' \
+    --apply-to exchanges --priority 1
+```
+
+or HTTP API:
+
+```js
+// PUT /api/policies/%2f/federate-me
+{
+    // pattern: regexp that matches names
+    "apply-to": "exchanges",  // exchanges or queues?
+    "pattern": "^federated\.",
+    "definition": {"federation-upstream-set":"all"},
+    "priority": 1, // the one with the highest priority will take effect.
+}
+```
+
+or in the Web UI: Admin -> Policies -> Add.
+
+
+
+
+
+
+
+
+
+
+
+
+
+# TTL: Time-To-Live
+
+Set `message-ttl` (ms) argument with a policy — and any message that has been in the queue for
+longer than the configured TTL is *dead*. The server guarantees that such messages will not
+be delivered using "basic.deliver" or included into a "basic.get-ok" response.
+
+```console
+$ rabbitmqctl set_policy TTL ".*" '{"message-ttl":60000}' --apply-to queues
+```
+
+A TTL can be specified on a per-message basis, by setting the `expiration` property when publishing a message.
+
+Notes:
+* The original expiry time of a message is preserved if it is requeued.
+* Setting the TTL to 0 causes messages to be expired upon reaching a queue unless they can be delivered to a consumer immediately.
+* When both a per-queue and a per-message TTL are specified, the lower value between the two will be chosen.
+
+TTL can be set on queue itself: use with "auth-delete" queue property. Makes sense for temporary classic queues.
+Streams do not support expiration.
+
+```console
+$ rabbitmqctl set_policy expiry ".*" '{"expires":1800000}' --apply-to queues
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Authentication, Authorisation, Access Control
+
+Authentication: who the user is. Authorization: what the user is allowed to do.
+
+Every connection has an associated user, and it targets a *virtual host*.
+
+When a node starts and detects that it is uninitialized, it initializes a fresh database
+with a virtual host `/` and a default user `guest:guest` granted full access to `/`.
+This user is only allowed local connections: all remote connections are refused: only `localhost` loopback.
+
+Two primary ways of authentication:
+
+* username/password
+* X.509 certificates
+
+When a user connects, they choose a virtual host to operate in.
+Then permissions kick in:
+
+* 'configure': create, delete, alter resources or their behavior
+* 'write': inject messages into a resource
+* 'read': retrieve messages from a resource
+
+Permissions: three RegExp: configure, write, read — on a per-vhost basis.
+
+Note:
+
+* For convenience, the default exchange is called "amq.default". Not "".
+* Use RegExp `^$` to ban the user from all resources. Synonym is empty string: `''`.
+* Use RegExp `.*` to allow all resources
+* Built-in resources start with `amq.`
+* Server-generated names are prefixed with `amq.gen`
+
+Examples:
+
+* `^(amq\.gen.*|amq\.default)$` gives a user access to server-generated names and the default exchange.
+
+Users can have *tags* associated with them. Currently, only Management UI access is controlled by user tags.
+
+## Topic Authorization
+
+Topic exchanges support topic authorization. Topic authorization targets protocols like STOMP and MQTT
+which are structured around topics and use topic exchanges under the hood.
+
+Internal authorization back-end supports variable expansion in permission patterns:
+`{username}`, `{vhost}` and `{client_id}` (MQTT) are supported.
+For example, if `john` is the connected user, `^{username}-.*` is expanded to `^john-.*`.
+
+## Backends
+
+A backend may provide authentication ("authn") and/or authorization ("authz").
+Examples:
+
+* HTTP, LDAP: authn and authz
+* Source IP range: only authn
+* Cache backend: reduces the load
+
+When several authentication backends are used then the first positive result returned
+by a backend in the chain is considered to be final.
+
+```ini
+auth_backends.1 = internal
+auth_backends.2 = ldap
+auth_backends.3 = http
+auth_backends.4 = amqp
+auth_backends.5 = dummy
+```
+
+when using third-party plugins, provide a full module name: e.g. "rabbit_auth_backend_http".
+
+Example: use the internal database for authentication, and the source IP range backend for authorization:
+
+```ini
+auth_backends.1.authn = internal
+# uses module name because this backend is from a 3rd party
+auth_backends.1.authz = rabbit_auth_backend_ip_range
+```
+
+Example: authorization is always internal; authentication is tried against LDAP first:
+
+```ini
+auth_backends.1.authn = ldap
+auth_backends.1.authz = internal
+auth_backends.2       = internal
+```
+
+Troubleshoot authentication and authorization:
+
+
+```console
+$ rabbitmqctl authenticate_user "a-username" "a/password"
+$ rabbitmqctl list_permissions --vhost /
+user        configure   write       read
+user2       .*          .*          .*
+guest       .*          .*          .*
+temp-user   .*          .*          .*
+```
+
+and see server logs.
+
+It is possible to have a `user-id` message property that tells which user published it.
+The property has to be set manually, and be equal to the current user:
+
+```java
+AMQP.BasicProperties properties = new AMQP.BasicProperties();
+properties.setUserId("guest");
+channel.basicPublish("amq.fanout", "", properties, "test".getBytes());
+```
+
+If the user wants to publish a message on behalf of another, they need to have the "impersonator" tag.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Firehose Tracer
+
+Sometimes, during development, it's useful to be able to see every message published and delivered.
+
+Turn on:
+
+```console
+$ rabbitmqctl trace_on -p /
+$ rabbitmqctl trace_off -p /
+```
+
+This setting is not persistent.
+
+It will publish messages to `amq.rabbitmq.trace`.
+The routing key would be `publish.exchange_name` (on publish) or `deliver.{queuename}` (on deliver).
+
+The `rabbitmq_tracing` plugin builds on top of the tracer and provides a GUI.
+Enable it and see the "Admin/Tracing" tag in the GUI.
+
+
+
+
+
+
+
+
+
+# Quorum Queues
+
+Durable, replicated FIFO based on the Raft consensus algorithm.
+Quorum: when the majority of replicas agree on the state of the queue and its contents.
+
+Quorum Queues and Streams replace durable mirrored queues, which are now deprecated.
+
+Quorum queues are by design replicated and durable.
+
+(TODO: not read)
+
+
+
+
+
+
+
+
+
+# Streams
+
+Streams are new persistent and replicated data structures: append-only log with non-destructive consumer.
+They can be used like a normal queue, or through a dedicated binary protocol:
+[rabbitmq_stream](https://github.com/rabbitmq/rabbitmq-server/blob/v3.12.x/deps/rabbitmq_stream/docs/PROTOCOL.adoc),
+which is recommended because it provides access to all stream-specific features.
+
+Use cases that streams were designed to cover:
+
+1. Large fan-outs. Many consumers, each with a dedicated queue, is inefficient.
+    Streams allow many consumers to get the same messages from the same queue in a non-destructive manner (read cursor).
+2. Replay / Time-travelling. All queues have destructive consume behavior: i.e. messages are deleted from a queue
+    when a consumer is finished with them. It is not possible to re-read a message.
+    Streams allow consumers to attach at any point in the log and read from there.
+3. Performance. No queue can compete.
+4. Larse logs. Most queues are designed to converge towards the empty state and are optimized as such.
+    Streams are designed to store large amounts of data in an efficient manner with minimal in-memory overhead.
+
+As streams persist all data to disks before doing anything it is recommended to use the fastest disks possible.
+Due to the disk I/O-heavy nature of streams, their throughput decreases as message sizes increase.
+
+Streams replicate data across multiple nodes and publisher confirms are only issued once the data has been replicated to a quorum of stream replicas.
+
+Enable streams:
+
+```console
+$ rabbitmq-plugins enable rabbitmq_stream
+```
+
+Management commands:
+
+```console
+# rabbitmqctl list_queues name type messages
+
+$ rabbitmqctl list_stream_connections
+$ rabbitmqctl list_consumers
+$ rabbitmqctl list_consumer_groups
+$ rabbitmqctl publishers
+```
+
+To create a stream, use `queue_declare()` and provide an `x-queue-type=stream`.
+This argument must be provided by a client at declaration time; it cannot be set or changed using a policy.
+
+This will create a stream with a replica on each configured RabbitMQ node.
+Streams are quorum systems so uneven cluster sizes is strongly recommended.
+
+```python
+with connection.channel() as channel:
+    channel: pika.adapters.blocking_connection.BlockingChannel
+
+    # Declare a stream
+    # This will create a stream with a replica on each configured RabbitMQ node.
+    channel.queue_declare(
+        'events',
+        durable=True,
+        # Make it a stream
+        arguments={'x-queue-type': 'stream'},
+    )
+```
+
+A stream remains an AMQP queue, so it can be bound to any exchange after its creation, just as any other RabbitMQ queue.
+
+Streams support 3 additional queue arguments that are best configured using a policy:
+
+* `x-max-length-bytes`: max stream size in bytes. Default: not set
+* `x-max-age`: maximum age of the stream. Default: not set
+* `x-stream-max-segment-size-bytes`: on disk, a stream is divided up into segments of this fixed size. Default: 500 000 000 (500 Mb)
+
+## Consuming
+
+As streams never delete any messages, any consumer can start reading/consuming from any point in the log.
+
+Start reading from a certain point: `x-stream-offset` consumer argument.
+If not set, will start reading fresh messages only.
+
+Supported values:
+* `first`
+* `last`: starts reading from the last writen "chunk of messages"
+* `next`: only new messages
+* `<Offset>` offset: specific offset to read. It not exists, will clamp to either the start or the end of the log
+* `<Timestamp>`: the point in time to attach to the log at. It will clamp to the closest offset.
+* `<Interval>`: a string value: the time interval relative to current time to attach the log at.
+
+Read messages:
+
+```python
+# Read from a stream
+with connection.channel() as channel:
+    channel: pika.adapters.blocking_connection.BlockingChannel
+
+    # Streams require QoS
+    channel.basic_qos(prefetch_count=1)
+
+    # Declare a stream
+    # This will create a stream with a replica on each configured RabbitMQ node.
+    channel.queue_declare(
+        'events',
+        durable=True,
+        # Make it a stream
+        arguments={'x-queue-type': 'stream'},
+    )
+
+    # Start reading
+    def on_message(ch, method, props, body):
+        print(vars())
+        # Ack is required
+        ch.basic_ack(delivery_tag = method.delivery_tag)
+
+    channel.basic_consume(
+        "events", on_message,
+        arguments={
+            # Start from "first".
+            # Alternatively, use offset `5000`, or a datetime
+            'x-stream-offset': 'first',
+        })
+```
+
+## Single Active Consumer
+
+When several consumers are reading from a stream, RabbitMQ will ensure that only one consumer is active
+and all others remain idle (backup consumers). Makes sure that messages are processed in order.
+
+(no details available)
+
+## Super Streams
+
+A super stream is a logical stream made of individual regular streams.
+Allows to handle large streams by dividing them into partitions, splitting up the storage and the traffic
+on several cluster nodes:
+
+```console
+$ rabbitmq-streams add_super_stream invoices --partitions 3
+```
+
+Super streams add complexity compared to individual streams, so they should not be considered
+the default solution for all use cases involving streams. Consider using super streams only if
+you are sure you reached the limits of individual streams.
+
+## Retention
+
+Streams are implemented as an immutable append-only disk log: it will grow indefinitely until the disk runs out.
+To avoid this , use queue arguments (or a policy):
+
+* `max-age`: use number + YMDhms. Example: "7D" = 7 days
+* `max-length-bytes`: the max total size in bytes
+
+The stream is cleaned-up in segments, and one latest segment would always be present.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Memory and Disk Alarms
+
+## Memory Alarms
+
+By default, when RabbitMQ uses >40% of the available RAM, it raises a memory alarm
+and blocks all connections that are publishing messages. Once the memory alarm has cleared, normal service resumes.
+
+Configure: either percent, or megabytes:
+
+```console
+$ rabbitmqctl set_vm_memory_high_watermark 0.4
+$ rabbitmqctl set_vm_memory_high_watermark absolute "1G"
+```
+
+Commands are not persistent. Use config file for persistent configuration:
+
+```ini
+vm_memory_high_watermark.relative = 0.4
+# or
+vm_memory_high_watermark.absolute = 1G
+```
+
+Use `vm_memory_high_watermark=0` to deactivate publishing globally.
+
+## Disk Alarms
+
+By default, when free disk space drops below 50Mb, an alarm is triggered and all producers are blocked.
+
+Configure:
+
+```ini
+disk_free_limit.absolute = 50M
+```
+
+or command to set a value temporarily:
+
+```console
+$ rabbitmqctl set_disk_free_limit "50M"
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Flow Control
+
+If a client is publishing too quickly for queues to keep up, it's throttled:
+it will look to the client like the network bandwidth to the server is lower than it actually is.
+
+In the web UI, this connection will appear to be in the "flow" state.
+
+Other components can be in the "flow" state as well: channels, queues, and other parts, can apply flow control that eventually propagates back to publishing connections.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Queue Length Limit
+
+Max length of a queue can be set either to a number of messages, or to a number of bytes.
+When the maximum size is reached, the default behavior is to drop or dead-letter oldest messages.
+
+If `overflow=reject-publish` or `overflow=reject-publish-dlx` (dead letter), the newest messages will be discarded.
+If publisher confirms are enabled, the publisher will be informed of the reject via a "basic.nack" message.
+
+Define max queue length using a policy:
+
+```console
+$ rabbitmqctl set_policy my-pol "^one-meg$" '{"max-length-bytes":1048576}' --apply-to queues
+$ rabbitmqctl set_policy my-pol "^two-messages$" '{"max-length":2,"overflow":"reject-publish"}' --apply-to queues
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Lazy Queues
+
+Lazy queues are useful when they have millions of messages:
+they would move their contents to disk as early as possible, and only load them in RAM when requested by consumers.
+It's slower, but saves memory when consumers are slower than normal.
+
+Tune using a policy:
+
+```console
+$ rabbitmqctl set_policy Lazy "^lazy-queue$" '{"queue-mode":"lazy"}' --apply-to queues
+$ rabbitmqctl set_policy Lazy "^lazy-queue$" '{"queue-mode":"default"}' --apply-to queues
+```
+
+or at the time of declaration:
+
+```python
+channel.queue_declare(
+    'events',
+    arguments={'x-queue-mode', 'lazy'},
+)
+```
+
+During a conversion from the regular mode to the lazy one, the queue will first page all messages kept in RAM to disk. It won't accept any more messages from publishing channels while that operation is in progress. After the initial pageout is done, the queue will start accepting publishes, acks, and other commands.
+
+Lazy queues are appropriate when keeping node memory usage low is a priority and higher disk I/O and disk utilisation are acceptable.
