@@ -506,6 +506,40 @@ channel.addConfirmListener((sequenceNumber, multiple) -> {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Definitions: export & import
 
 Export definitions to a file, import definitions from a file:
@@ -933,29 +967,6 @@ or in the Web UI: Admin -> Policies -> Add.
 
 
 
-# TTL: Time-To-Live
-
-Set `message-ttl` (ms) argument with a policy — and any message that has been in the queue for
-longer than the configured TTL is *dead*. The server guarantees that such messages will not
-be delivered using "basic.deliver" or included into a "basic.get-ok" response.
-
-```console
-$ rabbitmqctl set_policy TTL ".*" '{"message-ttl":60000}' --apply-to queues
-```
-
-A TTL can be specified on a per-message basis, by setting the `expiration` property when publishing a message.
-
-Notes:
-* The original expiry time of a message is preserved if it is requeued.
-* Setting the TTL to 0 causes messages to be expired upon reaching a queue unless they can be delivered to a consumer immediately.
-* When both a per-queue and a per-message TTL are specified, the lower value between the two will be chosen.
-
-TTL can be set on queue itself: use with "auth-delete" queue property. Makes sense for temporary classic queues.
-Streams do not support expiration.
-
-```console
-$ rabbitmqctl set_policy expiry ".*" '{"expires":1800000}' --apply-to queues
-```
 
 
 
@@ -963,18 +974,7 @@ $ rabbitmqctl set_policy expiry ".*" '{"expires":1800000}' --apply-to queues
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-# Authentication, Authorisation, Access Control
+# Authentication, Authorization, Access Control
 
 Authentication: who the user is. Authorization: what the user is allowed to do.
 
@@ -1124,6 +1124,240 @@ Enable it and see the "Admin/Tracing" tag in the GUI.
 
 
 
+
+
+# Memory and Disk Alarms
+
+## Memory Alarms
+
+By default, when RabbitMQ uses >40% of the available RAM, it raises a memory alarm
+and blocks all connections that are publishing messages. Once the memory alarm has cleared, normal service resumes.
+
+Configure: either percent, or megabytes:
+
+```console
+$ rabbitmqctl set_vm_memory_high_watermark 0.4
+$ rabbitmqctl set_vm_memory_high_watermark absolute "1G"
+```
+
+Commands are not persistent. Use config file for persistent configuration:
+
+```ini
+vm_memory_high_watermark.relative = 0.4
+# or
+vm_memory_high_watermark.absolute = 1G
+```
+
+Use `vm_memory_high_watermark=0` to deactivate publishing globally.
+
+## Disk Alarms
+
+By default, when free disk space drops below 50Mb, an alarm is triggered and all producers are blocked.
+
+Configure:
+
+```ini
+disk_free_limit.absolute = 50M
+```
+
+or command to set a value temporarily:
+
+```console
+$ rabbitmqctl set_disk_free_limit "50M"
+```
+
+
+
+
+
+
+# Flow Control
+
+If a client is publishing too quickly for queues to keep up, it's throttled:
+it will look to the client like the network bandwidth to the server is lower than it actually is.
+
+In the web UI, this connection will appear to be in the "flow" state.
+
+Other components can be in the "flow" state as well: channels, queues, and other parts, can apply flow control that eventually propagates back to publishing connections.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Queues
+
+Queue properties:
+
+* Name: up to 255 characters
+* Durable: will survive a broker restart, inc. messages
+* Exclusive: used by only one connection and removed when it's closed
+* Auto-delete: deleted when the last consumer unsubscribes
+* Arguments: for plugins and broker-specific features
+
+Queues can be declared and safely re-declared if its attributes remain the same.
+If they are not the same, a "406 PRECONDITION_FAILED error will be raised.
+Most optional arguments can be dynamically changed after queue declaration but there are exceptions:
+`x-queue-type` and `x-max-priority` cannot be changed.
+
+Optional arguments (called "x-arguments" because of their field name in the AMQP protocol)
+is a map of arbitrary key/values:
+
+* Queue type: e.g. "quorum", "stream", or classic
+* Message TTL, Queue TTL
+* Queue length limit
+* Max number of priorities
+* Consumer priorities
+* ...
+
+Optional arguments can be provided by a policy.
+If both a policy and the client provide a value, the client's value takes precedence.
+However, *operator policies* may override client's values and enforce a policy.
+
+For numerical values (max queue length, ttl) the lower calue of the two is used.
+That is, a policy provides the default value which is also the max allowed value. Clients can't go beyond it.
+
+Three ways to make a queue temporary:
+
+* Exclusive queue: removed when the client disconnects
+* Auto-delete: removed when the last consumer quits
+* TTL: removed after a timeout
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Queue Length Limit
+
+Max length of a queue can be set either to a number of messages, or to a number of bytes.
+When the maximum size is reached, the default behavior is to drop or dead-letter oldest messages.
+
+If `overflow=reject-publish` or `overflow=reject-publish-dlx` (dead letter), the newest messages will be discarded.
+If publisher confirms are enabled, the publisher will be informed of the reject via a "basic.nack" message.
+
+Define max queue length using a policy:
+
+```console
+$ rabbitmqctl set_policy my-pol "^one-meg$" '{"max-length-bytes":1048576}' --apply-to queues
+$ rabbitmqctl set_policy my-pol "^two-messages$" '{"max-length":2,"overflow":"reject-publish"}' --apply-to queues
+```
+
+
+
+
+
+
+
+
+
+
+# TTL: Time-To-Live
+
+Set `message-ttl` (ms) argument with a policy — and any message that has been in the queue for
+longer than the configured TTL is *dead*. The server guarantees that such messages will not
+be delivered using "basic.deliver" or included into a "basic.get-ok" response.
+
+```console
+$ rabbitmqctl set_policy TTL ".*" '{"message-ttl":60000}' --apply-to queues
+```
+
+A TTL can be specified on a per-message basis, by setting the `expiration` property when publishing a message.
+
+Notes:
+* The original expiry time of a message is preserved if it is requeued.
+* Setting the TTL to 0 causes messages to be expired upon reaching a queue unless they can be delivered to a consumer immediately.
+* When both a per-queue and a per-message TTL are specified, the lower value between the two will be chosen.
+
+TTL can be set on queue itself: use with "auth-delete" queue property. Makes sense for temporary classic queues.
+Streams do not support expiration.
+
+```console
+$ rabbitmqctl set_policy expiry ".*" '{"expires":1800000}' --apply-to queues
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Lazy Queues
+
+Lazy queues are useful when they have millions of messages:
+they would move their contents to disk as early as possible, and only load them in RAM when requested by consumers.
+It's slower, but saves memory when consumers are slower than normal.
+
+Tune using a policy:
+
+```console
+$ rabbitmqctl set_policy Lazy "^lazy-queue$" '{"queue-mode":"lazy"}' --apply-to queues
+$ rabbitmqctl set_policy Lazy "^lazy-queue$" '{"queue-mode":"default"}' --apply-to queues
+```
+
+or at the time of declaration:
+
+```python
+channel.queue_declare(
+    'events',
+    arguments={'x-queue-mode', 'lazy'},
+)
+```
+
+During a conversion from the regular mode to the lazy one, the queue will first page all messages kept in RAM to disk. It won't accept any more messages from publishing channels while that operation is in progress. After the initial pageout is done, the queue will start accepting publishes, acks, and other commands.
+
+Lazy queues are appropriate when keeping node memory usage low is a priority and higher disk I/O and disk utilisation are acceptable.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Quorum Queues
 
 Durable, replicated FIFO based on the Raft consensus algorithm.
@@ -1134,6 +1368,187 @@ Quorum Queues and Streams replace durable mirrored queues, which are now depreca
 Quorum queues are by design replicated and durable.
 
 (TODO: not read)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Dead Letter Exchange
+Messages from a queue can be "dead-lettered": replublished to an exchange when:
+
+* The message is NACKed: `basic.reject`, or `basic.nack` + `requeue=false`
+* The message expires due to per-message TTL
+* The message is dropped because its queue exceeded a length limit
+
+Note that when the queue itself expires, it will not dead letter the messages in it.
+
+DLX is a dead-letter exchange: normal exchange of a usual type.
+
+Configure a DLX using a policy:
+
+```console
+$ rabbitmqctl set_policy DLX ".*" '{"dead-letter-exchange":"my-dlx"}' --apply-to queues
+```
+
+An  explicit routing key can be specified by adding the key `"dead-letter-routing-key"` to the policy.
+
+It is possible to form a cycle of message dead-lettering.
+But when a message go full circle (reaches the same queue twice), it will be dropped if there were no rejections in the entire cycle.
+
+Each dead-lettered message gets an array in the header: `x-death`. It contains an entry for each dead lettering event,
+identified by a pair of `{queue, reason}`.
+Each entry is a table of:
+
+* `queue`: name of the last queue
+* `reason`: reason for dead lettering: `rejected`, `expired`, `maxlen`, `delivery_limit`
+* `time`: when it was dead lettered
+* `exchange`: name of the last exchange
+* `routing-keys`: last routing key
+* `count`: how many times this message was dead-lettered in this queue for this reason
+* `original-expiration`: the original TTL value (if any)
+
+Three top-level headers are added for the very first dead-lettering event:
+
+* `x-first-death-reason`
+* `x-first-death-queue`
+* `x-first-death-exchange`
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Priority Queues
+
+Any queue can be turned into a priority queue using client-provided arguments.
+Declaration using policies is not supported by design (because policies are dynamic,
+whereas it's not possible to change priorities of a queue).
+
+To declare a priority queue, set `x-max-priority`: the max priority a queue can support:
+
+> x-max-priority=10
+
+Now publishers can publish prioritised messages using the `priority` field.
+Larger numbers indicate higher priority.
+Mesages without a priority implicitly have `priority=0`: lowest.
+
+We recomment using `x-max-priority=10`. Using more priorities will consume more CPU resources
+by using more Erlang processes.
+
+
+
+
+
+
+# Consumer Priorities
+If a consumer has a priority — then messages would go to other consumers when the high-priority consumer blocks.
+Use this parameter for `basic_consume()`:
+
+> x-priority: 10
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Exchange to Exchange Bindings
+
+The `queue.bind` method binds a queue to an exchange: message flow from the exchange to the queue.
+
+We have introduced `exchange.bind` which binds one exchange to another.
+This allows richer topologies to be created. Just like with queues, multiple bindings can be created.
+
+RabbitMQ will detect and eliminate cycles during message delivery: every queue will receive exactly one copy of that message (!).
+
+
+
+
+
+
+
+
+# Alternate Exchanges
+
+AE: Alternate Exchange: handle messages that an exchange was unable to route (i.e. because there were no bound queues or no matching bindings).
+
+An AE can be defined by clients or using policies.
+Example: on "my-direct" exchange, send unroutable messages to "my-ae".
+
+```console
+$ rabbitmqctl set_policy AE "^my-direct$" '{"alternate-exchange":"my-ae"}' --apply-to exchanges
+```
+
+Whenever an exchange with a configured AE cannot route a message to any queue, it publishes the message to the specified AE instead. If that AE does not exist then a warning is logged. If an AE cannot route a message, it in turn publishes the message to its AE, if it has one configured. This process continues until:
+
+* until either the message is successfully routed,
+* the end of the chain of AEs is reached,
+* or an AE is encountered which has already attempted to route the message (loop detection)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1306,133 +1721,113 @@ The stream is cleaned-up in segments, and one latest segment would always be pre
 
 
 
-# Memory and Disk Alarms
 
-## Memory Alarms
 
-By default, when RabbitMQ uses >40% of the available RAM, it raises a memory alarm
-and blocks all connections that are publishing messages. Once the memory alarm has cleared, normal service resumes.
 
-Configure: either percent, or megabytes:
+
+
+
+
+
+
+
+# MQTT Plugin
+
+The plugin requires a quorum of cluster nodes: 2 out of 3, or 3 out of 5, etc.
+It **does not support** cluster of two nodes!
+
+Supported features:
+
+* QoS0 and QoS1. QoS2 is downgraded to QoS1.
+* Last Will and Testament (LWT)
+* Session stickiness
+* Retained messages with pluggable storage back-ends
+
+Enable:
 
 ```console
-$ rabbitmqctl set_vm_memory_high_watermark 0.4
-$ rabbitmqctl set_vm_memory_high_watermark absolute "1G"
+$ rabbitmq-plugins enable rabbitmq_mqtt
 ```
 
-Commands are not persistent. Use config file for persistent configuration:
+Messages published to MQTT topics use a topic exchange (`amq.topic` by default) internally.
+Subscribers consume from RabbitMQ queues bound to the topic exchange.
+
+MQTT topics use slashes `cities/london`, but the plugin translates them to `cities.london`.
+Limitation: MQTT topics that have dots in them won't work as expected.
+
+By default, MQTT allows `guest` access.
+To disable anonymous connections:
 
 ```ini
-vm_memory_high_watermark.relative = 0.4
-# or
-vm_memory_high_watermark.absolute = 1G
+mqtt.allow_anonymous = false
 ```
 
-Use `vm_memory_high_watermark=0` to deactivate publishing globally.
+MQTT QoS levels:
 
-## Disk Alarms
+* QoS0: at most once. No guarantee of delivery. The recipient does not ack receipt.
+* QoS1: at least once. Guarantees that a message is delivered at least one time.
+* QoS2: exactly once. Makes sure that a message is delievered exactly once.
 
-By default, when free disk space drops below 50Mb, an alarm is triggered and all producers are blocked.
+In RabbitMQ:
 
-Configure:
+* QoS0 uses non-durable, auto-delete queues: will be deleted when the client disconnects
+* QoS1 use durable queues. Auto-delete may be set by a client's "clean session" flag:
+    clients with clean sessions use auto-deleted queues.
+
+Queues created for MQTT subscribers will ahve names starting with `mqtt-subscription-*`,
+one per subscription QoS level. Queues will have a *queue TTL* depending on configuration:
+24h by default.
+
+Configuration:
 
 ```ini
-disk_free_limit.absolute = 50M
+mqtt.allow_anonymous  = false
+mqtt.vhost            = /
+mqtt.exchange         = amq.topic
+mqtt.subscription_ttl = 86400000  # 24h
+mqtt.prefetch         = 10
 ```
 
-or command to set a value temporarily:
+## Vhosts
+
+When a user connects, the plugin extracts vhost from the user.
+
+Another way to specify a vhost is to prepend the vhost to a username:
+
+> /:username
+
+It's also possible to open multiple MQTT ports and configure a port-to-vhost mapping:
 
 ```console
-$ rabbitmqctl set_disk_free_limit "50M"
+$ rabbitmqctl set_global_parameter mqtt_port_to_vhost_mapping \
+    '{"1883":"vhost1", "8883":"vhost1", "1884":"vhost2", "8884":"vhost2"}'
 ```
 
+It's also possible to authenticated using X.509 certificates. See the docs.
 
+## Retained messages
 
+The plugin supports *retained messages* with two pluggable storages:
 
+* ETS: `rabbit_mqtt_retained_msg_store_ets`: in-memory
+* DETS: `rabbit_mqtt_retained_msg_store_dets`: on-disk
 
+ETS is limited by RAM, DETS is limited to 2Gb per vhost.
 
+Configuration:
 
+```ini
+mqtt.retained_message_store = rabbit_mqtt_retained_msg_store_dets
+mqtt.retained_message_store_dets_sync_interval = 2000
+```
 
+See better-performing stores based on Riak and Cassandra.
 
+## Web MQTT
 
-
-
-
-
-# Flow Control
-
-If a client is publishing too quickly for queues to keep up, it's throttled:
-it will look to the client like the network bandwidth to the server is lower than it actually is.
-
-In the web UI, this connection will appear to be in the "flow" state.
-
-Other components can be in the "flow" state as well: channels, queues, and other parts, can apply flow control that eventually propagates back to publishing connections.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Queue Length Limit
-
-Max length of a queue can be set either to a number of messages, or to a number of bytes.
-When the maximum size is reached, the default behavior is to drop or dead-letter oldest messages.
-
-If `overflow=reject-publish` or `overflow=reject-publish-dlx` (dead letter), the newest messages will be discarded.
-If publisher confirms are enabled, the publisher will be informed of the reject via a "basic.nack" message.
-
-Define max queue length using a policy:
+Use MQTT over a WebSocket.
 
 ```console
-$ rabbitmqctl set_policy my-pol "^one-meg$" '{"max-length-bytes":1048576}' --apply-to queues
-$ rabbitmqctl set_policy my-pol "^two-messages$" '{"max-length":2,"overflow":"reject-publish"}' --apply-to queues
+$ rabbitmq-plugins enable rabbitmq_web_mqtt
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-# Lazy Queues
-
-Lazy queues are useful when they have millions of messages:
-they would move their contents to disk as early as possible, and only load them in RAM when requested by consumers.
-It's slower, but saves memory when consumers are slower than normal.
-
-Tune using a policy:
-
-```console
-$ rabbitmqctl set_policy Lazy "^lazy-queue$" '{"queue-mode":"lazy"}' --apply-to queues
-$ rabbitmqctl set_policy Lazy "^lazy-queue$" '{"queue-mode":"default"}' --apply-to queues
-```
-
-or at the time of declaration:
-
-```python
-channel.queue_declare(
-    'events',
-    arguments={'x-queue-mode', 'lazy'},
-)
-```
-
-During a conversion from the regular mode to the lazy one, the queue will first page all messages kept in RAM to disk. It won't accept any more messages from publishing channels while that operation is in progress. After the initial pageout is done, the queue will start accepting publishes, acks, and other commands.
-
-Lazy queues are appropriate when keeping node memory usage low is a priority and higher disk I/O and disk utilisation are acceptable.
