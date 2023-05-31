@@ -1831,3 +1831,237 @@ Use MQTT over a WebSocket.
 $ rabbitmq-plugins enable rabbitmq_web_mqtt
 ```
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# OAuth2
+
+The OAuth2 plugin does not communicate with any OAuth2.0 provider:
+it only decodes an access token provided by the client and authorizes a user based on the data stored in the token.
+
+Nodes must:
+
+* Use `rabbit_auth_backend_oauth2` auth backend
+* `resource_server_id` must match the scope prefix: e.g. "rabbitmq"
+* configured with a signing key to validate tokens
+
+Tokens must:
+
+* be digitally signed
+* have `aud`=`resource_server_id`
+* Have scopes with `configure:%2F/foo` that allow to access RabbitMQ resources
+* Optionally, the `kid` may identify which key to use for validation
+* Token is passed as password. Username field is ignored!
+* Token must not be expired :)
+
+```ini
+# Enable OAuth2 as the authorization backend
+auth_backends.1 = rabbit_auth_backend_oauth2
+auth_backends.2 = internal
+
+# ### Configure OAuth2
+
+# RabbitMQ does not communicate with KeyCloak.
+# But it needs a way to check KeyCloak's tokens with a signing key
+#
+# Key from KeyCloak: ID + "Certificate" X.509 public key. Export the file, mount it, add it by id.
+# KeyCloak: see Realm Settings / Keys, export the "RSA" certificate, add it here by id.
+# JWT "kid" will be used to find a matching key here
+# NOTE: the file must start with "-----BEGIN CERTIFICATE-----" and end with "-----END CERTIFICATE-----"
+auth_oauth2.default_key = Gnl2ZlbRh3rAr6Wymc988_5cY7T5GuePd5dpJlXDJUk
+auth_oauth2.signing_keys.Gnl2ZlbRh3rAr6Wymc988_5cY7T5GuePd5dpJlXDJUk = /etc/rabbitmq/oauth-key.pem
+
+# The signing key can also be retrieved dynamically from a URL serving a JWK Set.
+# Then you won't need to upload "signing keys" manually.
+# NOTE: JWKS takes precedence over `signing_keys`. Must be HTTPS!
+# auth_oauth2.jwks_url = https://keycloak:8080/realms/test/protocol/openid-connect/certs
+
+# JWT tokens' "aud" must match the `resource_server_id`
+# And scopes must have this `resource_server_id` as the prefix for permissions: "rabbitmq.read:*/*"
+auth_oauth2.resource_server_id = rabbitmq
+
+# Verify token's "aud" to be equal to `resource_server_id`?
+# auth_oauth2.verify_aud = true
+# Disable "aud" verification because KeyCloak
+auth_oauth2.verify_aud = false
+
+# List of JWT claims to look for username.
+# Most servers do not return anything meaningful in the "sub" and "client_id" claims,
+# so we look for a username in a different place
+auth_oauth2.preferred_username_claims.1 = preferred_username
+# auth_oauth2.preferred_username_claims.1 = rabbitmq_username
+# auth_oauth2.preferred_username_claims.2 = username
+# auth_oauth2.preferred_username_claims.1 = extra_scope
+
+
+# By default, "scope" key is used.
+# RabbitMQ supports more fine-graned authorization using a custom JWT field: `additional_scopes_key`
+# The `resource_server_type` is the "type" used there.
+# auth_oauth2.additional_scopes_key = authorization_details
+# auth_oauth2.resource_server_type = rabbitmq
+
+# HTTPS: set "verify_peer" to add more security
+# auth_oauth2.https.peer_verification = verify_peer
+# auth_oauth2.https.fail_if_no_peer_cert = true
+
+
+# ### Configure Management
+
+
+# Enable OAuth2 in the management web UI
+management.oauth_enabled = true
+
+# Use this Client to authenticate. Must have "code" flow enabled.
+# Refers to a KeyCloak's Client with Code Flow enabled ("Standard Flow")
+# Make sure you've set CORS and "Valid redirect URLs" correctly!
+management.oauth_client_id = rabbitmq-client-code
+
+# The scopes to request
+management.oauth_scopes = openid profile rabbitmq.tag:administrator
+
+# The URL to redirect to. With a realm name.
+# A button should appear on the Web UI login page. If not, see F12 console for errors.
+management.oauth_provider_url = http://localhost:8282/realms/test
+
+
+
+# # Enable when OAuth2 does not work and you want to see the reason
+#log.console.level = debug
+#log.default.level = debug
+```
+
+Scopes are translated into permissions:
+
+```
+<permission>:<vhost_pattern>/<name_pattern>[/<routing_key_pattern>]
+```
+
+Permissions: `configure`, `read`, `write`
+
+Wildcard patterns: `*`, `foo*`, `*foo`, `foo*bar`. The pattern must be URL-encoded!!
+
+Examples:
+
+* `read:*/*`, `write:*/*` -- on any resource, on any vhost
+* `read:vhost1/*`
+* `read:vhost1/some*` -- allow reading from some queues
+* `write:vhost1/some*/routing*`: allow to publish to some exchanges, with a routing key prefix
+
+To bind a queue to an exchange, you need:
+
+* "write" on the queue and the routing key
+* "read" on the exchange and the routing key
+
+To publish to a topic exchange:
+
+* "write" on the exchange and the routing key
+
+To control access to the management plugin, add a scope:
+
+```
+rabbitmq.tag:monitoring
+rabbitmq.tag:management
+rabbitmq.tag:administrator
+rabbitmq.tag:policymaker
+```
+
+Expiring token can be updated on an existing connection using the "update-secret" AMQP method:
+see whether your client supports this method. If not, the client would have to reconnect.
+If a token expires, the broker will refuse all operations after a time.
+
+In addition to scopes like `rabbitmq.read:*/*`, *rich authorization request* is supported:
+the JWT token may contain fine-grained permissions. Enable it in the config:
+
+```ini
+# By default, "scope" key is used.
+# RabbitMQ supports more fine-graned authorization using a custom JWT field: `additional_scopes_key`
+# The `resource_server_type` is the "type" used there.
+auth_oauth2.additional_scopes_key = authorization_details
+auth_oauth2.resource_server_type = rabbitmq
+```
+
+and then use tokens like this:
+
+```js
+{
+  "authorization_details": [
+    {
+      "type" : "rabbitmq",
+      "locations": ["cluster:finance/vhost:production-*"],
+      "actions": [ "read", "write", "configure"  ]
+    },
+    {
+      "type" : "rabbitmq",
+      "locations": ["cluster:finance", "cluster:inventory" ],
+      "actions": ["administrator" ]
+    }
+  ]
+}
+```
+
+To debug authentication, enable debug logging:
+
+```console
+$ rabbitmqctl set_log_level debug
+```
+
+With KeyCloak:
+
+* The Web UI must have a "sign in" button for OpenID
+* Client `rabbitmq-client-code` is used for the Web UI.
+
+    Make sure "Root URL", "Valid redirect URIs" are set, and CORS "Web origins" is set to "+"
+
+* For the admin, it is sufficient to have the "rabbitmq.tag:administrator" scope (and role)
+
+## Authenticate a client: RabbitMQ or MQTT
+
+Generate a token:
+
+
+```console
+$ http --form POST 'http://localhost:8282/realms/test/protocol/openid-connect/token' \
+    client_id=rabbitmq client_secret='VcSTMwnbmhXDJ06t1onkpCpr9DGUIbTG' \
+    grant_type=password username="1234" password="1234" \
+    scope="openid offline_access rabbitmq.read:*/* rabbitmq.write:*/* rabbitmq.configure:*/*"
+```
+
+For this to work:
+
+1. Create a client, "rabbitmq", with a secret
+2. Create a role for your devices, e.g. "producer"
+3. Create client scopes: `rabbitmq.read:*/*`, `rabbitmq.write:*/*`, `rabbitmq.configure:*/*`,
+    set scope role to "producer" (i.e. you can only have it if you have the role).
+    Set "type=None" (not default, not optional)
+4. Add the scopes to the client, using "optional"
+5. You may want to configure "Access Token Lifespan", "Client Token Idle", "Client Offline Token Idle":
+   see "Client/Advanced" for client-local settings, or "Realm/Tokens" for all-realm settings.
+
+Now you can request these scopes.
+
+Note that RabbitMQ authorization backends support variable expansion in permission patterns:
+`{username}`, `{vhost}` and `{client_id}` (from MQTT). You can use these in scopes.
+If something more advanced and dynamic is required, use attributes: `"authorization_details"`.
+
+Check that token works:
+
+```console
+# rabbitmqctl authenticate_user '' "$token"
+Authenticating user "" ...
+Success
+```
+
+
