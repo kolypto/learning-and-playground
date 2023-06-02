@@ -57,6 +57,12 @@ $ terraform show -json plan-test | jq ...
 $ terraform apply "plan-test"
 ```
 
+Debug logging:
+
+```console
+$ TF_LOG=trace terraform apply ...
+```
+
 # Inspect
 
 List all providers and resource types:
