@@ -447,3 +447,402 @@ in the following flags:
 
 # Deploy a Stack (docker-compose)
 
+Deploy a complete application stack to the swarm with a Compose file.
+
+NOTE: `docker stack deploy` still uses the legacy Compose file version 3, used by Compose V1.
+It used to be written in Python and typically has a `version` field ranging from `2.0` to `3.8`.
+It was invoked by `docker-compose`.
+
+New Compose V2, announced in 2020, is written in Go and invoked as `docker compose`.
+Compose V2 ignores the version field in YAML.
+The latest format, defined by the Compose specification isn’t compatible with the `docker stack deploy` command.
+
+Start a Docker registry:
+
+```console
+$ docker service create --name registry --publish published=5000,target=5000 registry:2
+```
+
+Create a `docker-compose.yml` for your application:
+
+```yaml
+services:
+  web:
+    # Image for the local registry will be built
+    image: 127.0.0.1:5000/stackdemo
+    # NOTE: `build` option is ignored when deploying a stack in swarm mode
+    # But here, we use it to build an image locally.
+    build: .
+    ports:
+      - "8000:8000"
+    env:
+        REDIS_HOST: redis:6379
+
+  redis:
+    image: redis:alpine
+```
+
+Test the app with `docker-compose up`. If everything works, deploy it:
+
+```console
+$ docker-compose push
+$ docker stack deploy --compose-file docker-compose.yml stackdemo
+$ docker stack services stackdemo
+```
+
+In swarm mode:
+
+* the `build`, `depends_on`, `links`, `restart`, `tmpfs` keys are ignored in swarm mode
+* the `deploy` key is used for swarm deployments. See [docker-compose.yml#deploy](https://docs.docker.com/compose/compose-file/compose-file-v3/#deploy)
+
+Here is an example with some swarm-specific compose file options:
+
+```yaml
+version: "3.9"
+services:
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379"
+    networks:
+      - frontend
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  db:
+    image: postgres:9.4
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - backend
+    deploy:
+      placement:
+        max_replicas_per_node: 1
+        constraints:
+          - "node.role==manager"
+
+  vote:
+    image: dockersamples/examplevotingapp_vote:before
+    ports:
+      - "5000:80"
+    networks:
+      - frontend
+    depends_on:
+      - redis
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 2
+      restart_policy:
+        condition: on-failure
+
+  result:
+    image: dockersamples/examplevotingapp_result:before
+    ports:
+      - "5001:80"
+    networks:
+      - backend
+    depends_on:
+      - db
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  worker:
+    image: dockersamples/examplevotingapp_worker
+    networks:
+      - frontend
+      - backend
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels: [APP=VOTING]
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints:
+          - "node.role==manager"
+
+  visualizer:
+    image: dockersamples/visualizer:stable
+    ports:
+      - "8080:8080"
+    stop_grace_period: 1m30s
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    deploy:
+      placement:
+        constraints:
+          - "node.role==manager"
+
+networks:
+  frontend:
+  backend:
+
+volumes:
+  db-data:
+```
+
+
+
+
+# Configuration
+
+Allows you to store non-sensitive configuration files outside a service's image or running containers.
+This allows you to keep your images as generic as possible, without the need to bind-mount configuration
+files into the containers or use environment variables.
+
+Configs are mounted directly into the container's filesystems.
+
+Configs can be added or removed from a service at any time, and services can share a config.
+
+Note: Docker configs are only available to swarm services, not to standalone containers.
+
+Top-level `configs`:
+
+```yaml
+configs:
+  # `file` is a config created with the contents of the file
+  my_first_config:
+    file: ./config_data
+
+  # `external` is a config that has already been created (e.g. in another docker-compose file)
+  my_second_config:
+    external: true
+```
+
+Also see `driver`: you can use a custom secret driver to load the config from.
+
+Also see `template_driver: golang` to use templating in config files !!
+
+Use config with a service:
+
+```yaml
+# Short syntax
+version: "3.9"
+services:
+  redis:
+    image: redis:latest
+    deploy:
+      replicas: 1
+    configs:
+      - my_config       # by default, is mounted as `/my_config`
+      - my_other_config
+
+configs:
+  my_config:
+    file: ./my_config.txt
+  my_other_config:
+    external: true
+
+# Long syntax
+version: "3.9"
+services:
+  redis:
+    image: redis:latest
+    deploy:
+      replicas: 1
+    configs:
+      - source: my_config
+        target: /redis_config
+        uid: '103'
+        gid: '103'
+        mode: 0440
+
+configs:
+  my_config:
+    file: ./my_config.txt
+  my_other_config:
+    external: true
+```
+
+In a swarm: When you add a config to the swarm, Docker sends the config to the swarm manager over a mutual TLS connection.
+The config is stored in the Raft log, which is encrypted. The entire Raft log is replicated across the other managers,
+ensuring the same high availability guarantees for configs as for the rest of the swarm management data.
+
+When a config is added to a service, it is mounted as a file in the container: by default, to `/config-name`.
+
+Security:
+
+* A node only has access to configs if the node is a swarm manager or if it is running service tasks which have been granted access to the config. When a container task stops running, the configs shared to it are unmounted from the in-memory filesystem for that container and flushed from the node’s memory.
+* If a node loses connectivity to the swarm while it is running a task container with access to a config, the task container still has access to its configs, but cannot receive updates until the node reconnects to the swarm.
+
+To update or roll back configs more easily, consider adding a version number or date to the config name. This is made easier by the ability to control the mount point of the config within a given container.
+
+See these commands for config management:
+
+* `docker config create`
+* `docker config inspect`
+* `docker config ls`
+* `docker config rm`
+
+Example: create a config:
+
+```config
+$ echo "This is a config" | docker config create my-config -
+```
+
+Add it to a service:
+
+```config
+$ docker service create --name redis --config my-config redis:alpine
+```
+
+Remove access to the config:
+
+```config
+$ docker service update --config-rm my-config redis
+```
+
+Example: use a templated config:
+
+```html
+<html lang="en">
+  <head><title>Hello Docker</title></head>
+  <body>
+    <p>Hello {{ env "HELLO" }}! I'm service {{ .Service.Name }}.</p>
+  </body>
+</html>
+```
+
+```config
+$ docker config create --template-driver golang homepage index.html.tmpl
+```
+
+
+# Secrets
+
+Secrets is like `configs`, but the contents are encrypted during transit and at reset in a Docker swarm.
+
+Use case: usernames and passwords, TLS certificates, SSH keys, database names, etc.
+
+Use case: use a common docker-compose file + a different set of credentials for every environment: dev, test, prod.
+You only need to know the name of the secret to function in all three environments.
+
+The secret is stored in the Raft log, which is encrypted. The entire Raft log is replicated across the other managers.
+
+Secrets are mounted into the container in an in-memory FS: `/run/secrets/<secret_name>`.
+You can add/remove secrets at any time.
+
+Example: serve a website, mount a config and a secret:
+
+```console
+$ docker service create \
+     --name nginx \
+     --secret site.key \
+     --secret site.crt \
+     --config source=site.conf,target=/etc/nginx/conf.d/site.conf,mode=0440 \
+     --publish published=3000,target=443 \
+     nginx:latest \
+     sh -c "exec nginx -g 'daemon off;'"
+```
+
+Within the running containers, the following three files now exist:
+
+* `/run/secrets/site.key`
+* `/run/secrets/site.crt`
+* `/etc/nginx/conf.d/site.conf`
+
+Example: generate a random password for a MySQL:
+
+```console
+$ openssl rand -base64 20 | docker secret create mysql_password -
+```
+
+Now use them as files:
+
+```console
+$ docker service create \
+     --name mysql \
+     --replicas 1 \
+     --network mysql_private \
+     --mount type=volume,source=mydata,destination=/var/lib/mysql \
+     --secret source=mysql_root_password,target=mysql_root_password \
+     --secret source=mysql_password,target=mysql_password \
+     -e MYSQL_ROOT_PASSWORD_FILE="/run/secrets/mysql_root_password" \
+     -e MYSQL_PASSWORD_FILE="/run/secrets/mysql_password" \
+     -e MYSQL_USER="wordpress" \
+     -e MYSQL_DATABASE="wordpress" \
+     mysql:latest
+```
+
+
+
+
+
+# Lock your Swarm
+
+Docker allows you  to take ownership of the TLS encryption keys (used for secrets, Raft logs, and swarm communication)
+and to require manual unlocking of your managers. This feature is called *autolock*.
+
+```console
+$ docker swarm init --autolock
+...
+To unlock a swarm manager after it restarts, run the `docker swarm unlock`
+command and provide the following key:
+
+    SWMKEY-1-WuYH/IX284+lRcXuoVf38viIDK3HJEKY13MIHX+tTt8
+```
+
+Store the key in a safe place.
+When Docker restarts, you'd need to unlock the swarm. Otherwise it gives the following error:
+
+```console
+$ sudo service docker restart
+$ docker service ls
+
+Error response from daemon: Swarm is encrypted and needs to be unlocked before it can be used. Use "docker swarm unlock" to unlock it.
+```
+
+Enable autolock on an existing swarm:
+
+```console
+$ docker swarm update --autolock=true
+```
+
+You should rotate the locked Swarm's unlock key on a regular schedule:
+
+```console
+$ docker swarm unlock-key --rotate
+
+Successfully rotated manager unlock key.
+
+To unlock a swarm manager after it restarts, run the `docker swarm unlock`
+command and provide the following key:
+
+    SWMKEY-1-8jDgbUNlJtUe5P/lcr9IXGVxqZpZUXPzd+qzcGp4ZYA
+
+Please remember to store this key in a password manager, since without it you
+will not be able to restart the manager.
+```
+
+
+
+
+
+# Back up
+
+Docker manager nodes store the swarm state and manager logs in the `/var/lib/docker/swarm/` directory.
+This data includes the keys used to encrypt the Raft logs. Without these keys, you cannot restore the swarm.
+
+You can back up the swarm using any manager: unlock the swarm if necessary, stop Docker on this manager,
+and back up the `/var/lib/docker/swarm` directory.
+You can do hot backups without taking Docker down, but then the results are less predictable.
+
+
+
+
+
