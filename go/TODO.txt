@@ -39,6 +39,11 @@ Configuration:
 
 Databases:
     XORM (dynamic query builder)
+    https://github.com/uptrace/bun
+    https://github.com/go-jet/jet
+    Alternatives to sqlc:
+        https://github.com/xo/xo
+
 
 Access Control:
     Powerful https://github.com/casbin/casbin (integrated with Echo)
