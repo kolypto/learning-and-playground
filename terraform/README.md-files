@@ -60,3 +60,5 @@
 04-playground-deploy-aws/modules/app-setup-database/variables.tf
 04-playground-deploy-aws/modules/app-setup-database/main.tf
 04-playground-deploy-aws/modules/app-setup-database/outputs.tf
+04-playground-deploy-aws/modules/server-with-network/instance-config.template.yml
+04-playground-deploy-aws/modules/server-with-network/instance-config.template.yml

@@ -1,0 +1,41 @@
+#cloud-config
+
+# Here's how to test this file locally:
+# $ multipass launch 23.04 --name test --cloud-init test.yml
+
+# Hostname
+hostname: ${hostname}
+fqdn: ${hostname}.example.com
+
+# Install packages
+package_update: true
+packages:
+  - docker.io
+  - htop
+  - tmux
+
+# default user "admin" gets this key
+ssh_authorized_keys:
+  - "${ssh_admin_pubkey}"
+
+groups:
+  - admin
+  - docker
+
+# Create users and their home folders
+# TODO: produce via templating
+users:
+  - default
+  - name: admin
+    primary_group: admin  # it will already exist
+    groups: sudo, docker
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - "${ssh_admin_pubkey}"
+  - name: mark
+    groups: admin, sudo, docker
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - "ssh-ed25519 AAAAC_______________M1q user@example.com"

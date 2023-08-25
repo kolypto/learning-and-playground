@@ -57,6 +57,12 @@ $ terraform show -json plan-test | jq ...
 $ terraform apply "plan-test"
 ```
 
+Debug logging:
+
+```console
+$ TF_LOG=trace terraform apply ...
+```
+
 # Inspect
 
 List all providers and resource types:
@@ -112,6 +118,12 @@ tolist([
 ```
 
 Use *outputs* to get data from terraform. Don't parse JSON!
+
+Get a sensitive value:
+
+```console
+$ terraform show -json | jq '.values.root_module.resources[] | select(.address == "tls_private_key.server_ssh_key")'
+```
 
 # AWS
 
@@ -1756,6 +1768,12 @@ resource "aws_instance" "server" {
         device_index         = 0  # from the ip list
     }
 
+    # Disk
+    ebs_block_device {
+        volume_size = 15  // Gb
+        device_name = "/dev/sda1"
+    }
+
     # Easy way to get a public IP address
     # associate_public_ip_address = true
 
@@ -1771,6 +1789,12 @@ resource "aws_instance" "server" {
     # Install Docker
     user_data_replace_on_change = true
     user_data = templatefile("${path.module}/template.server-init.sh", {})
+
+    // OR: Use cloud-config to initialize the instance
+    user_data = templatefile("${path.module}/instance-config.template.yml", {
+        hostname = local.hostname,
+        ssh_admin_pubkey = aws_key_pair.server_ssh_key.public_key,
+    })
 
     # Remote command: i.e. on the server instance
     # provisioner "remote-exec" {
@@ -1818,8 +1842,14 @@ resource "aws_eip" "server_ip" {
 # SSH key to access the server with
 resource "aws_key_pair" "ssh_key" {
   # Use `key_name` for a static unique name, use `key_name_prefix` for a generated unique name
-  key_name_prefix = "${var.server_name}-ssh-key-"
-  public_key = file(var.ssh_public_key_file)  # read from file
+  key_name = "${var.hostname}-ssh-key"
+  public_key = tls_private_key.server_ssh_key.public_key_openssh
+  public_key = file(var.ssh_public_key_file)  # OR: read from file
+}
+
+# Generate a unique SSH key for this server
+resource "tls_private_key" "server_ssh_key" {
+  algorithm = "ED25519"
 }
 
 
@@ -3495,6 +3525,109 @@ output "psql_applications" {
     }
     sensitive = true
 }
+
+```
+
+
+
+
+
+# 04-playground-deploy-aws/modules/server-with-network
+
+
+# 04-playground-deploy-aws/modules/server-with-network/instance-config.template.yml
+
+```yaml
+#cloud-config
+
+# Here's how to test this file locally:
+# $ multipass launch 23.04 --name test --cloud-init test.yml
+
+# Hostname
+hostname: ${hostname}
+fqdn: ${hostname}.example.com
+
+# Install packages
+package_update: true
+packages:
+  - docker.io
+  - htop
+  - tmux
+
+# default user "admin" gets this key
+ssh_authorized_keys:
+  - "${ssh_admin_pubkey}"
+
+groups:
+  - admin
+  - docker
+
+# Create users and their home folders
+# TODO: produce via templating
+users:
+  - default
+  - name: admin
+    primary_group: admin  # it will already exist
+    groups: sudo, docker
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - "${ssh_admin_pubkey}"
+  - name: mark
+    groups: admin, sudo, docker
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - "ssh-ed25519 AAAAC_______________M1q user@example.com"
+
+```
+
+
+
+# 04-playground-deploy-aws/modules/server-with-network/instance-config.template.yml
+
+```yaml
+#cloud-config
+
+# Here's how to test this file locally:
+# $ multipass launch 23.04 --name test --cloud-init test.yml
+
+# Hostname
+hostname: ${hostname}
+fqdn: ${hostname}.example.com
+
+# Install packages
+package_update: true
+packages:
+  - docker.io
+  - htop
+  - tmux
+
+# default user "admin" gets this key
+ssh_authorized_keys:
+  - "${ssh_admin_pubkey}"
+
+groups:
+  - admin
+  - docker
+
+# Create users and their home folders
+# TODO: produce via templating
+users:
+  - default
+  - name: admin
+    primary_group: admin  # it will already exist
+    groups: sudo, docker
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - "${ssh_admin_pubkey}"
+  - name: mark
+    groups: admin, sudo, docker
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - "ssh-ed25519 AAAAC_______________M1q user@example.com"
 
 ```
 

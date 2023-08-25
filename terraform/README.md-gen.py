@@ -25,6 +25,7 @@ def main(files: list[str]):
                     '.tfvars': 'terraform',
                     '.sh': 'bash',
                     '.toml': 'toml',
+                    '.yml': 'yaml',
                 }[file.suffix]
 
 

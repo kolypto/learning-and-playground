@@ -119,6 +119,12 @@ tolist([
 
 Use *outputs* to get data from terraform. Don't parse JSON!
 
+Get a sensitive value:
+
+```console
+$ terraform show -json | jq '.values.root_module.resources[] | select(.address == "tls_private_key.server_ssh_key")'
+```
+
 # AWS
 
 Set environment variables:
