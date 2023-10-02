@@ -1,2 +1,4 @@
 rust/a01-hello/src/main.rs
 rust/a01-hello/Cargo.toml
+rust/a02_guessing_game/src/main.rs
+

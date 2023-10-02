@@ -1,3 +1,7 @@
+
 rust/a01-hello/Cargo.toml
 rust/a01-hello/.gitignore
 rust/a01-hello/src/main.rs
+rust/a02_guessing_game/Cargo.toml
+rust/a02_guessing_game/src/main.rs
+rust/.gitignore
