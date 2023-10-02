@@ -1,0 +1,6 @@
+ 
+ESP32: https://www.espressif.com/en/products/socs/esp32
+STM32WB: https://www.st.com/en/wireless-connectivity/zigbee-products.html
+nRF52840: https://www.nordicsemi.com/products/nrf52840
+Teensy 4.0: https://www.pjrc.com/store/teensy40.html
+Lolin D1 mini: https://www.wemos.cc/en/latest/d1/d1_mini_pro.html

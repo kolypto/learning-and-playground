@@ -1,0 +1,13 @@
+{
+    "inherits": [
+        "cortex-m0plus"
+    ],
+    "build-tags": [
+        "stm32l4",
+        "stm32l4x5",
+        "stm32"
+    ],
+    "extra-files": [
+        "src/device/stm32/stm32l4x5.s"
+    ]
+}
