@@ -6,4 +6,6 @@ rust/a02_guessing_game/Cargo.toml
 rust/a02_guessing_game/src/main.rs
 rust/a03_variables/Cargo.toml
 rust/a03_variables/src/main.rs
+rust/a04_flow/Cargo.toml
+rust/a04_flow/src/main.rs
 rust/.gitignore

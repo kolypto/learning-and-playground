@@ -2,3 +2,4 @@ rust/a01-hello/src/main.rs
 rust/a01-hello/Cargo.toml
 rust/a02_guessing_game/src/main.rs
 rust/a03_variables/src/main.rs
+rust/a04_flow/src/main.rs
