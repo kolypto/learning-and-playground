@@ -11,4 +11,6 @@ rust/a04_flow/src/main.rs
 rust/a05_ownership/Cargo.toml
 rust/a05_ownership/README.md
 rust/a05_ownership/src/main.rs
+rust/a06_structs/Cargo.toml
+rust/a06_structs/src/main.rs
 rust/.gitignore
