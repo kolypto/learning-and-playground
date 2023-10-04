@@ -13,4 +13,6 @@ rust/a05_ownership/README.md
 rust/a05_ownership/src/main.rs
 rust/a06_structs/Cargo.toml
 rust/a06_structs/src/main.rs
+rust/a07_enums_and_patterns/Cargo.toml
+rust/a07_enums_and_patterns/src/main.rs
 rust/.gitignore
