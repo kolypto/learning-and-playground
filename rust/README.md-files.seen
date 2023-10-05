@@ -14,5 +14,12 @@ rust/a05_ownership/src/main.rs
 rust/a06_structs/Cargo.toml
 rust/a06_structs/src/main.rs
 rust/a07_enums_and_patterns/Cargo.toml
+rust/a07_enums_and_patterns/README.md
 rust/a07_enums_and_patterns/src/main.rs
+rust/a08_packages/Cargo.toml
+rust/a08_packages/README.md
+rust/a08_packages/src/garden.rs
+rust/a08_packages/src/garden/vegetables.rs
+rust/a08_packages/src/lib.rs
+rust/a08_packages/src/main.rs
 rust/.gitignore

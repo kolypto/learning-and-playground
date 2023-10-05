@@ -6,3 +6,8 @@ rust/a04_flow/src/main.rs
 rust/a05_ownership/README.md
 rust/a06_structs/src/main.rs
 rust/a07_enums_and_patterns/src/main.rs
+rust/a08_packages/README.md
+rust/a08_packages/src/main.rs
+rust/a08_packages/src/garden.rs
+rust/a08_packages/src/garden/vegetables.rs
+rust/a08_packages/src/lib.rs

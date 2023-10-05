@@ -1,6 +1,5 @@
 [package]
-# Package name
-name = "a07_enums_and_patterns"
+name = "a08_packages"
 version = "0.1.0"
 edition = "2021"
 

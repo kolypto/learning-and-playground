@@ -1175,3 +1175,192 @@ fn move_player(_other: i32){}
 
 ```
 
+
+
+
+
+# rust/a08_packages
+## Packages, Creates, Modules, Paths
+
+Module system includes:
+
+* Packages: A Cargo feature that lets you build, test, and share crates
+* Crates: A tree of modules that produces a library or executable
+* Modules and use: Let you control the organization, scope, and privacy of paths
+* Paths: A way of naming an item, such as a struct, function, or module
+
+A *crate* is the smallest amount of code that Rust compiler considers at a time.
+A single source file is a crate. 
+
+A *crate* can come in one of two forms:
+
+* a *binary crate*: programs that compile into an executable. It must have a `fn main()`
+* a *library crate*: define functionality to be shared with multiple projects.
+  When Rustaceans say "create", they mean library crate.
+
+The *crate root* is a source file that the Rust compiler starts from.
+It makes up the root module of your crate.
+
+A *package* is a bundle of one or more crates: it has a `Cargo.toml` file that describes 
+how to build those crates. A package can contain many binary crates, but at most one library crate.
+
+In `Cargo.toml`, there's no reference to `src/main.rs`: cargo follows a convention that this file is
+the crate root of a binary crate, named after the package.
+
+If a package contains both `src/main.rs` and `src/lib.rs`, it has two crates: a binary crate, and a library crate.
+A package can have multiple binary crates by placing files in the `src/bin` directory: 
+each file will be a separate binary crate.
+
+### Modules Cheat Sheet
+
+How modules work:
+
+* When compiling a crate, the compiler first looks in the crate root file (usually `src/main.rs` or `src/lib.rs`).
+* In the crate root file, you can declare new modules:
+  
+  ```rust
+  mod garden;
+  ```
+
+  The compiler will look for the module's code in: `mod garden { ... }`, or in `src/garden.rs`, or in `src/garden/mod.rs`.
+
+* A submodule can be defined as `mod vegetables { ... }`, or in `src/garden/vegetables.rs`, or in `src/garden/vegetables/mod.rs` (older style).
+* Module code is private by default. Use `pub mod` to declare a module public.
+* You can refer to submodule types as `crate::garden::vegetables::Asparagus`.
+* Bring types into scope with `use crate::garden::vegetables::Asparagus` to reduce typing.
+
+
+
+
+
+
+# rust/a08_packages/src
+
+
+# rust/a08_packages/src/main.rs
+
+```rust
+use crate::garden::vegetables::Asparagus;
+
+// Tells the compiler to include garden.rs
+pub mod garden;
+
+fn main() {
+    let plant = Asparagus {};
+    println!("I'm growing {:?}!", plant);
+}
+
+```
+
+
+
+# rust/a08_packages/src/garden.rs
+
+```rust
+// Includes vegetables.rs
+pub mod vegetables;
+
+```
+
+
+
+
+
+# rust/a08_packages/src/garden
+
+
+# rust/a08_packages/src/garden/vegetables.rs
+
+```rust
+#[derive(Debug)]
+pub struct Asparagus {}
+
+```
+
+
+
+
+
+# rust/a08_packages/src
+
+
+# rust/a08_packages/src/lib.rs
+
+```rust
+// This is a library crate.
+// The binary crate can use it as if it was an external library.
+// See Chapter 12 for an example.
+
+// Define a module.
+// A module groups related definitions together.
+mod back_office {
+    // All items are private by default.
+    // So, if you want to make an item private, you put it in a module.
+    // That is, Rust is hiding inner implementation details by default.
+    
+    // Items in a parent module can't use the private items inside child modules.
+    // However, items in child modules can use the items in their ancestor modules. 
+    // This is because child modules wrap and hide their implementation details, 
+    // but child modules can see the context in which they are defined.
+
+    // Making a module public doesn't make the items public.
+    // Every exported item must be marked with `pub` as well.
+    pub mod hosting {
+        pub fn add_to_waitlist() {}
+        fn seat_at_table() {
+            // Use `super::` to start with the parent create: one level higher.
+            super::play_music()
+        }
+    }
+
+    mod serving {
+        fn take_order() {}
+        fn serve_order() {}
+        fn take_payment() {}
+    }
+
+    fn play_music(){}
+
+    // If a struct is public, all fields are still private by default.
+    // Use `pub` to make fields public.
+    pub struct Order {
+        pub id: u32,
+    }
+}
+
+
+// Library's public API: marked with `pub`
+pub fn eat_at_restaurant() {
+    // Absolute path: starts with `crate::`
+    crate::back_office::hosting::add_to_waitlist();
+
+    // Relative path: starts with a module name
+    back_office::hosting::add_to_waitlist();
+
+    // Bring `hosting` into scope to reduce typing. It's just a shortcut.
+    // It is idiomatic to bring the module into scope rather than just the function: 
+    // module name makes it clear that it's not a local function.
+    use back_office::hosting;
+    hosting::add_to_waitlist();
+
+    // With types, however, it is idiomatic to bring the type into scope directly:
+    // because they have methods:
+    use std::collections::HashMap;
+    let mut map: HashMap<String, i32> = HashMap::new();
+
+    // Use aliases to resolve name conflicts
+    use std::fmt::Result;
+    use std::io::Result as IoResult;  // alias
+}
+
+// Re-export: bring the name into scope and make it public.
+pub use crate::back_office::Order;
+
+// Use nested paths to bring several items into scope
+use std::io::{self, Write}; // brings `io`, `Write` into scope
+
+// Bring all public items into scope:
+use std::collections::*;
+
+```
+
