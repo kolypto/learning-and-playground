@@ -12,3 +12,5 @@ rust/a08_packages/src/garden.rs
 rust/a08_packages/src/garden/vegetables.rs
 rust/a08_packages/src/lib.rs
 rust/a09_collections/src/main.rs
+rust/a10_errors/Cargo.toml
+rust/a10_errors/src/main.rs

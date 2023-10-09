@@ -24,4 +24,7 @@ rust/a08_packages/src/lib.rs
 rust/a08_packages/src/main.rs
 rust/a09_collections/Cargo.toml
 rust/a09_collections/src/main.rs
+rust/a10_errors/Cargo.toml
+rust/a10_errors/hello.txt
+rust/a10_errors/src/main.rs
 rust/.gitignore
