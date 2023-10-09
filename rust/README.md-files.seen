@@ -22,4 +22,6 @@ rust/a08_packages/src/garden.rs
 rust/a08_packages/src/garden/vegetables.rs
 rust/a08_packages/src/lib.rs
 rust/a08_packages/src/main.rs
+rust/a09_collections/Cargo.toml
+rust/a09_collections/src/main.rs
 rust/.gitignore
