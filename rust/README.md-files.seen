@@ -27,4 +27,8 @@ rust/a09_collections/src/main.rs
 rust/a10_errors/Cargo.toml
 rust/a10_errors/hello.txt
 rust/a10_errors/src/main.rs
+rust/a11_generics_traits_lifetimes/Cargo.toml
+rust/a11_generics_traits_lifetimes/src/main.rs
+rust/a12_tests/Cargo.toml
+rust/a12_tests/src/main.rs
 rust/.gitignore

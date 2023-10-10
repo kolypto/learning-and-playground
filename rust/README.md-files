@@ -14,3 +14,6 @@ rust/a08_packages/src/lib.rs
 rust/a09_collections/src/main.rs
 rust/a10_errors/Cargo.toml
 rust/a10_errors/src/main.rs
+rust/a11_generics_traits_lifetimes/src/main.rs
+rust/a12_tests/src/main.rs
+rust/a12_tests/Cargo.toml
