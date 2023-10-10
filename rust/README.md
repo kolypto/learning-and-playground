@@ -1936,11 +1936,57 @@ fn main() {
 # rust/a12_tests/src
 
 
-# rust/a12_tests/src/main.rs
+# rust/a12_tests/src/lib.rs
 
 ```rust
-fn main() {
-    println!("Hello, world!");
+// The function to test
+pub fn add(left: usize, right: usize) -> usize {
+    left + right
+}
+
+
+// The convention is to create a module "tests" in each file, and annotate the module with `#[cfg(test)]`:
+// this annotation tells Rust to only compile this code when you run `cargo test`, not `cargo build`
+#[cfg(test)]
+mod tests {
+    // Import all names from the root module
+    use super::*;
+
+    // A test is any function annotated with the "test" attribute
+    #[test]
+    fn it_works() {
+        // NOTE: visibility: child modules can use the items from their ancestor modules.
+        let result = add(2, 2);
+
+        // `assert_eq!()` macro compares the two values. It will panic if the test fails.
+        assert_eq!(result, 4);
+        assert_ne!(result, 0);
+        assert!(true);
+
+        // With a custom error message
+        assert!(result > 0, "There is a problem with {}", result);
+    }
+
+    // This test is expected to panic
+    #[test]
+    #[should_panic(expected="msg")] // this test is expected to panic, with a specific messages
+    #[ignore]  // ignore this test unless specifically requested by name, with `$ cargo test -- --ignored`
+    fn always_fails(){
+        panic!("msg");
+    }
+
+
+    // A test that uses `Result<T, E>`
+    // This test is passed when Ok() is returned.
+    // Why? Because such a test enables you to use the `?` operator and fails immediately!
+    #[test]
+    fn test_with_result() -> Result<(), String> {
+        if 2 + 2 == 4 {
+            Ok(())
+        } else {
+            Err(String::from("2+2 is not 4 in this galaxy"))
+        }
+    }
 }
 
 ```
@@ -1949,20 +1995,35 @@ fn main() {
 
 
 
-# rust/a12_tests
+# rust/a12_tests/tests
 
 
-# rust/a12_tests/Cargo.toml
+# rust/a12_tests/tests/common.rs
 
-```toml
-[package]
-name = "a12_tests"
-version = "0.1.0"
-edition = "2021"
+```rust
+pub fn setup(){
+    // common setup code
+}
+```
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
 
+# rust/a12_tests/tests/integration_test.rs
+
+```rust
+// Rust will compile each file under ./tests as an individual crate.
+// Unlike sub-module tests, this test can only use the external API of the library: `pub` functions.
+
+
+use a12_tests;
+
+pub mod common;
+// use common; // use a submodule
+
+#[test]
+fn it_adds_two() {
+    common::setup();
+    assert_eq!(4, a12_tests::add(2, 2));
+}
 ```
 
