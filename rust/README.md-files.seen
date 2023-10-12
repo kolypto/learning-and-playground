@@ -34,4 +34,8 @@ rust/a12_tests/src/lib.rs
 rust/a12_tests/src/main.rs
 rust/a12_tests/tests/common.rs
 rust/a12_tests/tests/integration_test.rs
+rust/a13_cli_app/Cargo.toml
+rust/a13_cli_app/poem.txt
+rust/a13_cli_app/src/lib.rs
+rust/a13_cli_app/src/main.rs
 rust/.gitignore
