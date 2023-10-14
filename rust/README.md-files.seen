@@ -38,4 +38,6 @@ rust/a13_cli_app/Cargo.toml
 rust/a13_cli_app/poem.txt
 rust/a13_cli_app/src/lib.rs
 rust/a13_cli_app/src/main.rs
+rust/a14_functional/Cargo.toml
+rust/a14_functional/src/main.rs
 rust/.gitignore
