@@ -2574,7 +2574,7 @@ fn main() {
     enum List {
         // This naive example will fail: "recursive type `List` has infinite size": "recursive without indirection"
         // This is because Rust can't figure out how much space it needs to store a `List` value.
-        //Cons(i32, List),  //UNC
+        Cons(i32, List),  //FAILS
 
         // The corrected version.
         // It works because the `Box<T>` pointer takes const space no matter what data is in there.
@@ -2601,7 +2601,7 @@ fn main() {
     let x = 5;
     let y = &x; // a reference: a pointer to a value stored elsewhere
     assert_eq!(5, *y); // get the value: "dereference"
-    //assert_eq!(5, y); // Error: help: the trait `PartialEq<&{integer}>` is not implemented for `{integer}`  //UNC
+    assert_eq!(5, y); // Error: help: the trait `PartialEq<&{integer}>` is not implemented for `{integer}`
 
 
     // Boxes implement the `Deref` trait, which allows `Box<T>` values to be treated like references.
@@ -2682,7 +2682,7 @@ fn main() {
     // Let's implement a value that can be added to two lists:
     let two = Box::new(2); // a value
     let _list_a = vec![Box::new(1), two, Box::new(3)];
-    // let _list_b = vec![Box::new(1), two, Box::new(3)];  // ERROR: "use of moved value: `two`"  //UNC
+    let _list_b = vec![Box::new(1), two, Box::new(3)];  // ERROR: "use of moved value: `two`"
 
     // it fails because `list_a` owns the value of `two`: no one else can own it
     use std::rc::Rc;
@@ -2781,7 +2781,7 @@ fn main() {
         // This is where interior mutability can help!
         // We'll store `sent_messages` within a RefCell<T>, which is itself immutable,
         // but the value that it points to is mutable.
-        // sent_messages: Vec<String>,  // error: "`self` is a `&` reference, so the data it refers to cannot be borrowed as mutable"  //UNC
+        sent_messages: Vec<String>,  // error: "`self` is a `&` reference, so the data it refers to cannot be borrowed as mutable"
         sent_messages: RefCell<Vec<String>>, // OK
     }
 
@@ -2789,7 +2789,7 @@ fn main() {
         fn new() -> MockMessenger {
             MockMessenger{
                 // Fails
-                // sent_messages: vec![],  //UNC
+                sent_messages: vec![],  //FAILS
                 // Works
                 sent_messages: RefCell::new(vec![]),
             }
@@ -2799,7 +2799,7 @@ fn main() {
     impl Messenger for MockMessenger {
         fn send(&self, message: &str) {
             // Fails
-            // self.sent_messages.push(String::from(message));  //UNC
+            self.sent_messages.push(String::from(message)); //FAILS
             // Works.
             // `.borrow_mut()` gets a mutable reference, which is returned when dropped
             self.sent_messages.borrow_mut().push(String::from(message));
