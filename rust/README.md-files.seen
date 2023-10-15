@@ -47,4 +47,6 @@ rust/a15_cargo/src/lib.rs
 rust/a15_cargo/src/main.rs
 rust/a16_smart_pointers/Cargo.toml
 rust/a16_smart_pointers/src/main.rs
+rust/a17_concurrency/Cargo.toml
+rust/a17_concurrency/src/main.rs
 rust/.gitignore
