@@ -2352,3 +2352,162 @@ struct Rectangle {
 }
 ```
 
+
+
+
+
+# rust/a15_cargo/src
+
+
+# rust/a15_cargo/src/lib.rs
+
+```rust
+//! # My crate
+//!
+//! This is a doccomment for the file
+//! It adds documentation to the item that contains it: file (the crate) or the module.
+
+/// Doccomments. Start with triple /
+///
+/// # Examples
+/// Here we go with Markdown.
+/// This Markdown will be used on crates.io to document the usage of your library.
+///
+/// ```rust
+/// let arg = 5;
+/// let answer = a15_cargo::add_one(arg);
+/// assert_eq!(6, answer);
+/// ```
+///
+/// # Panics
+/// never panics
+///
+/// # Errors
+/// Describe the kinds of errors that might occur
+///
+/// # Safety
+/// If the function is `unsafe` to call, explain it
+pub fn add_one(x: i32) -> i32 {
+    x + 1
+}
+
+// We can generate HTML from this documentation into `target/doc` using
+// $ cargo doc
+// To open it in the browser:
+// $ cargo doc --open
+
+// Note: `cargo test` will run the code examples in the documentation as tests!
+// $ cargo test
+
+
+
+// A published module
+pub mod artistic {
+    //! Supplementary features
+
+    /// Primary colors in the RYB model
+    pub enum PrimaryColor {
+        Red,
+        Yellow,
+        Blue,
+    }
+}
+
+// Re-export a type/function for convenience
+pub use self::artistic::PrimaryColor;
+```
+
+
+
+
+
+# rust/a15_cargo
+
+
+# rust/a15_cargo/Cargo.toml
+
+```toml
+# crate medata
+# used when publishing to crates.io:
+# $ cargo publish
+[package]
+name = "a15_cargo"
+version = "0.1.0"
+edition = "2021"
+
+license = "MIT"  # open-source :)
+description = "A crate that does nothing"
+
+# "Release profiles": different configurations for compiling code:
+# * "dev": for `cargo build`.
+# * "release": for `cargo build --release`.
+[profile.dev]
+# The number of optimizations Rust will apply to the code.
+# More optimizations extends compiling time.
+opt-level = 0  # the default
+
+[profile.release]
+opt-level = 3  # the default
+
+
+
+
+# A "workspace" is a set of packages that share the same `Cargo.lock` and output directory.
+# It you to split one large lib.rs into smaller packages.
+# Run this to create a binary sub-crate:
+# $ cargo new adder --lib
+#
+# The workspace has one target directory.
+# Compiled artifacts will end up in ./target
+[workspace]
+members = [
+    # sub-library.
+    # Generate it with:
+    # $ cargo new adder --lib
+    "adder"
+]
+
+
+
+
+[dependencies]
+# Use our sub-library as a dependency :)
+adder = { path = "./adder" }
+
+```
+
+
+
+
+
+# rust/a15_cargo/adder/src
+
+
+# rust/a15_cargo/adder/src/lib.rs
+
+```rust
+pub fn add_one(x: i32) -> i32 {
+    x + 1
+}
+```
+
+
+
+
+
+# rust/a15_cargo/src
+
+
+# rust/a15_cargo/src/main.rs
+
+```rust
+use adder;
+
+fn main() {
+    // Use our library
+    let x = adder::add_one(1);
+    println!("Using a library: {x}");
+}
+
+```
+

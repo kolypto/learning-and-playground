@@ -40,4 +40,9 @@ rust/a13_cli_app/src/lib.rs
 rust/a13_cli_app/src/main.rs
 rust/a14_functional/Cargo.toml
 rust/a14_functional/src/main.rs
+rust/a15_cargo/adder/Cargo.toml
+rust/a15_cargo/adder/src/lib.rs
+rust/a15_cargo/Cargo.toml
+rust/a15_cargo/src/lib.rs
+rust/a15_cargo/src/main.rs
 rust/.gitignore

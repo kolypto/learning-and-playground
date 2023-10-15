@@ -1,0 +1,8 @@
+# Generated with:
+# $ cargo new adder --lib
+[package]
+name = "adder"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
