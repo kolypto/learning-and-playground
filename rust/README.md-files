@@ -27,3 +27,4 @@ rust/a15_cargo/adder/src/lib.rs
 rust/a15_cargo/src/main.rs
 rust/a16_smart_pointers/src/main.rs
 rust/a17_concurrency/src/main.rs
+rust/a18_oop/src/main.rs
