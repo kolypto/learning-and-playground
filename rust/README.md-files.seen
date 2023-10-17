@@ -57,4 +57,6 @@ rust/a20_advanced/Cargo.toml
 rust/a20_advanced/src/main.rs
 rust/a21_appendix/Cargo.toml
 rust/a21_appendix/src/main.rs
+rust/b01_rust_by_example/Cargo.toml
+rust/b01_rust_by_example/src/main.rs
 rust/.gitignore

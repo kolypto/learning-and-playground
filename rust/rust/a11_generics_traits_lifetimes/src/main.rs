@@ -251,4 +251,9 @@ fn main() {
             y
         }
     }
+
+
+
+    // More examples on lifetimes:
+    // https://doc.rust-lang.org/rust-by-example/scope/lifetime.html
 }

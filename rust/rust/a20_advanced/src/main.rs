@@ -486,4 +486,9 @@ fn main() {
     #[some_attribute]
     pub fn some_name(input: TokenStream) -> TokenStream {
     }
+
+
+
+    // More on macros:
+    // https://doc.rust-lang.org/rust-by-example/macros.html
 }

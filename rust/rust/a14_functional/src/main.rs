@@ -81,6 +81,13 @@ fn main() {
     //             but that might mutate the captured values.
     //             This trait is used when a closure is going to be called multiple times
 
+    // Another explanation:
+    // With closures as input parameters, the closure's complete type must be annotated:
+    // * `Fn` the closure uses the captured value by reference (`&T`)
+    // * `FnMut` the closure uses ehe captured value by mutable reference (`&mut T`)
+    // * `FnOnce` the closure uses the captured value by value
+    // The compiler will capture variables in the least restrictive manner possible.
+
     // Example: a list of rectangles
     let mut list = [
         Rectangle{ width: 9, height: 1},
