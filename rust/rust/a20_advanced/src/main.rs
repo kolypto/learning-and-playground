@@ -42,7 +42,7 @@ fn main() {
     unsafe {
         println!("r1 is: {}", *r1);
         println!("r2 is: {}", *r2);
-        // println!("r is: {}", *r);  // don't. just don't.
+        // println!("r is: {}", *r);  // don't. just don't. don't even think about it. no.
     }
 
 
@@ -66,7 +66,7 @@ fn main() {
         // This would fail, because we return two mutable references to a single value.
         // Borrowing non-overlapping parts of a slice is okay, but Rust isn't smart enough here:
         // it only sees that we're borrowing from the same slice twice.
-        // (&mut values[..mid], &mut values[mid..]);  // Error: error[E0499]: cannot borrow `*values` as mutable more than once at a time
+        (&mut values[..mid], &mut values[mid..]);  // Error: error[E0499]: cannot borrow `*values` as mutable more than once at a time
 
         // This implementation works:
         let len = values.len();
@@ -311,6 +311,10 @@ fn main() {
     // If we wanted the new type to have every method of the inner type, implement the `Deref` trait
     // on the wrapper and have it return the inner type.
 
+    // Newtypes are useful to make sure the user cannot accidentally provide "Meters" instead of "Millimeters".
+    // Newtypes can expose a public API that is different from the API of the private inner type.
+    // It can also be used to hide internal implementation.
+
 
 
 
@@ -321,4 +325,165 @@ fn main() {
 
     // === Advanced Types === //
 
+    // === Type Aliases
+
+    // "Type alias": give an existing type another name.
+    // Unlike newtype, we don't get the type checking benefits: you can mix up the types.
+    type Kilometers = i32;
+
+    // Values of `Kilometers` will be treated as regular `i32`:
+    let distance = (5 as Kilometers) + 3;  //-> type: `i32`
+
+    // Type aliases are used to reduce repetition:
+    type Thunk = Box<dyn Fn() + Send + 'static>; // "thunk" is code to be evaluated at a later time, e.g. a closure
+
+    // Type aliases can have generic params
+    type Result<T> = std::result::Result<T, std::io::Error>;
+
+
+
+    // === The `Never` type
+    // `!` -- the "empty type" or "never type": for functions that never return.
+    // such functions are called "diverging functions".
+    fn bar() -> ! {
+        loop {}
+    }
+
+    // It is also used in case a `match` returns a `continue`: a no-value:
+    loop {
+        let guess = "32";
+
+        // The value of `guess` is either `u32`, or `!`: a no-return.
+        let guess: u32 = match guess.trim().parse() {
+            Ok(num) => num,
+            // type `!`.
+            // Internally, Rust allows `!` to be coerced into any other type, so `match` is u32
+            Err(_) => continue,
+            // Also type `!`: never returns
+            _ => panic!(),
+        };
+        break;
+    } // `loop` without a `break` also has type `!` :)
+
+
+
+
+    // === Dynamically-sized types and the `Sized` trait
+    // "dynamically sized types" (DST) or "unsized types" let us write code using values whose size
+    // we can know only at runtime. Rust needs to know how much memory to allocate for any value of
+    // a particular type, and all values of a type must use the same amount of memory. But if it was so,
+    // all strings would need to have the same length. So in the end, you cannot create a `str` variable:
+    let s1: str = "Hello there!"; // Error: the size for values of type `str` cannot be known at compilation time
+
+    // This is why we use `&str` instead: a pointer has a known size: a memory address + length.
+    // The rule of thumb: always put dynamically-sized types behind a pointer.
+    let s1: &str = "Hello there!";
+
+    // Every trait is a dynamically-sized type: to use traits as trait objects, we must put them
+    // behind a pointer: `&dyn Trait` or `Box<dyn Trait>` or ...
+
+    // To work with DSTs, Rust provides the `Sized` trait to determine whether a type's size
+    // is known at compile time.
+
+    // Rust implicitly adds a bound on `Sized` to every generic function:
+    fn generic<T>(t: T){} // implied: `T: Sized`
+
+    // By default, generic functions will work only on types that have a known size at compile time.
+    // However, you can use the following special syntax to relax this restriction:
+    fn generic2<T: ?Sized>(t: &T) {
+        // now, trait `T` may or may not be `Sized`.
+        // Note that `t` is not a `&T`: because the type might not be sized, we need to use it behind some pointer.
+    }
+
+
+
+
+
+
+
+
+
+    // === Advanced Functions & Closures === //
+    // A pointer to a function.
+    // Function pointers implement all three of the closure traits: `Fn`, `FnMut`, `FnOnce`.
+    type f = fn(i32) -> i32;
+    fn with_callback(f: f){}  // pass a function to a function
+
+
+    // Return a closure from a function
+    // Note: got to use a pointer, because the size of this `Fn` closure is unknown
+    fn returns_closure() -> Box<dyn Fn(i32) -> i32> {
+        Box::new(|x| x + 1)
+    }
+
+    // If you return an `fn` type instead of a trait, you don't need a pointer:
+    fn returns_fn() -> fn(i32) -> i32 {
+        |x| x + 1
+    }
+
+
+
+
+
+
+
+
+    // === Macros === //
+    // "Macros" refer to:
+    // * Declarative macros with `macro_rules!()` syntax
+    // * Custom `#[derive]` macros that specify code
+    // * Attribute-like macros that define custom attributes
+    // * Function-like macros that look like function calls, but operate on tokens
+
+    // Macros: a way of writing code that writes other code. This is "metaprogramming".
+    // E.g. the `#[derive]` attribute generates an implementation of various traits for you.
+    // E.g. `println!()`: it expands to produce more code than the code you've written.
+
+    // Functions have a fixed number of parameters; macros can take a variable number of parameters.
+    // Macros are expanded before the compiler interprets the meaning of the code.
+
+    // === Declarative macros
+    // "Declarative macros": allow you to write something similar to the `match` expression:
+    // they compare literal Rust source code to a pattern, and replaces it with code associated with the pattern.
+
+    // The `vec!` macro:
+    #[macro_export]  // make it available whenever this crate is brought into scope
+    macro_rules! vec {  // macro "vec"
+        // pattern to match: parentheses, arguments.
+        // `$` declares a variable
+        // `$x` captures any expression
+        // `,` indicates that a literal comma separator character could optionally appear after the code
+        // `*` means zero or more matches
+        ( $( $x:expr ),* ) => {
+            {  // generate a Rust expression block
+                let mut temp_vec = vec::new();
+                $(  // expand to N `push()` calls
+                    temp_vec.push($x);
+                )*
+                temp_vec
+            }
+        };
+        // ... more arms may go here to provide other ways to match
+    }
+
+    // === Procedural Macros
+    // It acts more like a function: accept some code as an input, operate on that code,
+    // and produce some code as an output. No pattern matching.
+    // The three kinds of procedural macros:
+    // * custom derive
+    // * attribute-like
+    // * function-like
+
+    // When creating procedural macros, the definitions must reside in their own crate with a special crate type.
+    // This is for complex technical reasons that we, the Rust team, hope to eliminate in the future.
+
+    use proc_macro;
+
+    // Define a procedural macro, where `some_attribute` is a placeholder for using a specific macro variety.
+    // The function that defines a procedural macro takes a `TokenStream`, and produces a `TokenStream`.
+    // This is basically a Rust function that handles Rust AST to generate code.
+    // See: https://doc.rust-lang.org/book/ch19-06-macros.html#procedural-macros-for-generating-code-from-attributes
+    #[some_attribute]
+    pub fn some_name(input: TokenStream) -> TokenStream {
+    }
 }
