@@ -53,4 +53,6 @@ rust/a18_oop/Cargo.toml
 rust/a18_oop/src/main.rs
 rust/a19_match/Cargo.toml
 rust/a19_match/src/main.rs
+rust/a20_advanced/Cargo.toml
+rust/a20_advanced/src/main.rs
 rust/.gitignore

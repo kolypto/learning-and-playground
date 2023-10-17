@@ -29,3 +29,4 @@ rust/a16_smart_pointers/src/main.rs
 rust/a17_concurrency/src/main.rs
 rust/a18_oop/src/main.rs
 rust/a19_match/src/main.rs
+rust/a20_advanced/src/main.rs
