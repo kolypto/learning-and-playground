@@ -3,6 +3,10 @@
 //! This is a doccomment for the file
 //! It adds documentation to the item that contains it: file (the crate) or the module.
 
+/*! The so-called "inner doc comment" (for the crate)
+ * can also look like this
+ */
+
 /// Doccomments. Start with triple /
 ///
 /// # Examples
@@ -26,6 +30,23 @@
 pub fn add_one(x: i32) -> i32 {
     x + 1
 }
+
+/** This is another type of "outer doc comment":
+ * It documents a function while being outside of it
+*/
+pub fn something(){}
+
+
+
+
+// So:
+//  //!      Inner doc comment
+//  /*! */   Inner doc comment
+//  ///      Outer doc comment
+//  /**  */  Outer doc comment
+
+
+
 
 // We can generate HTML from this documentation into `target/doc` using
 // $ cargo doc
