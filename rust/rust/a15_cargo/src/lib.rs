@@ -13,7 +13,10 @@
 /// Here we go with Markdown.
 /// This Markdown will be used on crates.io to document the usage of your library.
 ///
+/// This code will actually be run as a unit-test:
+///
 /// ```rust
+/// # // line prefixed with `#` is ignored in the documetation, but is still tested!
 /// let arg = 5;
 /// let answer = a15_cargo::add_one(arg);
 /// assert_eq!(6, answer);

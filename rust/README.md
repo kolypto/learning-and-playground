@@ -2393,7 +2393,10 @@ struct Rectangle {
 /// Here we go with Markdown.
 /// This Markdown will be used on crates.io to document the usage of your library.
 ///
+/// This code will actually be run as a unit-test:
+///
 /// ```rust
+/// # // line prefixed with `#` is ignored in the documetation, but is still tested!
 /// let arg = 5;
 /// let answer = a15_cargo::add_one(arg);
 /// assert_eq!(6, answer);
@@ -2506,11 +2509,16 @@ members = [
 
 
 
-
+# Dependencies
 [dependencies]
 # Use our sub-library as a dependency :)
 adder = { path = "./adder" }
 
+
+# Dependencies only for development
+[dev-dependencies]
+# Extends standard `assert_eq!()` with colorful diff
+pretty_assertions = "1"
 ```
 
 
@@ -4001,14 +4009,15 @@ fn main() {
 
 
 
-# rust/b01_rust_by_example/src
+# rust/a22_rust_by_example/src
 
 
-# rust/b01_rust_by_example/src/main.rs
+# rust/a22_rust_by_example/src/main.rs
 
 ```rust
 use std::mem;
 use std::fmt;
+use std::str;
 use std::str::FromStr;
 use std::num::ParseIntError;
 use std::error;
@@ -4136,6 +4145,9 @@ fn main() {
 
     let parsed: i32 = "5".parse().unwrap(); // type inference
     let parsed = "10".parse::<i32>().unwrap(); // turbofish
+
+
+
 
 
 
@@ -4273,6 +4285,7 @@ fn main() {
 
 
 
+
     // === Define an error type
 
     // Define an error type
@@ -4349,6 +4362,151 @@ fn main() {
         let first = vec.first().ok_or(DoubleFirstItemError::EmptyVec)?;
         let parsed = first.parse::<i32>()?; // `From` implicitly converts it! Trait `From<ParseIntError>` is implemented for `DoubleError`
         Ok(parsed * 2)
+    }
+
+
+
+
+
+
+
+
+
+    // === Collections: vector, string, bytestring
+    // All values in Rust are stack-allocated by default.
+    // Values can be "boxed" (allocated on the heap) by creating a `Box<T>`.
+    struct Point(u32, u32);
+    let point = Box::new(Point(0, 0));
+    println!("Size: {}", mem::size_of_val(&point));  //-> 8
+
+    // Vector: re-sizable array
+    let counts: Vec<i32> = (0..10).collect();
+
+    // String: vector of bytes, but guaranteed to always be a valid UTF-8.
+    // String is heap-allocated, growable, and not null-terminated!
+    let pangram: &str = "the quick brown fox jumps over the lazy dog";
+
+    // Because strings keep their length in memory, we can iterate over words -- without allocations!
+    for word in pangram.split_whitespace().rev() {
+        println!("Word: {word}");
+    }
+
+    // Create a new, growable string
+    let mut string = String::new();
+    string.push_str("Hello");
+    string.push('!');
+
+    // The trimmed string is a slice to the original string, so no new allocation is performed
+    let chars_to_trim: &[char] = &[' ', '\n'];
+    let trimmed_str: &str = string.trim_matches(chars_to_trim);
+
+    // Heap allocate a string
+    let alice = String::from("I like dogs");
+    let bob: String = alice.replace("dog", "cat"); // allocates new memory
+
+    // Array of bytes that's mostly text, but contains non-UTF8 sequences
+    let bytestring: &[u8; 21] = b"this is a byte string";
+    let escaped = b"\x52\x75\x73\x74 as bytes";
+
+    // Converting a byte string to String can fail
+    if let Ok(my_str) = str::from_utf8(bytestring) {
+        println!("And the same as text: '{}'", my_str);
+    }
+
+
+
+
+
+
+    // === Path
+    // `Path` represents file paths.
+    // The prelude automatically exports either `posix::Path` and `windows::Path`.
+    // `Path` is immutable. Owned mutable version is `PathBuf`.
+    // Note that `Path` is not internally an UTF-8 string: it's an `OsString`.
+    use std::path::Path;
+    let path = Path::new(".");
+    let mut new_path = path.join("a").join("b");
+    new_path.push("c");
+    new_path.push("myfile.tar.gz");
+    let path_str = match new_path.to_str() {
+        None => panic!("new path is not a valid UTF-8 sequence"),
+        Some(s) => s,
+    };
+    println!("Path: {path_str}");
+
+
+
+
+    // === Files
+    use std::fs::File;
+    use std::io::prelude::*;
+
+    // Create a path to the file
+    let path = Path::new("hello.txt");
+
+    {
+        // Create a file: write-only mode, overwrite.
+        let mut file = match File::create(&path){
+            Err(why) => panic!("cannot create {}: {}", path.display(), why),
+            Ok(file) => file,
+        };
+
+        // Write to the file
+        const contents: &str = "Hello world!";
+        match file.write_all(contents.as_bytes()){
+            Err(why) => panic!("couldn't write to {}: {}", path.display(), why),
+            Ok(_) => (),
+        }
+    } // auto-close
+
+    // Open the file for reading
+    let mut file = match File::open(&path){
+        Err(why) => panic!("cannot open {}: {}", path.display(), why),
+        Ok(file) => file,
+    };
+
+    // Read into a string
+    let mut s = String::new();
+    match file.read_to_string(&mut s) {
+        Err(why) => panic!("couldn't read {}: {}", path.display(), why),
+        Ok(_) => (),
+    }
+    println!("contents: {s:?}");
+
+
+    // Read lines from a file
+    use std::fs::read_to_string;
+    let lines: Vec<String> = read_to_string(path).unwrap().lines().map(String::from).collect();
+
+    // Read lines from a file, line by line, using `BufReader` to reduce intermediate allocations:
+    use std::io::{self, BufRead};
+    let lines = File::open(path).and_then(|f| Ok(io::BufReader::new(f).lines()));
+
+    if let Ok(lines) = lines {
+        for line in lines {
+            if let Ok(line) = line {
+                println!("Line: {}", line);
+            }
+        }
+    }
+
+
+    // === Run command
+    use std::process::Command;
+
+    // Execute a command
+    let output = Command::new("rustc")
+        .arg("--version")
+        .output().unwrap();
+
+    if output.status.success() {
+        // Get output, ignore UTF-8 errors
+        let s = String::from_utf8_lossy(&output.stdout);
+        print!("rustc succeeded and stdout was:\n{}", s);
+    } else {
+        // Get error output
+        let s = String::from_utf8_lossy(&output.stderr);
+        print!("rustc failed and stderr was:\n{}", s);
     }
 }
 

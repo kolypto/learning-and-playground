@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "b01_rust_by_example"
+name = "a22_rust_by_example"
 version = "0.1.0"

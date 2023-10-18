@@ -40,7 +40,13 @@ members = [
 
 
 
-
+# Dependencies
 [dependencies]
 # Use our sub-library as a dependency :)
 adder = { path = "./adder" }
+
+
+# Dependencies only for development
+[dev-dependencies]
+# Extends standard `assert_eq!()` with colorful diff
+pretty_assertions = "1"
