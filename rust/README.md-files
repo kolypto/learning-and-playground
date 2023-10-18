@@ -32,3 +32,5 @@ rust/a19_match/src/main.rs
 rust/a20_advanced/src/main.rs
 rust/a21_appendix/src/main.rs
 rust/a22_rust_by_example/src/main.rs
+
+rust/README-more.md

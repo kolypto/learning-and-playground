@@ -491,4 +491,5 @@ fn main() {
         let s = String::from_utf8_lossy(&output.stderr);
         print!("rustc failed and stderr was:\n{}", s);
     }
+
 }

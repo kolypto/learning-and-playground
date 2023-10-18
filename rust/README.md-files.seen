@@ -64,3 +64,4 @@ rust/b01_rust_by_example/Cargo.toml
 rust/b01_rust_by_example/hello.txt
 rust/b01_rust_by_example/src/main.rs
 rust/.gitignore
+rust/README-more.md
