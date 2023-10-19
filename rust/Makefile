@@ -2,7 +2,7 @@ SHELL=/bin/bash
 
 all: README.md
 
-FOLDERS=rust/
+FOLDERS=rust/ embedded/
 
 README.md-filelist: $(shell find ${FOLDERS} -type f)
 	@./README-gen-file-list.sh ${FOLDERS}
