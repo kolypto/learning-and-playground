@@ -1,11 +1,11 @@
-# LED Roulette on ESP32
+# Rust on ESP32
 
 This is for the ESP32 board.
 
 Reading:
 
 * [ESP-RS book](https://esp-rs.github.io/book/)
-* [ESP-RS training](https://esp-rs.github.io/std-training/)
+* [ESP-RS training](https://esp-rs.github.io/std-training/): writing apps with `std`
 * [Awesome ESP Rust](https://github.com/esp-rs/awesome-esp-rust): a collection
 
 In the [esp-rs](https://github.com/esp-rs/) organization:
@@ -15,20 +15,32 @@ In the [esp-rs](https://github.com/esp-rs/) organization:
 
 ## `std` vs `no_std`
 
+### `std` on ESP32
+
+Unlike most other embedded platforms, Espressif supports the Rust standard library.
+Most notably, this means you'll have arbitrary-sized collections like `Vec` or `HashMap` at your disposal, as well as generic heap storage using `Box`.
+
+You're also free to spawn new threads, and use synchronization primitives like `Arc` and `Mutex` to safely share data between them.
+Still, memory is a scarce resource on embedded systems, and so you need to take care not to run out of it - threads in particular can become rather expensive.
+
 Espressif provides a C-based development framework: [ESP-IDF](https://github.com/espressif/esp-idf), which provides a [newlib](https://sourceware.org/newlib/) environment that has enough functionality to build the Rust `std` on top of it.
 
 When using `std`, you have access to a lot of `ESP-IDF` features: threads, mutexes, collections, random numbers, sockets, etc.
-See crates:
 
-* [embedded-svc](https://github.com/esp-rs/embedded-svc): wi-fi, network, httpd, logging, etc
-* [esp-idf-svc](https://github.com/esp-rs/esp-idf-svc): an implementation of `embedded-svc` using `esp-idf` drivers
-* [esp-idf-hal](https://github.com/esp-rs/esp-idf-hal): an implementation of `embedded-hal` and other traits using the `esp-idf` framework
-* [esp-idf-sys](https://github.com/esp-rs/esp-idf-sys): Rust bindings to the `esp-idf` development framework. Gives raw (`unsafe`) access to drivers, Wi-Fi, and more
+Services like Wi-Fi, HTTP client/server, MQTT, OTA updates, logging etc. are exposed via Espressif's open source IoT Development Framework, ESP-IDF.
+It is mostly written in C and as such is exposed to Rust in the canonical split crate style:
+
+* the [esp-idf-sys](https://github.com/esp-rs/esp-idf-sys) crate provides the actual `unsafe` bindings to the IDF development framework that implements access to drivers, Wi-Fi, and more
+* the higher-level [esp-idf-svc](https://github.com/esp-rs/esp-idf-svc) crate implements safe and comfortable Rust abstractions: it implements abstractions from [embedded-svc](https://github.com/esp-rs/embedded-svc): wi-fi, network, httpd, logging, etc
+* [esp-idf-hal](https://github.com/esp-rs/esp-idf-hal): implements traits from `embedded-hal` and other traits using the `esp-idf` framework: analog/digital conversion, digital I/O pins, SPI communication, etc.
 
 You might want to use the `std` when your app:
 * requires rich functionality (network, file I/O, sockets, complex data structures)
 * for portability: because the `std` crate provide APIs that can be used across different platforms
 * rapid development
+
+
+### `no_std` on ESP32
 
 Using `no_std` may be more familiar to embedded Rust developers: it uses a subset of `std`: the `core` library.
 
@@ -79,7 +91,8 @@ Your `rustup` will be able to determine which toolchain to use: see [rustup over
 But anyway:
 
 ```console
-$ cargo install espflash
+$ sudo apt install llvm-dev libclang-dev clang libuv-dev
+$ cargo install cargo-espflash espflash ldproxy
 $ espup install
 ```
 

@@ -1,5 +1,5 @@
 [package]
-name = "a01-led-roulette"
+name = "a01-rust-on-esp32"
 version = "0.1.0"
 authors = ["Mark Vartanyan <kolypto@gmail.com>"]
 edition = "2021"

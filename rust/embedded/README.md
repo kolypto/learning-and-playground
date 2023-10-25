@@ -78,11 +78,13 @@ $ cargo install probe-rs --features cli,ftdi
 $ sudo apt install esptool espflash stm32flash openocd
 ```
 
-alternatively, using rustup:
+However, the recommended way is to install using Rustup:
+this is a more mature environment:
 
 ```console
 $ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 $ cargo install cargo-binutils cargo-generate
+$ cargo install probe-rs --features cli,ftdi
 $ rustup component add llvm-tools-preview
 ```
 
@@ -177,6 +179,9 @@ Drivers that are written in such a way are called platform agnostic. Most driver
 
 
 ## Flashing and Debugging
+
+NOTE: for ESP32, see `./a01-rust-on-esp32`.
+This tutorial is for `cargo-embed`: it works with some chips.
 
 Create a new project:
 

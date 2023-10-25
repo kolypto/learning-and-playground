@@ -4612,11 +4612,13 @@ $ cargo install probe-rs --features cli,ftdi
 $ sudo apt install esptool espflash stm32flash openocd
 ```
 
-alternatively, using rustup:
+However, the recommended way is to install using Rustup:
+this is a more mature environment:
 
 ```console
 $ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 $ cargo install cargo-binutils cargo-generate
+$ cargo install probe-rs --features cli,ftdi
 $ rustup component add llvm-tools-preview
 ```
 
@@ -4711,6 +4713,9 @@ Drivers that are written in such a way are called platform agnostic. Most driver
 
 
 ## Flashing and Debugging
+
+NOTE: for ESP32, see `./a01-rust-on-esp32`.
+This tutorial is for `cargo-embed`: it works with some chips.
 
 Create a new project:
 
@@ -4822,15 +4827,15 @@ Now, "flashing" is the moving of our program into the microcontroller's memory.
 
 
 
-# embedded/a01-led-roulette
-# LED Roulette on ESP32
+# embedded/a01-rust-on-esp32
+# Rust on ESP32
 
 This is for the ESP32 board.
 
 Reading:
 
 * [ESP-RS book](https://esp-rs.github.io/book/)
-* [ESP-RS training](https://esp-rs.github.io/std-training/)
+* [ESP-RS training](https://esp-rs.github.io/std-training/): writing apps with `std`
 * [Awesome ESP Rust](https://github.com/esp-rs/awesome-esp-rust): a collection
 
 In the [esp-rs](https://github.com/esp-rs/) organization:
@@ -4840,20 +4845,32 @@ In the [esp-rs](https://github.com/esp-rs/) organization:
 
 ## `std` vs `no_std`
 
+### `std` on ESP32
+
+Unlike most other embedded platforms, Espressif supports the Rust standard library.
+Most notably, this means you'll have arbitrary-sized collections like `Vec` or `HashMap` at your disposal, as well as generic heap storage using `Box`.
+
+You're also free to spawn new threads, and use synchronization primitives like `Arc` and `Mutex` to safely share data between them.
+Still, memory is a scarce resource on embedded systems, and so you need to take care not to run out of it - threads in particular can become rather expensive.
+
 Espressif provides a C-based development framework: [ESP-IDF](https://github.com/espressif/esp-idf), which provides a [newlib](https://sourceware.org/newlib/) environment that has enough functionality to build the Rust `std` on top of it.
 
 When using `std`, you have access to a lot of `ESP-IDF` features: threads, mutexes, collections, random numbers, sockets, etc.
-See crates:
 
-* [embedded-svc](https://github.com/esp-rs/embedded-svc): wi-fi, network, httpd, logging, etc
-* [esp-idf-svc](https://github.com/esp-rs/esp-idf-svc): an implementation of `embedded-svc` using `esp-idf` drivers
-* [esp-idf-hal](https://github.com/esp-rs/esp-idf-hal): an implementation of `embedded-hal` and other traits using the `esp-idf` framework
-* [esp-idf-sys](https://github.com/esp-rs/esp-idf-sys): Rust bindings to the `esp-idf` development framework. Gives raw (`unsafe`) access to drivers, Wi-Fi, and more
+Services like Wi-Fi, HTTP client/server, MQTT, OTA updates, logging etc. are exposed via Espressif's open source IoT Development Framework, ESP-IDF.
+It is mostly written in C and as such is exposed to Rust in the canonical split crate style:
+
+* the [esp-idf-sys](https://github.com/esp-rs/esp-idf-sys) crate provides the actual `unsafe` bindings to the IDF development framework that implements access to drivers, Wi-Fi, and more
+* the higher-level [esp-idf-svc](https://github.com/esp-rs/esp-idf-svc) crate implements safe and comfortable Rust abstractions: it implements abstractions from [embedded-svc](https://github.com/esp-rs/embedded-svc): wi-fi, network, httpd, logging, etc
+* [esp-idf-hal](https://github.com/esp-rs/esp-idf-hal): implements traits from `embedded-hal` and other traits using the `esp-idf` framework: analog/digital conversion, digital I/O pins, SPI communication, etc.
 
 You might want to use the `std` when your app:
 * requires rich functionality (network, file I/O, sockets, complex data structures)
 * for portability: because the `std` crate provide APIs that can be used across different platforms
 * rapid development
+
+
+### `no_std` on ESP32
 
 Using `no_std` may be more familiar to embedded Rust developers: it uses a subset of `std`: the `core` library.
 
@@ -4904,7 +4921,8 @@ Your `rustup` will be able to determine which toolchain to use: see [rustup over
 But anyway:
 
 ```console
-$ cargo install espflash
+$ sudo apt install llvm-dev libclang-dev clang libuv-dev
+$ cargo install cargo-espflash espflash ldproxy
 $ espup install
 ```
 
@@ -4979,7 +4997,7 @@ Add this to `settings.json`:
 
 
 
-# embedded/a01-led-roulette/.envrc
+# embedded/a01-rust-on-esp32/.envrc
 
 ```
 PATH_add /home/kolypto/.rustup/toolchains/esp/bin
@@ -4994,10 +5012,10 @@ watch_file ~/export-esp.sh
 
 
 
-# embedded/a01-led-roulette/.cargo
+# embedded/a01-rust-on-esp32/.cargo
 
 
-# embedded/a01-led-roulette/.cargo/config.toml
+# embedded/a01-rust-on-esp32/.cargo/config.toml
 
 ```toml
 [target.xtensa-esp32-none-elf]
@@ -5021,10 +5039,10 @@ build-std = ["core"]
 
 
 
-# embedded/a01-led-roulette/src
+# embedded/a01-rust-on-esp32/src
 
 
-# embedded/a01-led-roulette/src/main.rs
+# embedded/a01-rust-on-esp32/src/main.rs
 
 ```rust
 // Don't use the standard library
@@ -5078,6 +5096,9 @@ fn main() -> ! {
     // Set GPIO36 as input
     let button = io.pins.gpio36.into_pull_up_input();
 
+    // The constant `CONFIG` is auto-generated by `toml_config`.
+    let app_config = CONFIG;
+
     // Init a timer
     let mut delay = Delay::new(&clocks);
     loop {
@@ -5094,8 +5115,95 @@ fn main() -> ! {
             }
         }
 
-        delay.delay_ms(500u32);
+        // Sleep a bit
+        delay.delay_ms(app_config.loop_timer);
     }
+}
+
+
+/// This configuration is picked up at compile time by `build.rs` from the `cfg.toml`.
+#[toml_cfg::toml_config]
+pub struct Config {
+    //#[default("")]
+    //wifi_ssid: &'static str,
+
+    #[default(500u32)]
+    loop_timer: u32,
+}
+
+```
+
+
+
+
+
+# embedded/a02-rust-on-esp32-std
+# Rust on ESP32 with `std`
+
+Generate a project:
+
+```console
+$ cargo generate esp-rs/esp-idf-template cargo
+$ cd <project-folder>
+$ rustup override set esp
+```
+
+* choose "STD support = yes"
+* when choosing the IDF version, note that not all chips support it.
+
+Recommended: set the toolchain directory to "global":
+otherwise, each new project will have its own instance of the toolchain and eat up disk space:
+
+*   Add this to `.cargo/config.toml`:
+
+    ```toml
+    [env]
+    ESP_IDF_TOOLS_INSTALL_DIR = { value = "global" } # add this line
+    ```
+
+*   Add this to `rust-toolchain.toml`:
+
+    ```toml
+    [toolchain]
+    channel = "nightly-2023-02-28" # change this line
+    ```
+
+We'll use `toml_cfg`:
+
+```console
+$ cargo add toml_cfg
+```
+
+
+
+# embedded/a02-rust-on-esp32-std/build.rs
+
+```rust
+fn main() {
+    embuild::espidf::sysenv::output();
+}
+
+```
+
+
+
+
+
+# embedded/a02-rust-on-esp32-std/src
+
+
+# embedded/a02-rust-on-esp32-std/src/main.rs
+
+```rust
+fn main() {
+    // It is necessary to call this function once. Otherwise some patches to the runtime
+    // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
+    esp_idf_svc::sys::link_patches();
+
+    // Bind the log crate to the ESP Logging facilities
+    esp_idf_svc::log::EspLogger::initialize_default();
+
+    log::info!("Hello, world!");
 }
 
 ```
