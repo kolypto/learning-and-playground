@@ -1,4 +1,16 @@
 
+embedded/a01-led-roulette/.cargo/config.toml
+embedded/a01-led-roulette/Cargo.toml
+embedded/a01-led-roulette/.envrc
+embedded/a01-led-roulette/.github/workflows/rust_ci.yml
+embedded/a01-led-roulette/.gitignore
+embedded/a01-led-roulette/LICENSE-APACHE
+embedded/a01-led-roulette/LICENSE-MIT
+embedded/a01-led-roulette/README.md
+embedded/a01-led-roulette/rust-toolchain.toml
+embedded/a01-led-roulette/src/main.rs
+embedded/.gitignore
+embedded/README.md
 rust/a01-hello/Cargo.toml
 rust/a01-hello/.gitignore
 rust/a01-hello/src/main.rs

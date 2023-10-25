@@ -1,4 +1,4 @@
- 
+
 # Embedded Rust
 
 Reading:
@@ -72,10 +72,10 @@ Also you might want to add:
 Install:
 
 ```console
-$ sudo apt install cargo-binutils qemu-system-arm gdb-multiarch
+$ sudo apt install cargo-binutils qemu-system-arm gdb-multiarch libudev-dev
 $ cargo install cargo-generate
 $ cargo install probe-rs --features cli,ftdi
-$ sudo apt install esptool stm32flash openocd
+$ sudo apt install esptool espflash stm32flash openocd
 ```
 
 alternatively, using rustup:
@@ -171,3 +171,115 @@ The central piece: (`embedded-hal`)[https://crates.io/crates/embedded-hal]: prov
 that describe behavior common to specific peripherals. These are common interfaces.
 Drivers that are written in such a way are called platform agnostic. Most drivers are.
 
+
+
+
+
+
+## Flashing and Debugging
+
+Create a new project:
+
+```console
+$ cargo new a01_led_roulette
+```
+
+Microcontroller programs are different from standard programs in two aspects:
+
+* `#![no_std]`: this program won't use the `std` crate, which assumes an underlying OS.
+  It will instead use the `core` create: a subset of `std` that can run on bare metal systems.
+* `#![no_main]`: this program won't use the standard `main` interface, which is
+  tailored for command-line applications that receive arguments.
+  Instead, we'll use the `#[entry]` attribute from the `cortex-m-rt` create to define
+  a custom entry point.
+
+Check this `src/main.rs` file:
+
+```rust
+#![deny(unsafe_code)]
+#![no_main]
+#![no_std]
+
+use cortex_m_rt::entry;
+use panic_halt as _;
+use microbit as _;
+use rtt_target::{rprintln, rtt_init_print};
+
+#[entry]
+fn main() -> ! {  // `!`: this program never returns
+  // Set up RTT structures in the memory and read/write data from/to them
+  // Note: you can set up multiple channels: input channels, output channels. No problem.
+  rtt_init_print!();
+
+  let _y;
+  let x = 42;
+  _y = x;
+
+  // infinite loop; just so we don't leave this stack frame
+  loop {
+    // Print RTT
+    rprintln!("Hello, world!");
+  }
+}
+```
+
+Notice the `.cargo/config` file: it tweaks the linking process to tailor the memory layout
+of the program to the requirements of the target device:
+
+```
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+]
+```
+
+The `Embed.toml` or `.embed.toml` file: it configures `cargo-embed`:
+
+```toml
+# "default" on the outer level is the configuration profile name.
+# Use "cargo embed --config <profile>" to use a different one.
+[default.general]
+# The chip we're working with
+chip = "STM32F401CCUx"
+
+[default.reset]
+# Halt the chip after we flashed it
+halt_afterwards = true
+
+# RTT: Real time transfers. It's a mechanism for transferring data between the host and the device.
+# Supports multiple channels (ringbuffers)
+[default.rtt]
+enabled = true
+
+[default.gdb]
+# Start a GDB server after flashing?
+enabled = true
+```
+
+To cross-compile, pass `rustc --target`. It's simple.
+But before compiling, download a pre-compiled version of the standard library for your target:
+
+```console
+$ rustup target list
+$ rustup target add ...
+```
+
+Build the binary for your target:
+
+```console
+$ cargo build --target thumbv7em-none-eabihf
+```
+
+Check the file:
+
+```console
+$ cargo readobj --target thumbv7em-none-eabihf --bin led-roulette -- --file-headers
+```
+
+Run with RTT enabled, see the terminal:
+
+```console
+$ cargo embed
+```
+
+Now, "flashing" is the moving of our program into the microcontroller's memory.

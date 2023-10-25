@@ -4532,7 +4532,7 @@ fn main() {
 
 
 # embedded
- 
+
 # Embedded Rust
 
 Reading:
@@ -4606,10 +4606,10 @@ Also you might want to add:
 Install:
 
 ```console
-$ sudo apt install cargo-binutils qemu-system-arm gdb-multiarch
+$ sudo apt install cargo-binutils qemu-system-arm gdb-multiarch libudev-dev
 $ cargo install cargo-generate
 $ cargo install probe-rs --features cli,ftdi
-$ sudo apt install esptool stm32flash openocd
+$ sudo apt install esptool espflash stm32flash openocd
 ```
 
 alternatively, using rustup:
@@ -4705,4 +4705,398 @@ The central piece: (`embedded-hal`)[https://crates.io/crates/embedded-hal]: prov
 that describe behavior common to specific peripherals. These are common interfaces.
 Drivers that are written in such a way are called platform agnostic. Most drivers are.
 
+
+
+
+
+
+## Flashing and Debugging
+
+Create a new project:
+
+```console
+$ cargo new a01_led_roulette
+```
+
+Microcontroller programs are different from standard programs in two aspects:
+
+* `#![no_std]`: this program won't use the `std` crate, which assumes an underlying OS.
+  It will instead use the `core` create: a subset of `std` that can run on bare metal systems.
+* `#![no_main]`: this program won't use the standard `main` interface, which is
+  tailored for command-line applications that receive arguments.
+  Instead, we'll use the `#[entry]` attribute from the `cortex-m-rt` create to define
+  a custom entry point.
+
+Check this `src/main.rs` file:
+
+```rust
+#![deny(unsafe_code)]
+#![no_main]
+#![no_std]
+
+use cortex_m_rt::entry;
+use panic_halt as _;
+use microbit as _;
+use rtt_target::{rprintln, rtt_init_print};
+
+#[entry]
+fn main() -> ! {  // `!`: this program never returns
+  // Set up RTT structures in the memory and read/write data from/to them
+  // Note: you can set up multiple channels: input channels, output channels. No problem.
+  rtt_init_print!();
+
+  let _y;
+  let x = 42;
+  _y = x;
+
+  // infinite loop; just so we don't leave this stack frame
+  loop {
+    // Print RTT
+    rprintln!("Hello, world!");
+  }
+}
+```
+
+Notice the `.cargo/config` file: it tweaks the linking process to tailor the memory layout
+of the program to the requirements of the target device:
+
+```
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+]
+```
+
+The `Embed.toml` or `.embed.toml` file: it configures `cargo-embed`:
+
+```toml
+# "default" on the outer level is the configuration profile name.
+# Use "cargo embed --config <profile>" to use a different one.
+[default.general]
+# The chip we're working with
+chip = "STM32F401CCUx"
+
+[default.reset]
+# Halt the chip after we flashed it
+halt_afterwards = true
+
+# RTT: Real time transfers. It's a mechanism for transferring data between the host and the device.
+# Supports multiple channels (ringbuffers)
+[default.rtt]
+enabled = true
+
+[default.gdb]
+# Start a GDB server after flashing?
+enabled = true
+```
+
+To cross-compile, pass `rustc --target`. It's simple.
+But before compiling, download a pre-compiled version of the standard library for your target:
+
+```console
+$ rustup target list
+$ rustup target add ...
+```
+
+Build the binary for your target:
+
+```console
+$ cargo build --target thumbv7em-none-eabihf
+```
+
+Check the file:
+
+```console
+$ cargo readobj --target thumbv7em-none-eabihf --bin led-roulette -- --file-headers
+```
+
+Run with RTT enabled, see the terminal:
+
+```console
+$ cargo embed
+```
+
+Now, "flashing" is the moving of our program into the microcontroller's memory.
+
+
+
+
+
+# embedded/a01-led-roulette
+# LED Roulette on ESP32
+
+This is for the ESP32 board.
+
+Reading:
+
+* [ESP-RS book](https://esp-rs.github.io/book/)
+* [ESP-RS training](https://esp-rs.github.io/std-training/)
+* [Awesome ESP Rust](https://github.com/esp-rs/awesome-esp-rust): a collection
+
+In the [esp-rs](https://github.com/esp-rs/) organization:
+
+* `esp-*` repositories are focused on `no_std` applications: e.g. `esp-hal`
+* `esp-idf-*` are focused on `std` apps: e.g. `esp-idf-hal`
+
+## `std` vs `no_std`
+
+Espressif provides a C-based development framework: [ESP-IDF](https://github.com/espressif/esp-idf), which provides a [newlib](https://sourceware.org/newlib/) environment that has enough functionality to build the Rust `std` on top of it.
+
+When using `std`, you have access to a lot of `ESP-IDF` features: threads, mutexes, collections, random numbers, sockets, etc.
+See crates:
+
+* [embedded-svc](https://github.com/esp-rs/embedded-svc): wi-fi, network, httpd, logging, etc
+* [esp-idf-svc](https://github.com/esp-rs/esp-idf-svc): an implementation of `embedded-svc` using `esp-idf` drivers
+* [esp-idf-hal](https://github.com/esp-rs/esp-idf-hal): an implementation of `embedded-hal` and other traits using the `esp-idf` framework
+* [esp-idf-sys](https://github.com/esp-rs/esp-idf-sys): Rust bindings to the `esp-idf` development framework. Gives raw (`unsafe`) access to drivers, Wi-Fi, and more
+
+You might want to use the `std` when your app:
+* requires rich functionality (network, file I/O, sockets, complex data structures)
+* for portability: because the `std` crate provide APIs that can be used across different platforms
+* rapid development
+
+Using `no_std` may be more familiar to embedded Rust developers: it uses a subset of `std`: the `core` library.
+
+See crates:
+
+* [esp-hal](https://github.com/esp-rs/esp-hal):	Hardware abstraction layer
+* [esp-pacs](https://github.com/esp-rs/esp-pacs):	Peripheral access crates
+* [esp-wifi](https://github.com/esp-rs/esp-wifi):	Wi-Fi, BLE and [ESP-NOW](https://www.espressif.com/en/solutions/low-power-solutions/esp-now) support
+* [esp-alloc](https://github.com/esp-rs/esp-alloc):	Simple heap allocator
+* [esp-println](https://github.com/esp-rs/esp-println):	`print!`, `println!`
+* [esp-backtrace](https://github.com/esp-rs/esp-backtrace):	Exception and panic handlers
+* [esp-storage](https://github.com/esp-rs/esp-storage):	Embedded-storage traits to access unencrypted flash memory
+
+You might want to use the `no_std` when:
+
+* You need a small memory footprint
+* Direct hardware control. Because `std` adds abstractions that make it harder to interact directly with the hardware
+* Real-time constraints or time-critical applications: because `std` can introduce unpredictable delays and overhead
+* Custom requirements: fine-grained control over the behavior of an application
+
+
+## Preparation
+
+Espressif SoCs are based on two different architectures: RISC-V and Xtensa.
+
+* Modern chips: ESP32-C/H/P are based on RISC-V.
+* Older chips: ESP32, ESP32-S use Tensilica Xtensa.
+
+For ESP32-C2, C2, C6, H2, P4:
+[Tools for RISC-V Targets only](https://esp-rs.github.io/book/installation/riscv.html).
+
+For all chips (Xtensa *and* RISC-V):
+
+* install `espup`: simplifies installing and maintaining the components required to build
+* Run `espup install` to install the toolchain: Rust fork, nightly toolchain, LLVM fork, GCC toolchain
+
+Instead of installing, you can use a Docker image: [espressif/idf-rust
+](https://hub.docker.com/r/espressif/idf-rust/tags):
+
+```console
+$ docker pull espressif/idf-rust:all_latest
+```
+
+But if you still want to install:
+first of all, it is recommended to use `rustup` rather than your distro's package manager!
+Your `rustup` will be able to determine which toolchain to use: see [rustup overrides](https://rust-lang.github.io/rustup/overrides.html).
+
+But anyway:
+
+```console
+$ cargo install espflash
+$ espup install
+```
+
+Now source this file in every terminal:
+
+```console
+$ . $HOME/export-esp.sh
+```
+
+or use direnv's `.envrc`:
+
+```bash
+#!/bin/bash
+
+# direnv:
+# will automatically configure your environment
+# see:
+# * https://direnv.net/
+# * https://github.com/direnv/direnv/wiki
+# * https://github.com/direnv/direnv/blob/master/stdlib.sh
+
+watch_file ~/export-esp.sh
+. ~/export-esp.sh
+```
+
+Also, you'd need to set the toolchain for this folder:
+
+```console
+$ rustup override set esp
+```
+
+## Start a project
+
+Generate a project:
+
+```console
+$ cargo install cargo-generate
+$ cargo generate esp-rs/esp-template
+```
+
+Questions from `cargo generate`:
+
+* Which MCU? `esp32` with Xtensa architecture
+
+Now build and flash:
+
+```console
+$ cargo build
+$ cargo run
+```
+
+You can use `cargo run` because of `.cargo/config.toml`, which configures the build target and the runner:
+
+```toml
+[target.xtensa-esp32-none-elf]
+runner = "espflash flash --monitor"
+```
+
+
+
+## VSCode
+
+Rust analyzer can behave strangely without `std`.
+Add this to `settings.json`:
+
+```json
+{
+  "rust-analyzer.checkOnSave.allTargets": false
+}
+```
+
+
+
+
+# embedded/a01-led-roulette/.envrc
+
+```
+PATH_add /home/kolypto/.rustup/toolchains/esp/bin
+
+watch_file ~/export-esp.sh
+. ~/export-esp.sh
+
+
+```
+
+
+
+
+
+# embedded/a01-led-roulette/.cargo
+
+
+# embedded/a01-led-roulette/.cargo/config.toml
+
+```toml
+[target.xtensa-esp32-none-elf]
+runner = "espflash flash --monitor"
+
+
+[build]
+rustflags = [
+  "-C", "link-arg=-Tlinkall.x",
+
+  "-C", "link-arg=-nostartfiles",
+]
+target = "xtensa-esp32-none-elf"
+
+[unstable]
+build-std = ["core"]
+
+```
+
+
+
+
+
+# embedded/a01-led-roulette/src
+
+
+# embedded/a01-led-roulette/src/main.rs
+
+```rust
+// Don't use the standard library
+#![no_std]
+// Don't use main(), which is tailored for command-line applications.
+// Instead, we'll use the #[entry] attribute from the `xtensa-lx-rt` crate
+#![no_main]
+
+// Installs a panic handler.
+// You can use other crates, but `esp-backtrace` prints the address which can be decoded to file/line
+use esp_backtrace as _;
+// Provides a `println!` implementation
+use esp_println::println;
+// Bring some types from `esp-hal`
+use hal::{peripherals::Peripherals, prelude::*};
+use hal::{clock::ClockControl, Delay, timer::TimerGroup, Rtc};
+use hal::{IO};
+
+// The entry point.
+// It must be a "diverging function": i.e. have the `!` return type.
+#[entry]
+fn main() -> ! {
+    // HAL drivers usually take ownership of peripherals accessed via the PAC
+    // Here we take all the peripherals from the PAC to pass them to the HAL drivers later
+    let peripherals = Peripherals::take();
+    // Sometimes a peripheral is coarse-grained and doesn't exactly fit the HAL drivers.
+    // Here we split the SYSTEM peripheral into smaller pieces which get passed to drivers
+    let mut system = peripherals.DPORT.split();
+    let clocks = ClockControl::max(system.clock_control).freeze();
+
+    // Disable the RTC.
+    // Instantiate it, and disable.
+    let mut rtc = Rtc::new(peripherals.RTC_CNTL);
+    rtc.rwdt.disable();
+
+    // Disable TIMG watchdog timers: if not, the SoC would reboot after some time.
+    // Another way is to feed the watchdog.
+    let timer_group0 = TimerGroup::new(peripherals.TIMG0, &clocks, &mut system.peripheral_clock_control);
+    let timer_group1 = TimerGroup::new(peripherals.TIMG1, &clocks, &mut system.peripheral_clock_control);
+    let mut wdt0 = timer_group0.wdt;
+    let mut wdt1 = timer_group1.wdt;
+    wdt0.disable();
+    wdt1.disable();
+
+    // Set GPIO2 as an output, and set its state high initially.
+    // GPIO2 = LED
+    let io = IO::new(peripherals.GPIO, peripherals.IO_MUX);
+    let mut led = io.pins.gpio2.into_push_pull_output();
+    led.set_high().unwrap();
+
+    // Set GPIO36 as input
+    let button = io.pins.gpio36.into_pull_up_input();
+
+    // Init a timer
+    let mut delay = Delay::new(&clocks);
+    loop {
+        println!("Loop...");
+        // Blink
+        // led.toggle().unwrap();
+
+        if button.is_high().unwrap() {
+            for _ in 0..10 {
+                led.set_high().unwrap();
+                delay.delay_ms(50u32);
+                led.set_low().unwrap();
+                delay.delay_ms(50u32);
+            }
+        }
+
+        delay.delay_ms(500u32);
+    }
+}
+
+```
 
