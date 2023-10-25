@@ -17,11 +17,16 @@ embedded/a01-rust-on-esp32/src/main.rs
 embedded/a02-rust-on-esp32-std/build.rs
 embedded/a02-rust-on-esp32-std/.cargo/config.toml
 embedded/a02-rust-on-esp32-std/Cargo.toml
+embedded/a02-rust-on-esp32-std/cfg.toml
+embedded/a02-rust-on-esp32-std/cfg.toml.example
 embedded/a02-rust-on-esp32-std/.envrc
 embedded/a02-rust-on-esp32-std/.gitignore
 embedded/a02-rust-on-esp32-std/README.md
 embedded/a02-rust-on-esp32-std/rust-toolchain.toml
 embedded/a02-rust-on-esp32-std/sdkconfig.defaults
+embedded/a02-rust-on-esp32-std/src/lib/httpclient.rs
+embedded/a02-rust-on-esp32-std/src/lib.rs
+embedded/a02-rust-on-esp32-std/src/lib/wifi.rs
 embedded/a02-rust-on-esp32-std/src/main.rs
 embedded/.gitignore
 embedded/README.md

@@ -5168,10 +5168,36 @@ otherwise, each new project will have its own instance of the toolchain and eat 
     channel = "nightly-2023-02-28" # change this line
     ```
 
-We'll use `toml_cfg`:
+We'll use `toml_cfg`. All add `anyhow` to be used in the build script:
 
 ```console
-$ cargo add toml_cfg
+$ cargo add toml_cfg anyhow esp-idf-hal embedded-svc
+$ cargo add esp-idf-sys --features=binstart
+$ cargo add --build toml_cfg anyhow
+```
+
+
+
+
+Further reading for ESP32 `std` programming:
+
+* [HTTPS Server](https://esp-rs.github.io/std-training/03_4_http_server.html) and [code](https://github.com/esp-rs/std-training/tree/main/intro/http-server)
+* [MQTT Client](https://esp-rs.github.io/std-training/03_5_0_mqtt.html) and [code](https://github.com/esp-rs/std-training/tree/main/intro/mqtt)
+* [I2C, I/O, Sensors, Interrupts](https://esp-rs.github.io/std-training/04_0_advanced_workshop.html)
+
+Further reading for ESP32:
+
+* [Awesome ESP32](https://github.com/esp-rs/awesome-esp-rust)
+
+
+
+# embedded/a02-rust-on-esp32-std/cfg.toml
+
+```toml
+[a02-rust-on-esp32-std]
+wifi_ssid = "RT-WiFi-2FCB"
+wifi_psk = "Euief5xaRm"
+
 ```
 
 
@@ -5179,8 +5205,40 @@ $ cargo add toml_cfg
 # embedded/a02-rust-on-esp32-std/build.rs
 
 ```rust
-fn main() {
+// Note: in `build.rs` we don't need to explicitly import crates.
+// These "[build-dependencies]" are added automatically
+
+fn main() -> anyhow::Result<()> {
+    // Prints build args
     embuild::espidf::sysenv::output();
+
+    // Check & import `cfg.toml`
+    if !std::path::Path::new("cfg.toml").exists() {
+        anyhow::bail!("You need to create a `cfg.toml` file with your Wi-Fi credentials! Use `cfg.toml.example` as a template.");
+    }
+    let app_config = CONFIG; // const `CONFIG` is auto-generateed
+    if app_config.wifi_ssid == "" || app_config.wifi_psk == "" {
+        anyhow::bail!("You need to set the Wi-Fi credentials in `cfg.toml`!");
+    }
+
+    // // Necessary because of this issue: https://github.com/rust-lang/cargo/issues/9641 :
+    // // > "rustc-link-arg does not propagate transitively"
+    // // But build actually fails if we enable these
+    // embuild::build::CfgArgs::output_propagated("ESP_IDF")?;
+    // embuild::build::LinkArgs::output_propagated("ESP_IDF")
+
+    // Return
+    Ok(())
+}
+
+// App config: the WiFi network to connect to.
+// The config is taken from `cfg.toml` and imported into Rust as a value
+#[toml_cfg::toml_config]
+pub struct Config {
+    #[default("")]
+    wifi_ssid: &'static str,
+    #[default("")]
+    wifi_psk: &'static str,
 }
 
 ```
@@ -5195,15 +5253,260 @@ fn main() {
 # embedded/a02-rust-on-esp32-std/src/main.rs
 
 ```rust
-fn main() {
-    // It is necessary to call this function once. Otherwise some patches to the runtime
-    // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
+use esp_idf_hal::{
+    prelude::Peripherals,
+};
+use esp_idf_svc::{
+    eventloop::EspSystemEventLoop,
+};
+use anyhow::{bail, Result};
+use core::str;
+use log;
+
+use a02_rust_on_esp32_std::{wifi, httpclient}; // our lib
+
+fn main() -> Result<()> {
+    // Need to call this once: applies patches to the runtime.
     esp_idf_svc::sys::link_patches();
 
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    log::info!("Hello, world!");
+    // Let HAL take the peripherals
+    let peripherals = Peripherals::take().unwrap();
+    let sysloop = EspSystemEventLoop::take()?;
+
+    // Print something
+    println!("Started :)");
+
+    // Connect to WiFi
+    let _wifi = match wifi::connect(
+        CONFIG.wifi_ssid,
+        CONFIG.wifi_psk,
+        peripherals.modem,
+        sysloop,
+    ){
+        Ok(wifi) => {
+            log::info!("Connected to Wi-Fi network {:?}!", CONFIG.wifi_ssid);
+            wifi
+        }
+        Err(err) => {
+            // Red!
+            bail!("Could not connect to Wi-Fi network: {:?}", err)
+        }
+    };
+
+    // HTTP request
+    httpclient::get_url("https://api.myip.com/")?;
+
+    Ok(())
+}
+
+
+// App config. Auto-generated as `CONFIG`
+#[toml_cfg::toml_config]
+pub struct Config {
+    #[default("")]
+    wifi_ssid: &'static str,
+    #[default("")]
+    wifi_psk: &'static str,
+}
+
+```
+
+
+
+# embedded/a02-rust-on-esp32-std/src/lib.rs
+
+```rust
+// Define the modules' structure
+mod lib {
+    // Need `pub` -- because otherwise `pub use` won't be able to re-publish them.
+    pub mod wifi;
+    pub mod httpclient;
+}
+
+// Re-publish
+pub use crate::lib::{wifi, httpclient};
+
+```
+
+
+
+
+
+# embedded/a02-rust-on-esp32-std/src/lib
+
+
+# embedded/a02-rust-on-esp32-std/src/lib/wifi.rs
+
+```rust
+use anyhow::{bail, Result};
+use embedded_svc::wifi::{
+    AccessPointConfiguration, AuthMethod, ClientConfiguration, Configuration,
+};
+use esp_idf_hal::peripheral;
+use esp_idf_svc::{eventloop::EspSystemEventLoop, wifi::BlockingWifi, wifi::EspWifi};
+use log::info;
+
+
+/// Connect to a WiFi network
+pub fn connect(
+    ssid: &str,
+    pass: &str,
+    modem: impl peripheral::Peripheral<P = esp_idf_hal::modem::Modem> + 'static,
+    sysloop: EspSystemEventLoop,
+) -> Result<Box<EspWifi<'static>>> {
+    // Auth method
+    let mut auth_method = AuthMethod::WPA2Personal;
+    if ssid.is_empty() {
+        bail!("Missing WiFi name")
+    }
+    if pass.is_empty() {
+        auth_method = AuthMethod::None;
+        info!("Wifi password is empty");
+    }
+
+    // Init Wi-Fi
+    let mut esp_wifi = EspWifi::new(modem, sysloop.clone(), None)?;
+    let mut wifi = BlockingWifi::wrap(&mut esp_wifi, sysloop)?;
+    wifi.set_configuration(&Configuration::Client(ClientConfiguration::default()))?;
+
+    // Start Wi-Fi
+    info!("Starting wifi...");
+    wifi.start()?;
+
+    // Scan networks
+    info!("Scanning...");
+    let ap_infos = wifi.scan()?;
+    let ours = ap_infos.into_iter().find(|a| a.ssid == ssid);
+
+    // Choose a channel
+    let channel = if let Some(ours) = ours {
+        info!("Found configured access point {} on channel {}", ssid, ours.channel);
+        Some(ours.channel)
+    } else {
+        info!("Configured access point {} not found during scanning, will go with unknown channel", ssid);
+        None
+    };
+
+    // Configure the WiFi adapter
+    wifi.set_configuration(&Configuration::Mixed(
+        // "Mixed" is a Client + Access Point. Yes, we can be an access point.
+        ClientConfiguration {
+            ssid: ssid.into(),
+            password: pass.into(),
+            channel,
+            auth_method,
+            ..Default::default()
+        },
+        AccessPointConfiguration {
+            ssid: "aptest".into(),
+            channel: channel.unwrap_or(1),
+            ..Default::default()
+        },
+    ))?;
+
+    // Connect to the AP Access Point
+    info!("Connecting wifi...");
+    wifi.connect()?;
+
+    // Get an IP address (DHCP)
+    info!("Waiting for DHCP lease...");
+    wifi.wait_netif_up()?;
+
+    // Get IP info and print it
+    let ip_info = wifi.wifi().sta_netif().get_ip_info()?;
+    info!("Wifi DHCP info: {:?}", ip_info);
+
+    // Done
+    Ok(Box::new(esp_wifi))
+}
+```
+
+
+
+# embedded/a02-rust-on-esp32-std/src/lib/httpclient.rs
+
+```rust
+use anyhow::{bail, Result};
+use core::str;
+use esp_idf_sys;
+use embedded_svc::{
+    http::{client::Client, Status},
+    io::Read,
+};
+use esp_idf_svc::{
+    http::client::{Configuration, EspHttpConnection},
+};
+
+
+/// Download data from an HTTP URL
+// The `AsRef<str>` means the function accepts anything that implements the trait: both `&str` and `String`
+pub fn get_url(url: impl AsRef<str>) -> Result<()> {
+    // Create a client: EspHttpConnection, then Client
+    let connection = EspHttpConnection::new(&Configuration {
+        use_global_ca_store: true,
+        crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
+        ..Default::default()
+    })?;
+    let mut client = Client::wrap(connection);
+
+    // Open a GET request
+    let request = client.get(url.as_ref())?;
+
+    // Sed the request
+    let response = request.submit()?;
+    let status = response.status();
+    println!("Response code: {}\n", status);
+
+    // Check the HTTP code
+    match status {
+        200..=299 => {
+            // Read response, buffer size = 256
+            let mut buf = [0_u8; 256];
+            let mut offset = 0; // offset in the buffer
+            let mut total = 0;  // total number of bytes read
+            let mut reader = response;
+
+            // Keep reading
+            loop {
+                // Read into the buffer, starting at `offset`
+                if let Ok(size) = Read::read(&mut reader, &mut buf[offset..]) {
+                    // Read nothing? stop reading.
+                    if size == 0 {
+                        break;
+                    }
+                    total += size;
+
+                    // Try converting the bytes into UTF-8 and print
+                    let size_plus_offset = size + offset;
+                    match str::from_utf8(&buf[..size_plus_offset]) {
+                        Ok(text) => {
+                            // Print
+                            print!("{}", text);
+                            // Empty the buffer
+                            offset = 0;
+                        },
+                        Err(error) => {
+                            let valid_up_to = error.valid_up_to();
+                            unsafe {
+                                print!("{}", str::from_utf8_unchecked(&buf[..valid_up_to]));
+                            }
+
+                            // Move bytes in the buffer
+                            buf.copy_within(valid_up_to.., 0);
+                            offset = size_plus_offset - valid_up_to;
+                        }
+                    }
+                }
+            }
+            println!("Total: {} bytes", total);
+        }
+        _ => bail!("Unexpected response code: {}", status),
+    }
+
+    Ok(())
 }
 
 ```

@@ -39,6 +39,10 @@ embedded/a01-rust-on-esp32/.envrc
 embedded/a01-rust-on-esp32/.cargo/config.toml
 embedded/a01-rust-on-esp32/src/main.rs
 embedded/a02-rust-on-esp32-std/README.md
+embedded/a02-rust-on-esp32-std/cfg.toml
 embedded/a02-rust-on-esp32-std/build.rs
 embedded/a02-rust-on-esp32-std/src/main.rs
+embedded/a02-rust-on-esp32-std/src/lib.rs
+embedded/a02-rust-on-esp32-std/src/lib/wifi.rs
+embedded/a02-rust-on-esp32-std/src/lib/httpclient.rs
 
