@@ -180,13 +180,13 @@ Drivers that are written in such a way are called platform agnostic. Most driver
 
 ## Flashing and Debugging
 
-NOTE: for ESP32, see `./a01-rust-on-esp32`.
-This tutorial is for `cargo-embed`: it works with some chips.
+NOTE: for ESP32 on Xtensa, see `./a01-rust-on-esp32`.
+This tutorial is for `cargo-embed`: it supports: ARM, RISC-V, CMSIS-DAP, STLink, JLink. See [probe-rs](https://probe.rs/).
 
 Create a new project:
 
 ```console
-$ cargo new a01_led_roulette
+$ cargo new <projectname>
 ```
 
 Microcontroller programs are different from standard programs in two aspects:

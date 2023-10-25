@@ -33,6 +33,7 @@ rust/a20_advanced/src/main.rs
 rust/a21_appendix/src/main.rs
 rust/a22_rust_by_example/src/main.rs
 rust/README-more.md
+
 embedded/README.md
 embedded/a01-rust-on-esp32/README.md
 embedded/a01-rust-on-esp32/.envrc
@@ -45,4 +46,6 @@ embedded/a02-rust-on-esp32-std/src/main.rs
 embedded/a02-rust-on-esp32-std/src/lib.rs
 embedded/a02-rust-on-esp32-std/src/lib/wifi.rs
 embedded/a02-rust-on-esp32-std/src/lib/httpclient.rs
+
+embedded/README-more.md
 

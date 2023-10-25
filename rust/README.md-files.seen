@@ -30,6 +30,7 @@ embedded/a02-rust-on-esp32-std/src/lib/wifi.rs
 embedded/a02-rust-on-esp32-std/src/main.rs
 embedded/.gitignore
 embedded/README.md
+embedded/README-more.md
 rust/a01-hello/Cargo.toml
 rust/a01-hello/.gitignore
 rust/a01-hello/src/main.rs
