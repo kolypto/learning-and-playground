@@ -5563,6 +5563,127 @@ pub fn get_url(url: impl AsRef<str>) -> Result<()> {
 
 
 
+# embedded/a03-esp32-serial
+## Serial port
+
+"Serial communication" is asynchronous (without a clock signal): where two devices exchange data serially,
+one bit at a time, using two data lines + a common ground.
+
+Both parties must agree on how fast data will be sent.
+The common configuration is: 1 start bit, 8 bits of data, 1 stop bit, baud rate of 115200 bps.
+
+Today's computers don't have serial ports, but our SoC has a USB-to-serial converter:
+it exposes a serial interface to the microcontroller, and a USB interface to the computer, which will see the microcontroller as a virtual serial device.
+
+The computer will see it as a TTY device: `/dev/ttyUSB0` or `/dev/ttyACM0`.
+You can send out data by simply writing to this file:
+
+```console
+$ echo 'Hello, world!' > /dev/ttyACM0
+```
+
+Here's how to open a terminal:
+
+```console
+$ screen -U /dev/ttyUSB0 115200
+C-a \
+
+$ minicom --device /dev/ttyUSB0 -b 115200
+C-a x
+
+$ picocom /dev/ttyUSB0 --b 115200
+C-a C-x
+```
+
+## UART
+
+The microcontroller has a peripheral called UART: Universal Async Receiver/Transmitter.
+It can be configured to work with several communication protocols: e.g. serial.
+We'll use it to talk to your computer.
+
+
+
+
+
+
+# embedded/a03-esp32-serial/src
+
+
+# embedded/a03-esp32-serial/src/main.rs
+
+```rust
+#![no_std]
+#![no_main]
+
+use esp_backtrace as _;
+use esp_println::println;
+use hal::{
+    prelude::*,
+    peripherals::Peripherals,
+    peripherals::Interrupt,
+    clock::ClockControl, Delay,
+    IO, Uart,
+    interrupt,
+};
+use esp_backtrace as _;
+// use debouncr::{debounce_3, Edge};  // debounce button press
+use core::fmt::Write;
+
+#[entry]
+fn main() -> ! {
+    let peripherals = Peripherals::take();
+    let mut system: hal::system::SystemParts = peripherals.DPORT.split();
+    let clocks = ClockControl::max(system.clock_control).freeze();
+
+    let mut delay = Delay::new(&clocks);
+
+    // Logging
+    esp_println::logger::init_logger_from_env();
+    log::info!("Logger is setup");
+    println!("Hello world!");
+
+    // Get hold of the LED and the button
+    let io = IO::new(peripherals.GPIO, peripherals.IO_MUX);
+    let mut led = io.pins.gpio2.into_push_pull_output();
+    let mut button = io.pins.gpio0.into_pull_up_input();
+
+    // Get hold of UART.
+    // With ESP32, it can be mapped to any GPIO pins, but we use TX/RX pins connected to USB:
+    let mut uart0 = Uart::new_with_config(
+        peripherals.UART0,
+        Some(hal::uart::config::Config{
+            baudrate: 115_200,
+            ..Default::default()
+        }),
+        Some(hal::uart::TxRxPins::new_tx_rx(
+            // our board has a CP2102 USB-UART converter connected to U0TXD (GPIO1)  and U0RXD (GPIO3) pins.
+            // Let's use them: then all our output to this `uart0` will end up in /dev/ttyUSB0 :)
+            io.pins.gpio1.into_push_pull_output(),
+            io.pins.gpio3.into_floating_input(),
+        )),
+        &clocks,
+        &mut system.peripheral_clock_control,
+    );
+    // let mut uart0 = Uart::new(peripherals.UART0, &mut system.peripheral_clock_control); // with defaults
+
+    loop {
+        // Toggle the LED while the button is pressed
+        if !button.is_input_high() {
+            led.toggle().unwrap();
+            writeln!(uart0, "Button Press!\n").unwrap();
+        }
+
+        // Sleep
+        delay.delay_ms(50u32);
+    }
+}
+
+```
+
+
+
+
+
 # embedded
 # Further reading on embedded Rust
 

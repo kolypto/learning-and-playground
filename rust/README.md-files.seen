@@ -28,6 +28,16 @@ embedded/a02-rust-on-esp32-std/src/lib/httpclient.rs
 embedded/a02-rust-on-esp32-std/src/lib.rs
 embedded/a02-rust-on-esp32-std/src/lib/wifi.rs
 embedded/a02-rust-on-esp32-std/src/main.rs
+embedded/a03-esp32-serial/.cargo/config.toml
+embedded/a03-esp32-serial/Cargo.toml
+embedded/a03-esp32-serial/.envrc
+embedded/a03-esp32-serial/.gitignore
+embedded/a03-esp32-serial/LICENSE-APACHE
+embedded/a03-esp32-serial/LICENSE-MIT
+embedded/a03-esp32-serial/README.md
+embedded/a03-esp32-serial/rust-toolchain.toml
+embedded/a03-esp32-serial/src/main.rs
+embedded/a03-esp32-serial/.vscode/settings.json
 embedded/.gitignore
 embedded/README.md
 embedded/README-more.md
