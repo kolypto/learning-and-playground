@@ -48,6 +48,8 @@ embedded/a02-rust-on-esp32-std/src/lib/wifi.rs
 embedded/a02-rust-on-esp32-std/src/lib/httpclient.rs
 embedded/a03-esp32-serial/README.md
 embedded/a03-esp32-serial/src/main.rs
+embedded/a04-i2c-display/README.md
+embedded/a04-i2c-display/src/main.rs
 
 
 embedded/README-more.md

@@ -5618,16 +5618,17 @@ We'll use it to talk to your computer.
 use esp_backtrace as _;
 use esp_println::println;
 use hal::{
-    prelude::*,
+    prelude::{*, nb::block},
     peripherals::Peripherals,
     peripherals::Interrupt,
     clock::ClockControl, Delay,
     IO, Uart,
-    interrupt,
+    interrupt, uart,
 };
 use esp_backtrace as _;
 // use debouncr::{debounce_3, Edge};  // debounce button press
-use core::fmt::Write;
+use core::fmt::Write;  // writeln!() here
+use embedded_io;  // read(&buf)
 
 #[entry]
 fn main() -> ! {
@@ -5652,9 +5653,10 @@ fn main() -> ! {
     let mut uart0 = Uart::new_with_config(
         peripherals.UART0,
         Some(hal::uart::config::Config{
-            baudrate: 115_200,
+            baudrate: 115_200,  // the speed
             ..Default::default()
         }),
+        // The pings to use: Tx and Rx
         Some(hal::uart::TxRxPins::new_tx_rx(
             // our board has a CP2102 USB-UART converter connected to U0TXD (GPIO1)  and U0RXD (GPIO3) pins.
             // Let's use them: then all our output to this `uart0` will end up in /dev/ttyUSB0 :)
@@ -5664,19 +5666,238 @@ fn main() -> ! {
         &clocks,
         &mut system.peripheral_clock_control,
     );
+    // .. or do the same thing, with defaults:
     // let mut uart0 = Uart::new(peripherals.UART0, &mut system.peripheral_clock_control); // with defaults
 
+
+    // Example: write to UART while the button is pressed
+    if false {
+        loop {
+            // Toggle the LED while the button is pressed
+            if !button.is_input_high() {
+                led.toggle().unwrap();
+
+                // Speak into UART
+                writeln!(uart0, "Button Press!\n").unwrap();
+            }
+
+            // Sleep
+            delay.delay_ms(50u32);
+        }
+    }
+
+    // Example: echo server. Reading from UART
+    // Heapless: static data structures that don't require dynamic memory allocation
+    // All heapless data structures store their memory allocation inline:
+    use heapless::Vec;
+
+    // Allocate a buffer: can store up to 128 bytes
+    let mut buf: Vec<u8, 128> = Vec::new();
+
     loop {
-        // Toggle the LED while the button is pressed
-        if !button.is_input_high() {
-            led.toggle().unwrap();
-            writeln!(uart0, "Button Press!\n").unwrap();
+        buf.clear();
+
+        // TODO: how to read the whole string?
+        // let n =embedded_io::Read::read(&mut uart0, &mut buf).unwrap();
+
+        loop {
+            // Read bytes into the buffer
+            let byte = nb::block!(uart0.read()).unwrap();
+            if buf.push(byte).is_err() {
+                write!(uart0, "error: buffer full\n").unwrap();
+                break;
+            }
+
+            // Enter. Done.
+            if byte == 13 {  // <enter>
+                // Reverse the string and print it
+                for byte in buf.iter().rev().chain(&[b'\n']) {
+                    nb::block!(uart0.write(*byte)).unwrap();
+                }
+                break;
+            }
         }
 
-        // Sleep
-        delay.delay_ms(50u32);
+        nb::block!(uart0.flush()).unwrap()
     }
 }
+
+```
+
+
+
+
+
+# embedded/a04-i2c-display
+# I2C
+
+"I2C": Inter-Integrated Circuit: synchronous serial communication protocol.
+
+Uses two lines: a data line (SDA) and a clock line (SCL).
+Because a clock line is used to synchronize the communication, this is a *synchronous* protocol.
+
+
+The "controller" is the device that starts and drives the communication.
+
+Several devices, both controllers and targets, can be connected to the same bus.
+
+A controller communicates with a device by first broadcasting its address to the bus.
+This address can be 7bits or 10bits long.
+
+No other device can use the bus until the controller stops the communication (!)
+
+The clock determines how fast data can be exchanged:
+usually 100 kHz (standard mode) or 400 kHz (fast mode)
+
+Protocol:
+
+1. Controller sends START
+2. Controller broadcasts target address (7 or 10 bits) + 1 R/W bit. It's set to "WRITE" for "controller -> target" communication, and "READ" for "controller <- target" communication.
+3. Target responds with ACK
+4. repeat ( Send one byte + Respond with ACK )
+5. Controller broadcasts STOP (or RESTART and go back to 2)
+
+## ADXL345 Accelerometer
+
+What I have here is an ADXL345 accelerometer with I2C, SPI, and two configurable "interrupt" pins to report tap/double-tap/falling.
+
+It is configurable: has a number of writable registers that contain the settings. The registers also contain the readings.
+
+In a sense, these sensors are very similar to the peripherals inside the microcontroller.
+The difference is that their registers are not mapped into the microcontroller's memory:
+instead, their registers have to be acessed via the I2C bus.
+
+Some accelerometer modules also have a magnetometer: LSM303AGR , MPU-6050.
+
+### Practice
+
+First: find out the target address of the accelerometer.
+With ADXL345, the address is `0x1D`, followed by the R/W bit: this translates to `0x3B` (R) and `0x3A` (W).
+
+Second: lots of I2C chips will have some sort of device identification register.
+With this device ID register, we can verify that we are indeed talking to the device we expect:
+in our case, `DEVID` (`0x00` register) contains `11100101`.
+
+## SSD1780 Display
+
+This is a 128x64 OLED display with I2C and SPI interfaces.
+
+Its address is `011110` + `1/0`.
+
+
+
+
+
+
+# embedded/a04-i2c-display/src
+
+
+# embedded/a04-i2c-display/src/main.rs
+
+```rust
+#![no_std]
+#![no_main]
+
+use esp_backtrace as _;
+use esp_println::println;
+use hal::{
+    prelude::*,
+    clock::ClockControl, peripherals::Peripherals,
+    Delay,
+    i2c::I2C, IO,
+};
+use core::fmt::Write;
+
+use embedded_graphics::{
+    mono_font::{ascii::FONT_6X10, MonoTextStyleBuilder},
+    pixelcolor::BinaryColor,
+    prelude::*,
+    text::{Baseline, Text},
+};
+use ssd1306::{
+    prelude::*,
+    I2CDisplayInterface, Ssd1306,
+    mode::BufferedGraphicsMode,  mode::TerminalMode,
+};
+
+
+
+#[entry]
+fn main() -> ! {
+    let peripherals = Peripherals::take();
+    let mut system = peripherals.DPORT.split();
+    let clocks = ClockControl::max(system.clock_control).freeze();
+    let mut delay = Delay::new(&clocks);
+
+    let mut io = IO::new(peripherals.GPIO, peripherals.IO_MUX);
+
+    // Create a new I2C peripheral
+    let mut i2c = I2C::new(
+        peripherals.I2C0, // we have 2 I2C peripherals
+        io.pins.gpio21,  // SDA pin to use
+        io.pins.gpio22,  // SCL pin to use
+        100_u32.kHz(),  // frequency. 100kHz is the "standard mode"
+        &mut system.peripheral_clock_control,
+        &clocks,
+    );
+
+
+    // let interface = I2CDisplayInterface::new(i2c);
+    // let mut display = Ssd1306::new(
+    //     interface,
+    //     DisplaySize128x64,
+    //     DisplayRotation::Rotate0,
+    // ).into_buffered_graphics_mode();
+    // display.init().unwrap();
+
+    // let text_style = MonoTextStyleBuilder::new()
+    //     .font(&FONT_6X10)
+    //     .text_color(BinaryColor::On)
+    //     .build();
+
+    // Text::with_baseline("Hello world!", Point::zero(), text_style, Baseline::Top)
+    //     .draw(&mut display)
+    //     .unwrap();
+
+    // Text::with_baseline("Hello Rust!", Point::new(0, 16), text_style, Baseline::Top)
+    //     .draw(&mut display)
+    //     .unwrap();
+
+    // display.flush().unwrap();
+
+
+    // let interface = I2CDisplayInterface::new(i2c);
+
+    // let mut display = Ssd1306::new(
+    //     interface,
+    //     DisplaySize128x64,
+    //     DisplayRotation::Rotate0,
+    // ).into_terminal_mode();
+    // display.init().unwrap();
+    // display.clear().unwrap();
+
+    // // Spam some characters to the display
+    // for c in 97..123 {
+    //     let _ = display.write_str(unsafe { core::str::from_utf8_unchecked(&[c]) });
+    // }
+    // for c in 65..91 {
+    //     let _ = display.write_str(unsafe { core::str::from_utf8_unchecked(&[c]) });
+    // }
+
+
+    loop {
+        // Get us a buffer and read into it
+        let mut data = [0u8; 22];
+        // i2c.write_read(<device_addr>, <register>, <buffer>)
+        // i2c.write_read(DISPLAY_ADDR, &[0x00], &mut data).ok();
+        println!("{:?}", data);
+
+        delay.delay_ms(500_u32);
+    }
+}
+
+const DISPLAY_ADDR: u8 = 0b111100;
+const ACCELEROMETER_ADDR: u8 = 0x3A;
 
 ```
 
