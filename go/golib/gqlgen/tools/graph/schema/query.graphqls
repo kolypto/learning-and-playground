@@ -1,0 +1,18 @@
+type Todo {
+  id: ID!
+  text: String!
+  done: Boolean!
+  userId: ID!  # user ID reference for the nested loader
+  user: User!
+}
+
+type User {
+  id: ID!
+  name: String!
+}
+
+
+
+type Query {
+  todos: [Todo!]!
+}

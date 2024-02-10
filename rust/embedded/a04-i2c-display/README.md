@@ -41,7 +41,16 @@ Some accelerometer modules also have a magnetometer: LSM303AGR , MPU-6050.
 ### Practice
 
 First: find out the target address of the accelerometer.
-With ADXL345, the address is `0x1D`, followed by the R/W bit: this translates to `0x3B` (R) and `0x3A` (W).
+With ADXL345, the address is `0x1D`, followed by the R/W bit:
+this translates to `0x3B` (R) and `0x3A` (W).
+
+The wiring is important:
+
+* GPIO 21 -> SDA
+* GPIO 22 -> SCL
+* Power: ideally 2.5V, can do up to 3.6V
+* `CS` must be connected to VDDI/O (VCC)
+* `SDO` selects the address: HIGH -> `0x1D`, LOW -> `0x53`. If not, there will be no response.
 
 Second: lots of I2C chips will have some sort of device identification register.
 With this device ID register, we can verify that we are indeed talking to the device we expect:

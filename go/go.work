@@ -1,2 +1,12 @@
-go 1.19
+go 1.21.3
 
+use (
+	./flatbuffers
+	./go/01-hello
+	./go/01-hello/greetings
+	./go/02-tour-and-spec
+	./go/03-stdlib
+	./go/04-database
+	./golib/gqlgen
+	./protobuf
+)

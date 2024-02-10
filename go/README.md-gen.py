@@ -9,7 +9,7 @@ def main(files: list[str]):
         prev_folder = None
         for file_path in files:
             file = pathlib.Path(file_path)
-            
+
             # Folder header
             this_folder = str(file.parent)
             if this_folder != prev_folder:
@@ -22,17 +22,22 @@ def main(files: list[str]):
             if file.suffix == '.md':
                 print(contents)
             else:
-                md_highlight = {
-                    '.py': 'python',
-                    '.go': 'go',
-                    '.sql': 'sql',
-                    '.sh': 'bash',
-                    '.mod': '',
-                    '.toml': 'toml',
-                    '.yaml': 'yaml',
-                    '.proto': 'protobuf',
-                    '.fbs': 'flatbuffers',
-                }[file.suffix]
+                try:
+                    md_highlight = {
+                        '.py': 'python',
+                        '.go': 'go',
+                        '.sql': 'sql',
+                        '.sh': 'bash',
+                        '.mod': '',
+                        '.toml': 'toml',
+                        '.yml': 'yaml',
+                        '.yaml': 'yaml',
+                        '.proto': 'protobuf',
+                        '.fbs': 'flatbuffers',
+                        '.graphqls': 'graphql',
+                    }[file.suffix]
+                except KeyError as e:
+                    raise RuntimeError(f'{file}: "{file.suffix}" not known')
 
 
                 # File header

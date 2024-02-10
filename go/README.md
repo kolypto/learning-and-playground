@@ -6907,3 +6907,644 @@ func ErrorHandlingServer() {
 
 ```
 
+
+
+
+
+# golib/gqlgen
+GQLgen
+======
+
+Version: 0.17.43, 2024-02-11
+
+```console
+$ go get github.com/99designs/gqlgen
+
+$ cd tools/
+$ go run github.com/99designs/gqlgen init
+```
+
+
+
+# golib/gqlgen/main.go
+
+```go
+package main
+
+import "github.com/kolypto/play/gqlgen/tools"
+
+func main() {
+	tools.Main()
+}
+```
+
+
+
+
+
+# golib/gqlgen/tools
+
+
+# golib/gqlgen/tools/server.go
+
+```go
+package tools
+
+import (
+	"log"
+	"net/http"
+	"os"
+
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/kolypto/play/gqlgen/tools/graph"
+	"github.com/kolypto/play/gqlgen/tools/graph/resolvers"
+)
+
+func Main() {
+	// Port number from environment
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	// Schema and server
+	schema := graph.NewExecutableSchema(graph.Config{
+		Resolvers: &resolvers.Resolver{},
+	})
+	srv := handler.NewDefaultServer(schema)
+
+	// `net/http` handles it
+	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
+	http.Handle("/query", srv)
+
+	// ListenAndServe()
+	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+
+```
+
+
+
+# golib/gqlgen/tools/tools.go
+
+```go
+// $ cd tools/
+// $ go run github.com/99designs/gqlgen init
+
+//go:build tools
+// +build tools
+
+//go:generate go run github.com/99designs/gqlgen generate
+
+// Now generate me with:
+// $ go generate ./...
+
+package tools
+
+import (
+	_ "github.com/99designs/gqlgen"
+	_ "github.com/99designs/gqlgen/graphql/introspection"
+)
+
+```
+
+
+
+# golib/gqlgen/tools/gqlgen.yml
+
+```yaml
+# GraphQL Schama files
+schema:
+  - graph/schema/*.graphqls
+  #- graphql/schema/**/*.graphqls
+
+# Generated server code, i.e. NewExecutableSchema()
+exec:
+  filename: graph/generated.go
+  package: graph
+
+# Enable federation
+# federation:
+#   filename: graph/federation.go
+#   package: graph
+
+# Generated models
+model:
+  filename: graph/model/models_gen.go
+  package: model
+
+# Resolver implementations
+resolver:
+  layout: follow-schema
+  dir: graph/resolvers
+  package: resolvers
+  filename_template: "{name}.resolvers.go"
+  # Optional: turn on to not generate template comments above resolvers
+  # omit_template_comment: false
+
+# Optional: turn on use ` + "`" + `gqlgen:"fieldName"` + "`" + ` tags in your models
+# struct_tag: json
+
+# Optional: turn on to use []Thing instead of []*Thing
+# omit_slice_element_pointers: false
+
+# Optional: turn on to omit Is<Name>() methods to interface and unions
+# omit_interface_checks : true
+
+# Optional: turn on to skip generation of ComplexityRoot struct content and Complexity function
+# omit_complexity: false
+
+# Optional: turn on to not generate any file notice comments in generated files
+# omit_gqlgen_file_notice: false
+
+# Optional: turn on to exclude the gqlgen version in the generated file notice. No effect if `omit_gqlgen_file_notice` is true.
+# omit_gqlgen_version_in_file_notice: false
+
+# Optional: turn on to exclude root models such as Query and Mutation from the generated models file.
+# omit_root_models: false
+
+# Optional: turn off to make struct-type struct fields not use pointers
+# e.g. type Thing struct { FieldA OtherThing } instead of { FieldA *OtherThing }
+# struct_fields_always_pointers: true
+
+# Optional: turn off to make resolvers return values instead of pointers for structs
+# resolvers_always_return_pointers: true
+
+# Optional: turn on to return pointers instead of values in unmarshalInput
+# return_pointers_in_unmarshalinput: false
+
+# Optional: wrap nullable input fields with Omittable
+# nullable_input_omittable: true
+
+# Optional: set to speed up generation time by not performing a final validation pass.
+# skip_validation: true
+
+# Optional: set to skip running `go mod tidy` when generating server code
+skip_mod_tidy: true
+
+# Optional: set build tags that will be used to load packages
+# go_build_tags:
+#  - private
+#  - enterprise
+
+
+
+# gqlgen will search for any type names in the schema in these go packages
+# if they match it will use them, otherwise it will generate them.
+autobind:
+  # Allow gqlgen to use your custom models if it can find them rather than generating them
+  # - "github.com/kolypto/play/gqlgen/tools/graph/model"
+
+# Map GraphQL types/models to Go types
+# gqlgen will automatically bind matching structs to GraphQL types, and method names to field names!
+models:
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  Int:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  UUID:
+    model:
+      - github.com/99designs/gqlgen/graphql.UUID
+  Todo:
+    fields:
+      # Generate `Todo.user` field resolver
+      # This allows us to load it only if requested by the user
+      user:
+        resolver: true
+
+  # Generate extra fields
+  User:
+    extraFields:
+      # Add a field, with a comment, to the generated code.
+      # Keep private stuff in there.
+      Session:
+        description: "A Session used by this user"
+        type: "github.com/author/mypkg.Session"
+
+directives:
+  # A directive won't be executed at runtime: only during code generation.
+  # Built-in directives automatically have this.
+  constraint:
+    skip_runtime: true
+```
+
+
+
+
+
+# golib/gqlgen/tools/graph/schema
+
+
+# golib/gqlgen/tools/graph/schema/query.graphqls
+
+```graphql
+type Todo {
+  id: ID!
+  text: String!
+  done: Boolean!
+  userId: ID!  # user ID reference for the nested loader
+  user: User!
+}
+
+type User {
+  id: ID!
+  name: String!
+}
+
+
+
+type Query {
+  todos: [Todo!]!
+}
+```
+
+
+
+# golib/gqlgen/tools/graph/schema/mutation.graphqls
+
+```graphql
+input NewTodo {
+  text: String!
+  userId: String!
+}
+
+type Mutation {
+  createTodo(input: NewTodo!): Todo!
+}
+
+```
+
+
+
+
+
+# golib/gqlgen/tools/graph/resolvers
+
+
+# golib/gqlgen/tools/graph/resolvers/resolver.go
+
+```go
+package resolvers
+
+// This file will not be regenerated automatically.
+//
+// It serves as dependency injection for your app, add any dependencies you require here.
+
+type Resolver struct{}
+
+```
+
+
+
+# golib/gqlgen/tools/graph/resolvers/mutation.resolvers.go
+
+```go
+package resolvers
+
+// This file will be automatically regenerated based on the schema, any resolver implementations
+// will be copied through when generating and any unknown code will be moved to the end.
+// Code generated by github.com/99designs/gqlgen version v0.17.43
+
+import (
+	"context"
+
+	"github.com/kolypto/play/gqlgen/tools/graph"
+	"github.com/kolypto/play/gqlgen/tools/graph/model"
+)
+
+// CreateTodo is the resolver for the createTodo field.
+func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
+	return &model.Todo{
+		ID:   "1",
+		Text: input.Text,
+		Done: false,
+		User: &model.User{ID: input.UserID, Name: "test"},
+	}, nil
+}
+
+// Mutation returns graph.MutationResolver implementation.
+func (r *Resolver) Mutation() graph.MutationResolver { return &mutationResolver{r} }
+
+type mutationResolver struct{ *Resolver }
+
+```
+
+
+
+# golib/gqlgen/tools/graph/resolvers/query.resolvers.go
+
+```go
+package resolvers
+
+// This file will be automatically regenerated based on the schema, any resolver implementations
+// will be copied through when generating and any unknown code will be moved to the end.
+// Code generated by github.com/99designs/gqlgen version v0.17.43
+
+import (
+	"context"
+
+	"github.com/kolypto/play/gqlgen/tools/graph"
+	"github.com/kolypto/play/gqlgen/tools/graph/model"
+)
+
+// Query.todos
+func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
+	// Fetch from DB and return
+	return []*model.Todo{
+		{ID: "1", Text: "one", Done: false, User: &model.User{ID: "1", Name: "test"}},
+	}, nil
+}
+
+// Query.todos.user
+func (r *todoResolver) User(ctx context.Context, obj *model.Todo) (*model.User, error) {
+	// Load the user (only if requested)
+	// Use the parent `obj.UserID` to know which one to load
+	return &model.User{ID: obj.UserID, Name: "test"}, nil
+}
+
+// Query returns graph.QueryResolver implementation.
+func (r *Resolver) Query() graph.QueryResolver { return &queryResolver{r} }
+
+// Todo returns graph.TodoResolver implementation.
+func (r *Resolver) Todo() graph.TodoResolver { return &todoResolver{r} }
+
+type queryResolver struct{ *Resolver }
+type todoResolver struct{ *Resolver }
+
+```
+
+
+
+
+
+# golib/gqlgen
+
+
+Inline Config With Directives
+=============================
+
+`gqlgen` has builtin directives that allow you to customize Go code inline:
+
+```graphql
+# Model configuration: e.g. map to a structure
+directive @goModel(
+	model: String
+	models: [String!]
+	forceGenerate: Boolean
+) on OBJECT | INPUT_OBJECT | SCALAR | ENUM | INTERFACE | UNION
+
+# Field configuation, e.g. generate a resolver
+directive @goField(
+	forceResolver: Boolean
+	name: String
+	omittable: Boolean
+) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+
+# Add tags to struct fields, e.g. "xorm" or "yaml"
+directive @goTag(
+	key: String!
+	value: String
+) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+```
+
+now use them:
+
+```graphql
+type User @goModel(model: "github.com/my/app/models.User") {
+	id: ID! @goField(name: "todoId")
+	name: String!
+		@goField(forceResolver: true)
+		@goTag(key: "xorm", value: "-")
+		@goTag(key: "yaml")
+}
+
+# This make sense when autobind activated.
+type Person @goModel(forceGenerate: true) {
+	id: ID!
+	name: String!
+}
+```
+
+
+APQ: Automatic Persisted Queries
+================================
+
+When you work with GraphQL by default your queries are transferred with every request. That can waste significant bandwidth. To avoid that you can use Automatic Persisted Queries (APQ).
+
+With APQ you send only query hash to the server. If hash is not found on a server then client makes a second request to register query hash with original query on a server.
+
+See: <https://gqlgen.com/reference/apq/>
+
+Changesets
+==========
+
+Occasionally you need to distinguish presence from nil (undefined vs null).
+Use `map[string]any` for this.
+
+See: <https://gqlgen.com/reference/changesets/>
+
+Dataloader
+==========
+
+Solves the N+1 problem.
+
+It pre-loads all referenced users by id when top-level entities are loaded,
+then child resolvers just fetch it from the dataloader.
+
+See: <https://gqlgen.com/reference/dataloaders/>
+
+Field Collection
+================
+
+Know which fields were queried: only fetch required fields, without over-fetching.
+
+Use `graphql.CollectFields()` and `graphql.CollectFieldsCtx()`.
+
+See: <https://gqlgen.com/reference/field-collection/>
+
+File Uploads
+============
+
+See: <https://gqlgen.com/reference/file-upload/>
+
+Customized Errors
+=================
+
+The assumption is that any error message returned here is appropriate for end users.
+
+```go
+package foo
+
+import (
+	"context"
+	"errors"
+
+	"github.com/vektah/gqlparser/v2/gqlerror"
+	"github.com/99designs/gqlgen/graphql"
+)
+
+// Resolver: adds errors
+func (r Query) DoThings(ctx context.Context) (bool, error) {
+	// String error
+	graphql.AddErrorf(ctx, "Error %d", 1)
+
+	// Pass an existing error
+    err := gqlerror.Errorf("zzzzzt")
+	graphql.AddError(ctx, err)
+
+	// Error with custom fields
+	graphql.AddError(ctx, &gqlerror.Error{
+		Path:       graphql.GetPath(ctx),
+		Message:    "A descriptive error message",
+        // Custom fields
+		Extensions: map[string]interface{}{
+			"code": "10-4",
+		},
+	})
+
+    // Alternatively, return a list of errors:
+    errList := gqlerror.List{}
+
+	// And you can still return an error if you need
+	return false, gqlerror.Errorf("BOOM! Headshot")
+}
+```
+
+All errors are passed through a hook that can customize their presentation:
+
+```go
+
+// Will be called with the same resolver `ctx` contxt, so you can extract the current resolver path
+// and whatever state you might want to notify the client about.
+server.SetErrorPresenter(func(ctx context.Context, e error) *gqlerror.Error {
+    err := graphql.DefaultErrorPresenter(ctx, e)
+
+    var myErr *MyError
+    if errors.As(e, &myErr) {
+        err.Message = "Eeek!"
+    }
+
+    return err
+})
+```
+
+Panic handler:
+
+```go
+server.SetRecoverFunc(func(ctx context.Context, err interface{}) error {
+    // notify bug tracker...
+    return gqlerror.Errorf("Internal server error!")
+})
+```
+
+Introspection
+=============
+
+Disable introspection:
+
+```go
+srv := handler.New(es)
+
+srv.AddTransport(transport.Options{})
+srv.AddTransport(transport.POST{})
+
+if os.Getenv("ENVIRONMENT") == "development" {
+    srv.Use(extension.Introspection{})
+}
+```
+
+Disable introspection based on authentication:
+
+```go
+srv := handler.NewDefaultServer(es)
+srv.AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
+    if !userForContext(ctx).IsAdmin {
+        graphql.GetOperationContext(ctx).DisableIntrospection = true
+    }
+
+    return next(ctx)
+})
+```
+
+Code Generation Plugins
+=======================
+
+Customize code generation.
+
+See: <https://gqlgen.com/reference/plugins/>
+
+See: <https://gqlgen.com/recipes/modelgen-hook/>
+
+Query Complexity
+================
+
+Limit the complexity of queries.
+
+See: <https://gqlgen.com/reference/complexity/>
+
+Bind Structs and Methods to GraphQL fields
+==========================================
+
+See: <https://gqlgen.com/reference/resolvers/>
+
+Scalars
+=======
+
+Built-in scalars: `Time`, `Any`, `Upload`, `Map`:
+
+```graphql
+scalar Time
+```
+
+Also, `UUID` and `Duration`:
+
+```yaml
+models:
+  UUID:
+    model:
+      - github.com/99designs/gqlgen/graphql.UUID
+  Duration:
+    model:
+      - github.com/99designs/gqlgen/graphql.Duration
+```
+
+Custom scalars: see <https://gqlgen.com/reference/scalars/>
+
+
+Directives
+==========
+
+See: <https://gqlgen.com/reference/directives/>
+
+```graphql
+type Mutation {
+	deleteUser(userID: ID!): Bool @hasRole(role: ADMIN)
+}
+
+directive @hasRole(role: Role!) on FIELD_DEFINITION
+
+enum Role {
+    ADMIN
+    USER
+}
+```
+
+Code will be generated.
+
+
+Recipes
+=======
+
+* Authentication: <https://gqlgen.com/recipes/authentication/>
+* CORS: <https://gqlgen.com/recipes/cors/>
+* Subscriptions: <https://gqlgen.com/recipes/subscriptions/>
+

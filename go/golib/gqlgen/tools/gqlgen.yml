@@ -1,0 +1,120 @@
+# GraphQL Schama files
+schema:
+  - graph/schema/*.graphqls
+  #- graphql/schema/**/*.graphqls
+
+# Generated server code, i.e. NewExecutableSchema()
+exec:
+  filename: graph/generated.go
+  package: graph
+
+# Enable federation
+# federation:
+#   filename: graph/federation.go
+#   package: graph
+
+# Generated models
+model:
+  filename: graph/model/models_gen.go
+  package: model
+
+# Resolver implementations
+resolver:
+  layout: follow-schema
+  dir: graph/resolvers
+  package: resolvers
+  filename_template: "{name}.resolvers.go"
+  # Optional: turn on to not generate template comments above resolvers
+  # omit_template_comment: false
+
+# Optional: turn on use ` + "`" + `gqlgen:"fieldName"` + "`" + ` tags in your models
+# struct_tag: json
+
+# Optional: turn on to use []Thing instead of []*Thing
+# omit_slice_element_pointers: false
+
+# Optional: turn on to omit Is<Name>() methods to interface and unions
+# omit_interface_checks : true
+
+# Optional: turn on to skip generation of ComplexityRoot struct content and Complexity function
+# omit_complexity: false
+
+# Optional: turn on to not generate any file notice comments in generated files
+# omit_gqlgen_file_notice: false
+
+# Optional: turn on to exclude the gqlgen version in the generated file notice. No effect if `omit_gqlgen_file_notice` is true.
+# omit_gqlgen_version_in_file_notice: false
+
+# Optional: turn on to exclude root models such as Query and Mutation from the generated models file.
+# omit_root_models: false
+
+# Optional: turn off to make struct-type struct fields not use pointers
+# e.g. type Thing struct { FieldA OtherThing } instead of { FieldA *OtherThing }
+# struct_fields_always_pointers: true
+
+# Optional: turn off to make resolvers return values instead of pointers for structs
+# resolvers_always_return_pointers: true
+
+# Optional: turn on to return pointers instead of values in unmarshalInput
+# return_pointers_in_unmarshalinput: false
+
+# Optional: wrap nullable input fields with Omittable
+# nullable_input_omittable: true
+
+# Optional: set to speed up generation time by not performing a final validation pass.
+# skip_validation: true
+
+# Optional: set to skip running `go mod tidy` when generating server code
+skip_mod_tidy: true
+
+# Optional: set build tags that will be used to load packages
+# go_build_tags:
+#  - private
+#  - enterprise
+
+
+
+# gqlgen will search for any type names in the schema in these go packages
+# if they match it will use them, otherwise it will generate them.
+autobind:
+  # Allow gqlgen to use your custom models if it can find them rather than generating them
+  # - "github.com/kolypto/play/gqlgen/tools/graph/model"
+
+# Map GraphQL types/models to Go types
+# gqlgen will automatically bind matching structs to GraphQL types, and method names to field names!
+models:
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  Int:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  UUID:
+    model:
+      - github.com/99designs/gqlgen/graphql.UUID
+  Todo:
+    fields:
+      # Generate `Todo.user` field resolver
+      # This allows us to load it only if requested by the user
+      user:
+        resolver: true
+
+  # Generate extra fields
+  User:
+    extraFields:
+      # Add a field, with a comment, to the generated code.
+      # Keep private stuff in there.
+      Session:
+        description: "A Session used by this user"
+        type: "github.com/author/mypkg.Session"
+
+directives:
+  # A directive won't be executed at runtime: only during code generation.
+  # Built-in directives automatically have this.
+  constraint:
+    skip_runtime: true

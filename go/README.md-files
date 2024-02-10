@@ -60,3 +60,14 @@ golib/cockroachdb_errors.go
 golib/zerolog.go
 golib/cobra.md
 golib/web-echo.go
+golib/gqlgen/README.md
+golib/gqlgen/main.go
+golib/gqlgen/tools/server.go
+golib/gqlgen/tools/tools.go
+golib/gqlgen/tools/gqlgen.yml
+golib/gqlgen/tools/graph/schema/query.graphqls
+golib/gqlgen/tools/graph/schema/mutation.graphqls
+golib/gqlgen/tools/graph/resolvers/resolver.go
+golib/gqlgen/tools/graph/resolvers/mutation.resolvers.go
+golib/gqlgen/tools/graph/resolvers/query.resolvers.go
+golib/gqlgen/README-advanced.md
