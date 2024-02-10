@@ -76,3 +76,10 @@ After restart, check that the VPN is up and running:
 ```console
 $ curl https://api.myip.com/
 ```
+
+
+Better alternative: wgeasy
+--------------------------
+
+Wg-easy: <https://github.com/wg-easy/wg-easy>
+
