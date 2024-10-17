@@ -45,32 +45,30 @@ fn main() -> ! {
     );
 
 
-    // let interface = I2CDisplayInterface::new(i2c);
+    // let interface = I2CDisplayInterface::new_custom_address(i2c, 0x3D);
     // let mut display = Ssd1306::new(
     //     interface,
     //     DisplaySize128x64,
     //     DisplayRotation::Rotate0,
     // ).into_buffered_graphics_mode();
     // display.init().unwrap();
-
     // let text_style = MonoTextStyleBuilder::new()
     //     .font(&FONT_6X10)
     //     .text_color(BinaryColor::On)
     //     .build();
-
     // Text::with_baseline("Hello world!", Point::zero(), text_style, Baseline::Top)
     //     .draw(&mut display)
     //     .unwrap();
-
     // Text::with_baseline("Hello Rust!", Point::new(0, 16), text_style, Baseline::Top)
     //     .draw(&mut display)
     //     .unwrap();
-
     // display.flush().unwrap();
 
 
-    // let interface = I2CDisplayInterface::new(i2c);
 
+
+
+    // let interface = I2CDisplayInterface::new(i2c);
     // let mut display = Ssd1306::new(
     //     interface,
     //     DisplaySize128x64,
@@ -88,16 +86,22 @@ fn main() -> ! {
     // }
 
 
+
+
+
     loop {
         // Get us a buffer and read into it
+        println!("Reading...");
         let mut data = [0u8; 22];
         // i2c.write_read(<device_addr>, <register>, <buffer>)
-        // i2c.write_read(DISPLAY_ADDR, &[0x00], &mut data).ok();
-        println!("{:?}", data);
+        match i2c.write_read(ACCELEROMETER_ADDR, &[0x00], &mut data){
+            Ok(_) => println!("{:?}", data),
+            Err(err) => println!("Error: {:?}", err),
+        };
 
         delay.delay_ms(500_u32);
     }
 }
 
 const DISPLAY_ADDR: u8 = 0b111100;
-const ACCELEROMETER_ADDR: u8 = 0x3A;
+const ACCELEROMETER_ADDR: u8 = 0x1D;
