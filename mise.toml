@@ -1,0 +1,103 @@
+[tools]
+go = "1.24"
+
+[env]
+# Add $PATH
+_.path = "./node_modules/.bin"
+
+# Load .env file
+_.file = '.env'
+
+# Source a script and pull exported variables
+_.source = "./script.sh"
+
+# Templates
+MY_PROJ_LIB = "{{config_root}}/lib"
+LD_LIBRARY_PATH = "/some/path:{{env.LD_LIBRARY_PATH}}"
+
+# Load secrets from YAML files and SOPS:
+# https://mise.jdx.dev/environments/secrets.html
+
+[hooks]
+cd = "echo 'I changed directories'"
+enter = "echo 'I entered the project'"
+leave = "echo 'I left the project'"
+preinstall = "echo 'I am about to install tools'"
+postinstall = "echo 'I just installed tools'"
+
+
+
+
+[tasks]
+build = "npm run build"
+test = "npm test"
+# script file: create a script in "./mise-tasks/" or "./.mise-tasks/"
+
+[tasks.build]
+description = "Build the CLI"
+confirm = 'Are you sure you want to cut a new release?'
+
+env = { MNT = "../.." }
+env.TEST_ENV_VAR = "ABC"
+dir = "../.."
+dir = "{{cwd}}" # run in user's cwd, default is the project's base directory
+sources = ['Cargo.toml', 'src/**/*.rs'] # skip running if these files haven't changed
+outputs = ['target/debug/mycli']  # only update if changed
+depends = ['test']  # depend on other tasks
+depends_post = ["postlint"]  # run something after
+
+tools.rust = "1.50.0"  # use a specific tool
+
+run = "cargo build"
+run = './scripts/test-e2e.sh {{vars.e2e_args}} $VERBOSE_ARGS'  # with variables
+run = [  # multiple commands, one after another, terminates if failed
+    'cargo test',
+    './scripts/test-e2e.sh',
+]
+
+
+# use a different shell
+shell = 'bash -c'
+run = '''
+#!/usr/bin/env python
+for i in range(10):
+    print(i)
+'''
+
+
+# External & remote scripts
+file = 'scripts/release.sh' # execute an external script
+file = "https://example.com/build.sh"
+file = "git::ssh://git@github.com:myorg/example.git//myfile?ref=v1.0.0"
+
+# READ MORE: tasks support args, flags, options
+# READ MORE: task files
+
+
+
+[vars]  # vars to share between tasks
+e2e_args = '--headless'
+
+[tasks.lint]
+description = "Run linters"
+depends = ["lint:*"]
+
+[tasks."lint:exhaustive"]
+description = "Run linter: exhaustive"
+run = "go run tools/exhaustive/main.go -- ./..."
+sources = ['**/*.go']
+hide = true # hide this task from the list
+
+[tasks.pre-commit]  # example: pre-commit hook
+depends = ["test", "render"]
+run = "echo pre-commit"
+
+
+
+
+
+# Watch files for changes
+[[watch_files]]
+patterns = ["src/**/*.rs"]
+run = "cargo fmt"
+
