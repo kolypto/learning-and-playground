@@ -1,0 +1,45 @@
+[tools]
+go = "1.24"
+
+[env]
+# Add $PATH
+_.path = "./node_modules/.bin"
+
+# Load .env file
+_.file = '.env'
+
+# Source a script and pull exported variables
+_.source = "./script.sh"
+
+# Templates
+MY_PROJ_LIB = "{{config_root}}/lib"
+LD_LIBRARY_PATH = "/some/path:{{env.LD_LIBRARY_PATH}}"
+
+# Load secrets from YAML files and SOPS:
+# https://mise.jdx.dev/environments/secrets.html
+
+[hooks]
+cd = "echo 'I changed directories'"
+enter = "echo 'I entered the project'"
+leave = "echo 'I left the project'"
+preinstall = "echo 'I am about to install tools'"
+postinstall = "echo 'I just installed tools'"
+
+[tasks]
+build = "npm run build"
+test = "npm test"
+# script file: create a script in "./mise-tasks/" or "./.mise-tasks/"
+
+[tasks.build]
+description = "Build the CLI"
+run = "cargo build"
+sources = ['Cargo.toml', 'src/**/*.rs'] # skip running if these files haven't changed
+outputs = ['target/debug/mycli']
+depends = ['test']  # depend on other tasks
+
+
+# Watch files for changes
+[[watch_files]]
+patterns = ["src/**/*.rs"]
+run = "cargo fmt"
+
