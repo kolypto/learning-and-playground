@@ -2,7 +2,7 @@ Web frameworks:
     Based on net/http:
         net/http (ok performance)
         chi (ok performance; compatible with http.Handler; idiomatic Go)
-        echo (ok performance; more straightforward; not compatible with http.Handler; Context object is a mockable interface and it allows for some advanced testing.)
+        echo (ok performance; more straightforward; not compatible with http.Handler; Context object is a mockable interface and it allows for some advanced testing.) ✅
         gin (ok performance; compatible with net/http; de facto standard; but too much magic and un-idiomatic)
         gorilla/mux (ok performance; compatible with http.Handler; idiomatic Go; used in Yandex; discontinued)
         Sentry supports: net/http, Gin, Echo, FastHTTP
@@ -23,16 +23,19 @@ Web frameworks:
         gqlgen 
         ent 
 
-Logger: glog, zap / zerolog
+Logger:
+    glog
+    zap
+    zerolog ✅
 
 Command-line parsing:
-    https://cli.urfave.org/
+    https://cli.urfave.org/ ✅
 
 
 
 Configuration:
     https://github.com/spf13/viper
-    https://github.com/knadh/koanf
+    https://github.com/knadh/koanf ✅
     https://github.com/joho/godotenv
     https://github.com/kelseyhightower/envconfig
     https://github.com/caarlos0/env
@@ -81,4 +84,24 @@ GUI:
 Example HTTP server: 
 https://github.com/enricofoltran/simple-go-server/blob/master/main.go
 https://gist.github.com/creack/4c00ee404f2d7bd5983382cc93af5147
+
+
+
+Telegram Bots for Go:
+
+* https://github.com/tucnak/telebot
+* https://github.com/go-telegram/bot
+* https://github.com/mymmrac/telego
+* https://github.com/paulsonoflars/gotgbot
+
+SQLite drivers for Go:
+
+* https://modernc.org/sqlite (pure go; best option if you need to cross-compile)
+* https://github.com/glebarez/go-sqlite (pure go, behaves better with the sql package)
+* https://github.com/ncruces/go-sqlite3 (pure go, wasm)
+* https://github.com/mattn/go-sqlite3  (depends on libsqlite3, requires cgo)
+* https://github.com/crawshaw/sqlite (cgo, no driver)
+* https://github.com/eatonphil/gosqlite (cgo, no driver)
+* https://github.com/cvilsmeier/sqinn-go (pure go, but uses github.com/cvilsmeier/sqinn stdin driver)
+* https://github.com/zombiezen/go-sqlite (a rewrite of the crawshaw driver, using the modernc libraries; no driver)
 
