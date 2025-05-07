@@ -55,6 +55,7 @@ Dependency Injection:
     https://github.com/google/wire
     https://github.com/uber-go/fx
     https://github.com/uber-go/dig
+    https://github.com/samber/do  ⭐
 
 JSON get:
     https://github.com/tidwall/gjson

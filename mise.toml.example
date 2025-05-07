@@ -35,7 +35,7 @@ test = "npm test"
 
 [tasks.build]
 description = "Build the CLI"
-confirm = 'Are you sure you want to cut a new release?'
+confirm = 'Are you sure you want to cut a new release?'  # ask first
 
 env = { MNT = "../.." }
 env.TEST_ENV_VAR = "ABC"
@@ -43,6 +43,7 @@ dir = "../.."
 dir = "{{cwd}}" # run in user's cwd, default is the project's base directory
 sources = ['Cargo.toml', 'src/**/*.rs'] # skip running if these files haven't changed
 outputs = ['target/debug/mycli']  # only update if changed
+outputs = { auto = true }  # auto detect
 depends = ['test']  # depend on other tasks
 depends_post = ["postlint"]  # run something after
 
