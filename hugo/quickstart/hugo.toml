@@ -1,0 +1,66 @@
+#baseURL = 'https://github.com/kolypto/play'
+baseURL = 'https://github.com/'
+languageCode = 'en-us'
+title = 'Playground'
+theme = ['hugo-book', 'ananke']
+
+
+# All settings:
+# https://gohugo.io/configuration/all/
+
+
+# In Templates:  {{ Site.Params.subtitle }}, {{ Site.Params.contact.email }}
+# From modules:  {{ $cfg := .Site.Params.module.mymodule }} {{ $cfg.colors.background }}
+[params]
+  subtitle = 'The Best Widgets on Earth'
+  [params.contact]
+    email = 'info@example.org'
+    phone = '+1 202-555-1212'
+
+# For multilingual sites, create a params key under each language:
+defaultContentLanguage = 'en'
+[languages]
+  [languages.de]
+    languageCode = 'de-DE'
+    languageName = 'Deutsch'
+    title = 'Projekt Dokumentation'
+    weight = 1
+    [languages.de.params]
+      subtitle = 'Referenz, Tutorials und Erklärungen'
+  [languages.en]
+    languageCode = 'en-US'
+    languageName = 'English'
+    title = 'Project Documentation'
+    weight = 2
+    [languages.en.params]
+      subtitle = 'Reference, Tutorials, and Explanations'
+
+
+
+
+
+
+
+# How to link your content?
+[permalinks]
+  # Page links
+  [permalinks.page]
+    # /content/posts/*.md -> url
+    posts = '/articles/:year/:month/:slug/'
+    # /content/tutorials/*.md -> url
+    tutorials = '/training/:slug/'
+  # Section links
+  [permalinks.section]
+    posts = '/articles/'
+    tutorials = '/training/'
+
+  # For multilingual:
+  # [languages.es.permalinks]
+
+
+
+
+
+# Menu
+sectionPagesMenu = 'another'
+

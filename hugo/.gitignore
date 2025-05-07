@@ -1,0 +1,14 @@
+/
+!/.gitignore
+!/README.md
+!/mise.toml
+
+/quickstart/
+!/quickstart/hugo.toml
+
+/quickstart/content/posts/
+!/quickstart/content/posts/my-first-post.md
+
+/quickstart/archetypes/
+!quickstart/archetypes/default.md
+
