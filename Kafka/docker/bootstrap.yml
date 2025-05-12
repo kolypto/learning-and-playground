@@ -1,0 +1,38 @@
+# Bootstrap: initial cluster properties
+
+# Docs: https://docs.redpanda.com/current/reference/properties/cluster-properties/
+
+# Enable SASL authentication for the Kafka and Admin APIs.
+# https://docs.redpanda.com/current/reference/properties/cluster-properties/#admin_api_require_auth
+admin_api_require_auth: true
+
+# At least one superuser is required to be able to create other SASL users
+# https://docs.redpanda.com/current/reference/properties/cluster-properties/#superusers
+superusers:
+  - superuser
+
+# https://docs.redpanda.com/current/reference/properties/cluster-properties/#enable_sasl
+enable_sasl: true
+
+# Allow topics to be created on first access.
+# https://docs.redpanda.com/current/reference/properties/cluster-properties/#auto_create_topics_enabled
+auto_create_topics_enabled: true
+
+# Enable data transforms.
+# https://docs.redpanda.com/current/develop/data-transforms/how-transforms-work/
+data_transforms_enabled: true
+
+# Enable Redpanda to collect consumer group metrics.
+# https://docs.redpanda.com/current/reference/properties/cluster-properties/#enable_consumer_group_metrics
+enable_consumer_group_metrics:
+  - "group"
+  - "partition"
+  - "consumer_lag"
+
+# Lower the interval for the quickstart
+# https://docs.redpanda.com/current/reference/properties/cluster-properties/#consumer_group_lag_collection_interval_sec
+consumer_group_lag_collection_interval_sec: 60
+
+# Enable Redpanda to collect host metrics.
+# https://docs.redpanda.com/current/reference/properties/cluster-properties/#enable_host_metrics
+enable_host_metrics: true

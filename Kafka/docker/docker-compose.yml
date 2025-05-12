@@ -1,0 +1,104 @@
+name: redpanda-playground
+
+services:
+
+  # RedPanda leader
+  redpanda-0:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: redpanda-0
+    command:
+      - redpanda
+      - start
+      # Listen
+      #   internal: connect from the same Docker network
+      #   external: connect from outside the Docker network
+      # Advertise: which address to advertise to clients
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda-0:9092,external://localhost:19092
+      # Schema registry addr
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      # HTTP proxy & how to advertise
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr internal://redpanda-0:8082,external://localhost:18082
+      # Internal RedPanda brokers communication
+      - --rpc-addr redpanda-0:33145
+      - --advertise-rpc-addr redpanda-0:33145
+      # Mode: "dev-container" uses well-known configs for development in containers.
+      - --mode dev-container
+      # Other: use 1 CPU, log INFO
+      - --smp 1
+      - --memory 1G
+      - --reserve-memory 0M
+      - --overprovisioned
+      - --default-log-level=info
+    environment:
+      # Default user
+      RP_BOOTSTRAP_USER: "superuser:secretpassword"
+
+      # This will help rpk to login
+      RPK_USER: superuser
+      RPK_PASS: secretpassword
+      RPK_BROKERS: 'redpanda-0:19092'
+      RPK_ADMIN_HOSTS: 'redpanda-0:9644'
+    volumes:
+      - redpanda-0:/var/lib/redpanda/data
+      # Initial config
+      - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
+    networks:
+      - redpanda_network
+    ports:
+      - 19092:19092  # Kafka
+      - 18081:18081  # Schema registry
+      - 18082:18082  # HTTP Proxy
+      - 19644:9644   # Admin API
+
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "info", "-X", "user=superuser", "-X", "pass=secretpassword"]
+      interval: 10s
+      timeout: 15s
+      retries: 10
+
+
+  # RedPanda Console (Admin UI)
+  # Open: localhost:8080
+  console:
+    container_name: redpanda-console
+    image: docker.redpanda.com/redpandadata/console:latest
+    volumes:
+      - ./config-console.yml:/config.yml
+    environment:
+      CONFIG_FILEPATH: ${CONFIG_FILEPATH:-/config.yml}
+    networks:
+      - redpanda_network
+    ports:
+      - 8080:8080
+    depends_on:
+      redpanda-0:
+        condition: service_healthy
+
+  # RedPanda Connect: read from inputs (e.g. MQTT), send to outputs (e.g. Kafka topic)
+  connect:
+    container_name: redpanda-connect
+    image: docker.redpanda.com/redpandadata/connect:latest
+    command: run /config.yml
+    volumes:
+      - ./config-connect.yml:/config.yml
+    networks:
+      - redpanda_network
+    depends_on:
+      redpanda-0:
+        condition: service_healthy
+
+
+
+
+networks:
+  redpanda_network:
+    driver: bridge
+
+volumes:
+  redpanda-0: ~
+  # redpanda-1: ~
+  # redpanda-2: ~
+  # minio: ~
+

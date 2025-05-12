@@ -1,0 +1,44 @@
+authentication:
+  jwtSigningKey: vazxnT+ZHtxKslK6QlDGovcYnSjTk/lKMmZ+mHrBVE+YdVDkLgSuP6AszAKe9Gvq
+  basic:
+    enabled: true
+
+authorization:
+  roleBindings:
+  - roleName: admin
+    users:
+      - loginType: basic
+        name: superuser
+
+kafka:
+  brokers: ["redpanda-0:9092"]
+  sasl:
+    enabled: true
+    impersonateUser: true
+
+redpanda:
+  adminApi:
+    enabled: true
+    urls: ["http://redpanda-0:9644"]
+    authentication:
+      basic:
+        username: superuser
+        password: secretpassword
+      impersonateUser: false
+
+schemaRegistry:
+  enabled: true
+  urls: ["http://redpanda-0:8081"]
+  authentication:
+    impersonateUser: true
+
+console:
+  # Fetch topic documentation from GitHub and display it in the UI
+  topicDocumentation:
+    enabled: true
+    git:
+      enabled: true
+      repository:
+        url: https://github.com/redpanda-data/docs
+        branch: main
+        baseDirectory: tests/docker-compose
