@@ -27,6 +27,16 @@ $ rpk profile create redpanda-0 -X user=superuser -X pass=secretpassword -X brok
 Login to console: <http://localhost:8080/> superuser:secretpassword
 
 
+# SDK
+
+Go:
+* https://github.com/twmb/franz-go ⭐
+* https://github.com/IBM/sarama ⭐
+* https://github.com/segmentio/kafka-go
+* https://github.com/confluentinc/confluent-kafka-go
+* https://github.com/lovoo/goka
+
+
 # rpk
 
 Alias:
@@ -679,3 +689,62 @@ $ docker compose exec -it redpanda-0 rpk topic consume product --use-schema-regi
   "offset": 0
 }
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Connect
+
+Redpanda Connect:
+streaming solution with transactional control (guarantees "at-least-once" delivery):
+when connecting to at-least-once sources and sinks it’s able to guarantee at-least-once delivery without needing to persist messages during transit.
+
+A Redpanda Connect stream pipeline is configured with a single config file:
+
+```console
+$ rpk connect create > connect.yaml
+$ vim connect.yaml
+$ rpk connect run connect.yaml
+
+$ docker compose run --rm connect
+```
+
+config:
+
+```yaml
+input:
+  # read from stdin
+  stdin: {}
+
+pipeline:
+  # Procesors applied to *all* messages
+  processors:
+    - mapping: root = content().uppercase()
+
+output:
+  # write to stdout immediately
+  # useful for testing processors
+  stdout: {}
+
+
+# Alternatively, you can define a component as a named resource:
+# this allowed reusing it: e.g. define resources in a separate file and include with "-r":
+# $ rpk connect run -r ./staging/request.yaml ./config.yaml
+processor_resources:
+  - label: bar
+    mapping: 'root = content.lowercase()'
+
+```
+
+It also has unit-tests. Be sure to check it out!
