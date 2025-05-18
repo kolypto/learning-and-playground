@@ -30,11 +30,11 @@ Login to console: <http://localhost:8080/> superuser:secretpassword
 # SDK
 
 Go:
-* https://github.com/twmb/franz-go ⭐
-* https://github.com/IBM/sarama ⭐
-* https://github.com/segmentio/kafka-go
-* https://github.com/confluentinc/confluent-kafka-go
-* https://github.com/lovoo/goka
+* https://github.com/twmb/franz-go ⭐ fast and better maintained; choice by RedPanda; has schema registry!
+* https://github.com/segmentio/kafka-go: provides both low and high level APIs for interacting with Kafka, easy to use
+* https://github.com/IBM/sarama: most popular, but they say it's more difficult to work with
+* https://github.com/confluentinc/confluent-kafka-go: CGO library (requires compiler)
+* https://github.com/lovoo/goka: message-passing abstractions on top of sarama
 
 
 # rpk
