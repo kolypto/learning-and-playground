@@ -40,6 +40,9 @@ func serve(ctx context.Context) error {
 		kgo.ConsumeTopics("messages", "cars"),  // must exist; however, the library will retry consuming (but fail producing)
 		kgo.BlockRebalanceOnPoll(),
 		kgo.AutoCommitMarks(),  // mark messages as they are processed
+		// Producers
+		kgo.ProducerLinger(0),  // send immediately (optimize for low latency)
+		kgo.RequiredAcks(kgo.LeaderAck()),  // one ack is sufficient (lower latency)
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed to init Kafka client")

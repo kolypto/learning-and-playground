@@ -27,6 +27,17 @@ $ rpk profile create redpanda-0 -X user=superuser -X pass=secretpassword -X brok
 Login to console: <http://localhost:8080/> superuser:secretpassword
 
 
+# Performance
+Kafka is great for high throughput: it loads messages in batches and commits them in batches.
+Its strengths are high producer throughput and support for both fast and slow consumers.
+
+Kafka is NOT the right choice if you need microsecond latency!
+But you can expect it to be as low as ~10ms.
+
+To configure for latency: `linger.ms=0` and, reduce batch size buffer size.
+
+
+
 # SDK
 
 Go:
