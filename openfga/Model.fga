@@ -1,0 +1,13 @@
+model
+  schema 1.1
+
+type user
+
+type folder
+  relations
+    define viewer: [user, folder#viewer]
+
+type document
+  relations
+    define parent_folder: [folder]
+    define viewer: [user] or viewer from parent_folder
