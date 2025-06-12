@@ -32,6 +32,16 @@ Command-line parsing:
     https://cli.urfave.org/ ✅
 
 
+Concurrency & Tools:
+    https://github.com/sourcegraph/conc
+    golang.org/x/sync/errgroup
+    github.com/samber/lo
+    github.com/hashicorp/golang-lru
+
+Unit-tests:
+    github.com/stretchr/testify
+    github.com/maxatome/go-testdeep
+
 
 Configuration:
     https://github.com/spf13/viper
