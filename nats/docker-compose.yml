@@ -2,16 +2,31 @@ services:
   nats:
     image: nats:latest
     command:
+    - -c=/nats-server.conf
     - --http_port=8222
     - --jetstream  # JetStream enable
     - -sd=/data    # JetStream store
     ports:
       - 4222:4222  # NATS clients
       - 8222:8222  # monitoring
+      - 1883:1883  # MQTT
     volumes:
       - nats_data:/data
+      - ./nats-server.conf:/nats-server.conf
     networks:
     - nats
+
+  natsbox:
+    image: natsio/nats-box:latest
+    tty: true
+    profiles:
+    - oneoff
+    depends_on:
+      - nats
+    networks:
+    - nats
+    environment:
+      NATS_URL: nats://admin:admin@nats:4222/
 
   # See: easily add nodes to a cluster:
   #   https://docs.nats.io/running-a-nats-service/nats_docker

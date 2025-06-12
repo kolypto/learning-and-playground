@@ -109,6 +109,9 @@ and only one randomly chosen subscriber of the queue group will consume a messag
 
 No configuration required: to scale up, just spin up more consumers.
 
+So: if clients subscribe using a queue group, the NATS Servers automatically distributes the messages
+published on the matching subjects between the members of the queue group.
+
 Queue group names are also hierarchical: `namespace.group.entity.>`.
 Some server functionalities like queue permissions can use wildcard matching on them.
 
@@ -119,12 +122,26 @@ Geo Affinity:
 When connecting to a globally distributed NATS super-cluster,
 NATS will automatically route messages within the same cluster (unless failover kicks in).
 
+
+
+
+
+
+
+
+
 ## CLI
 
 Install the NATS CLI tool:
 
 ```console
 $ go install github.com/nats-io/natscli/nats@latest
+```
+
+Or with Docker:
+
+```console
+$ docker run --rm -it -e NATS_URL=admin:admin@nats:4222 --network nats natsio/nats-box server list
 ```
 
 Nats tool:
@@ -136,6 +153,13 @@ $ nats pub <subject> <message>
 
 `nats` tool has contexts: like Docker contexts, that keeps your servers' credentials.
 
+
+
+## HTTP Monitoring
+
+Open: <http://localhost:8222/>
+
+Accounts, connections, etc.
 
 
 
@@ -175,6 +199,10 @@ However, queues are (in general) are not meant to be used as a mechanism for mes
 A *stream* can replay messages on demand:
 JetStream provides both the ability to consume messages as they are published (i.e. 'queueing')
 as well as the ability to replay messages on demand (i.e. 'streaming').
+
+Streams are different from queues:
+* Streams persiste their data
+* Queues (queue group) distribute messages as consumers join & leave, but are removed when they all quit
 
 ### Replay
 JetStream replay policies:
@@ -332,7 +360,8 @@ an advisory notification is emitted.
 
 Consumers can also be ephemeral or durable:
 * Durable: when an explicit name is set on the `Durable` field when creating the consumer, or when `InactiveThreshold` is set.
-* Ephemeral: will not have persisted state or fault tolerance and will be automatically cleaned up (deleted) after a period of inactivity (no subscriptions)
+  Durable consumers maintain state from one run of the application to another.
+* Ephemeral: will not have persisted state or fault tolerance and will be automatically cleaned up (deleted) after a period of inactivity (no subscriptions). Applications typically use them to read a stream and quit.
 
 Consumer configuration [see whole list](https://docs.nats.io/nats-concepts/jetstream/consumers#configuration)
 * Durable: clients can reconnect and resume until the consumer is explicitly deleted
@@ -363,6 +392,13 @@ Only for push consumers:
 * IdleHeartbeat: heartbeat check
 * FlowControl, RateLimit: control how many messages to send
 * HeadersOnly: ignore payload, only send headers
+
+Consumer acknowledgements:
+
+* ack: message processed
+* nack: failed, but retry
+* term: failed, do not retry (message invalid, permanent failure)
+* inProgress: more time is needed
 
 Example:
 
@@ -411,6 +447,16 @@ $ nats consumer add
 ? Add a Retry Backoff Policy No
 ? Select a Stream my_stream
 ```
+
+Slow consumers:
+
+* NATS is designed to move messages quickly, and consumers must consider and respond to changing message rates.
+* If a client is too slow, the server will close the connection
+* Client libraries can buffer some messages to give the application time to catch up — and will look healthy to the server.
+* Common patterns:
+  * Use request-reply to throttle the sender and prevent overloading the subscriber
+  * Use a queue with multiple subscribers splitting the work
+  * Persist messages with something like NATS streaming
 
 
 ### Key/Value
