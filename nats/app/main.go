@@ -72,6 +72,7 @@ func serve(ctx context.Context) error {
     g, ctx := errgroup.WithContext(ctx)
     g.Go(func() error { return consumerServe(ctx, k) })
     g.Go(func() error { return producerServe(ctx, k) })
+    g.Go(func() error { return microserviceServe(ctx, k) })
 
     // Wait
     if err := g.Wait(); err != nil {
