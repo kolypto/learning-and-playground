@@ -67,12 +67,18 @@ func serve(ctx context.Context) error {
         Str("addr", k.ConnectedAddr()).
         Msg("NATS Connected")
 
+
+
+
 	// Services: producer, consumer
     // errgroup handles panics
     g, ctx := errgroup.WithContext(ctx)
-    g.Go(func() error { return consumerServe(ctx, k) })
-    g.Go(func() error { return producerServe(ctx, k) })
+    g.Go(func() error { return subscriptionServe(ctx, k) })
+    g.Go(func() error { return publisherServe(ctx, k) })
     g.Go(func() error { return microserviceServe(ctx, k) })
+    g.Go(func() error { return serveJetstream(ctx, k) })
+    g.Go(func() error { return serveKvStorage(ctx, k) })
+    g.Go(func() error { return serveObjectStorage(ctx, k) })
 
     // Wait
     if err := g.Wait(); err != nil {

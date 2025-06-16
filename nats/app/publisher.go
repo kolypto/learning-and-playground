@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func producerServe(ctx context.Context, k *nats.Conn) error {
+func publisherServe(ctx context.Context, k *nats.Conn) error {
 	// Give the consumer some time :)
 	time.Sleep(100 * time.Millisecond)
 

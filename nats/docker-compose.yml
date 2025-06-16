@@ -19,14 +19,16 @@ services:
   natsbox:
     image: natsio/nats-box:latest
     tty: true
+    restart: no
     profiles:
     - oneoff
     depends_on:
-      - nats
+    - nats
     networks:
     - nats
     environment:
-      NATS_URL: nats://admin:admin@nats:4222/
+      # NATS_URL: nats://sys:admin@nats:4222/
+      NATS_URL: nats://app_admin:admin@nats:4222/
 
   # See: easily add nodes to a cluster:
   #   https://docs.nats.io/running-a-nats-service/nats_docker

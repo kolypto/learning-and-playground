@@ -38,10 +38,7 @@ For "at least once" and "exactly once", see JetStream: part of NATS that has dur
 
 
 
-
-# Concepts
-
-## Subjects
+# Subjects
 
 NATS is an *interest-based* messaging system where listeners subscribe to *subjects*:
 specific subject names or wildcards.
@@ -69,7 +66,7 @@ Names are case sensitive and cannot contain whitespace.
 Reserved: `.` `*` `>`.
 By convention subject names starting with a `$` are reserved for system use.
 
-## Core NATS
+# Core NATS
 
 Core NATS: PubSub model using subject-based addressing.
 
@@ -97,6 +94,18 @@ if err == nats.ErrNoResponders {
     //...
 }
 ```
+
+## Slow Consumers
+Slow consumers:
+
+* NATS is designed to move messages quickly, and consumers must consider and respond to changing message rates.
+* If a client is too slow, the server will close the connection
+* Client libraries can buffer some messages to give the application time to catch up — and will look healthy to the server.
+* Common patterns:
+  * Use request-reply to throttle the sender and prevent overloading the subscriber
+  * Use a queue with multiple subscribers splitting the work
+  * Persist messages with something like NATS streaming
+
 
 ## Queue Groups
 
@@ -130,7 +139,7 @@ NATS will automatically route messages within the same cluster (unless failover 
 
 
 
-## CLI
+# CLI
 
 Install the NATS CLI tool:
 
@@ -155,7 +164,7 @@ $ nats pub <subject> <message>
 
 
 
-## HTTP Monitoring
+# HTTP Monitoring
 
 Open: <http://localhost:8222/>
 
@@ -169,7 +178,7 @@ Accounts, connections, etc.
 
 
 
-## JetStream
+# JetStream
 
 JetStream: a built-in persistence engine that enables messages to be stored and replayed at a later time.
 
@@ -184,11 +193,9 @@ It enables fault-tolerant and high-availability configurations.
 > No other technology that we are aware of can scale from edge to cloud using the same security context
 > while having complete deployment observability for operations.
 
-On top of JetStream, NATS provides:
-* Key/Value store
-* Object store (for binary files)
-
-NOTE: NATS does not intend to compete with the rich feature set of in-memory databases.
+Essentially, a JetStream is a subscriber inside NATS that
+1. subscribes to subjects and stores every message it sees
+2. replays these messages to consumers starting from some offset (start, only new ones, specific date/time, etc)
 
 *Streaming* is: temporal decoupling between the publishers and subscribers.
 In NATS Core, subscribers only receive the message if they're actively connected.
@@ -204,7 +211,36 @@ Streams are different from queues:
 * Streams persiste their data
 * Queues (queue group) distribute messages as consumers join & leave, but are removed when they all quit
 
-### Replay
+On top of JetStream, NATS provides:
+* Key/Value store
+* Object store (for binary files)
+
+NOTE: NATS does not intend to compete with the rich feature set of in-memory databases.
+
+## Deciding to Use Streaming and Higher Qualities of Service
+With PubSub, the basic aspect is temporal coupling: subscribers need to be up and running
+to receive the message when it's published.
+
+JetStream provides temporal decoupling.
+
+Use JetStream when:
+
+* Observability is required
+* Delay message processing
+* Consume at your own pace
+* Recall old messages: historical record
+* Consumers and producers may be online at different times (temporal decoupling)
+* You need "exactly once" QoS with de-duplication and double-ack
+
+When to use Core NATS:
+
+* Where applications will retry (e.g. request/responses)
+* Where only the last message received is important (e.g. GPS location) and they are sent frequently enough.
+* Where message TTL is low and the value of data expires quickly
+* Where every participant is expected to be online all the time
+* Control plane messages
+
+## Replay
 JetStream replay policies:
 
 1. All: a complete replay. With two replay policies: "instant"
@@ -214,7 +250,7 @@ JetStream replay policies:
 4. Starting from a specific ssequence number
 5. Starting from a specific time
 
-### Retention
+## Retention
 JetStream retention policies:
 i.e. delete message that are too old, or when the stream gets too large:
 
@@ -236,16 +272,20 @@ but the *retention policy* can provide additional discarding methods:
 
 * Limits: retention based on limits only. Provide a replay of messages in the stream, discard messages exceeding the limits (the default)
 * Work Queues: messages are removed as they are consumed. No replay. One consumer per subject.
-* Interest: work queue, but drop messages if no one's consuming (no interest)
+* Interest: like work queue, but allows overlapping subjects, and requires that *all* consumers ACK the message. It will drop messages if no one's consuming (no interest)
 
-With Work Queues, each message can be consumed only once:
+With *Work Queues*, each message can be consumed only once:
 this is enforced by only allowing one consumer to be created per subject, i.e. consumers' subject filters
-must not overlap.
+must not overlap! That is, each subject captured by the stream can only have one consumer at a time!
+So, with Work Queues, the messages will be removed as soon as the Consumer received an Acknowledgement.
+
+With *Interest Policy*, messages will be removed as soon as *all* (!) Consumers of the stream for that subject
+have received an Acknowledgement for the message. This policy
 
 Note that limits always apply, even to a work queue.
 
 
-### Consistency
+## Consistency
 
 NATS provides immediate consistency (not eventual consistency).
 You can choose the durability of the message storage:
@@ -281,8 +321,20 @@ but this involves:
 * server: de-duplicating ids for a configurable rolling period of time
 * consumer: double acknowledgment mechanism
 
+Example for de-duplication, with NATS's default windows of 2m:
+we send 2 messages with exactly the same `Nats-Msg-Id`. Nats will detect that these are duplicates:
 
-### Streams
+```console
+$ nats req -H Nats-Msg-Id:1 ORDERS.new hello1
+$ nats req -H Nats-Msg-Id:1 ORDERS.new hello2
+$ nats stream info ORDERS
+State:
+            Messages: 1
+               Bytes: 67 B
+```
+
+
+## Streams
 Streams consume normal NATS subjects.
 You can publish to a subject — and stream will store it. But you won't get an ack.
 Use JetStream publish calls instead to get an ack that it was stored.
@@ -334,19 +386,23 @@ Mirroring example:
 ```
 
 
-### Consumers
+## Consumers
 A consumer is a stateful view of the stream:
 an interface to consume a subset of messages that keeps track of which messages
 were delivered and acknowledged by clients.
 
 Equivalent to Consumer Group in Kafka, or Durable Queue subscribed to a topic in RabbitMQ.
 
-Client application can choose to be:
-* Push consumers: new messages are pushed to the consumer as they arrive. Receive messages as fast as possible. No ack.
-* Pull consumers: demand-driven, support batching, much ack. Provide horizontal scalability. Don't worry about partitions.
+Consumers can be:
+* *Push consumers*: new messages are pushed to a consumer as they arrive (using a specific subject).
+  Message flow is controlled by the server.  Messages are distributed automatically between consumers.
+  Use case: receive messages as fast as possible, no ACK. For high message rates.
+* *Pull consumers*: request messages explicitly from the server in batches.
+  Gives the client full control. Provides horizontal scalability. Don't worry about partitions.
+  The tradeoff here is: reliable, but not as fast as possible.
 
-The trade-off: as fast as possible vs reliable.
-NOTE: pull consumers don't mean delays because they use long-polling.
+> NATS team: We recommend using pull consumers for new projects.
+> In particular when scalability, detailed flow control or error handling are a design focus.
 
 Acknowledgments:
 
@@ -359,24 +415,24 @@ If a message is not acknowledged within a user-specified number of delivery atte
 an advisory notification is emitted.
 
 Consumers can also be ephemeral or durable:
-* Durable: when an explicit name is set on the `Durable` field when creating the consumer, or when `InactiveThreshold` is set.
+* *Durable*: when an explicit name is set on the `Durable` field when creating the consumer, or when `InactiveThreshold` is set.
   Durable consumers maintain state from one run of the application to another.
-* Ephemeral: will not have persisted state or fault tolerance and will be automatically cleaned up (deleted) after a period of inactivity (no subscriptions). Applications typically use them to read a stream and quit.
+* *Ephemeral*: will not have persisted state or fault tolerance and will be automatically cleaned up (deleted) after a period of inactivity (no subscriptions). Applications typically use them to read a stream and quit.
 
 Consumer configuration [see whole list](https://docs.nats.io/nats-concepts/jetstream/consumers#configuration)
-* Durable: clients can reconnect and resume until the consumer is explicitly deleted
-* InactiveThreshold: remove if inactive for that long
-* Description: for humans. Useful for ephemeral consumers to indicate their purpose (because there's no durable name)
-* MemoryStorage: keep in memory. Useful for ephemeral consumers to reduce I/O
-* FilterSubjects: filter stream subjects, e.g. `[factory-events.A.*, factory-events.B.*]`
-* DeliverPolicy: start from beginning? offset? time? new messages only? replay last message, or even last per subject?
-* AckPolicy: explicit (require every message ack), none (naive mode), all (ack only the last message; all previous messages are automatically acknowledged).
-* AckWait: timeout for consumer ack'ing the message. No ack? will be re-delivered. Also see Backoff.
-* MaxAckPending: max messages in flight, un-acked.
+* `Durable`: clients can reconnect and resume until the consumer is explicitly deleted
+* `InactiveThreshold`: remove if inactive for that long (for ephemeral consumers)
+* `Description`: for humans. Useful for ephemeral consumers to indicate their purpose (because there's no durable name)
+* `MemoryStorage`: keep in memory. Useful for ephemeral consumers to reduce I/O
+* `FilterSubjects`: filter stream subjects, e.g. `[factory-events.A.*, factory-events.B.*]`
+* `DeliverPolicy`: start from beginning? offset? time? new messages only? replay last message, or even last per subject?
+* `AckPolicy`: explicit (require every message ack), none (naive mode), all (ack only the last message; all previous messages are automatically acknowledged).
+* `AckWait`: timeout for consumer ack'ing the message. No ack? will be re-delivered. Also see Backoff.
+* `MaxAckPending`: max messages in flight, un-acked.
   For push consumers, this is the only form of flow control.
-* MaxDeliver: how many times to retry a message if timeout/negative-ack?
+* `MaxDeliver`: how many times to retry a message if timeout/negative-ack?
   Note: messages that have reached MaxDeliver will stay in the stream.
-* Replicas: the number of replicas. Default: same as stream
+* `Replicas`: the number of replicas. Default: same as stream
 
 For high throughput, set `MaxAckPending` to a high value.
 
@@ -394,13 +450,21 @@ Only for push consumers:
 * HeadersOnly: ignore payload, only send headers
 
 Consumer acknowledgements:
+with "explicit" ACK, more than one kind of acknowledgment can be used:
 
-* ack: message processed
-* nack: failed, but retry
-* term: failed, do not retry (message invalid, permanent failure)
-* inProgress: more time is needed
+* `Ack`: message processed
+* `AckSync`: send ACK, and also require that the server confirms the reception of this ACK
+* `Nack`: failed, but retry.
+  Indicates that the client app is temporarily unable to process it.
+* `Term`: failed, do not retry (message invalid, permanent failure).
+  Indicates that the client will not be able to process it.
+* `InProgress`: more time is needed
 
-Example:
+Note that when a message is delivered to a subscriber/consumer, a timer starts.
+If the message is still not acked in `AckWait` time, it will be redelivered.
+`InProgress` resets this timer. `MaxDeliver` controls max number of delivery retries.
+
+Example with CLI:
 
 ```console
 $ nats stream add ORDERS --storage file --subjects "ORDERS.*" --ack \
@@ -448,18 +512,42 @@ $ nats consumer add
 ? Select a Stream my_stream
 ```
 
-Slow consumers:
+Note with Go libraries:
+there are two ways to read from the JetStream: the old way and the new way with "nats.io/jetstream" library.
 
-* NATS is designed to move messages quickly, and consumers must consider and respond to changing message rates.
-* If a client is too slow, the server will close the connection
-* Client libraries can buffer some messages to give the application time to catch up — and will look healthy to the server.
-* Common patterns:
-  * Use request-reply to throttle the sender and prevent overloading the subscriber
-  * Use a queue with multiple subscribers splitting the work
-  * Persist messages with something like NATS streaming
+* The old one starts with `nc.Jetstream()` that creates a wrapper that has a `Subscribe()` method — but it's fake:
+  it's a shim that makes JetStream feel like Core NATS: you'd subscribe to a topic — but in reality it would
+  read from a stream that holds it.
+  The goal was to keep the interface familiar and make adoption easier — but in fact, it's more confusing.
+* The new one uses `jetstream.New(nc)` and has proper Stream and Subscription objects. Use this one.
+
+Practical notes:
+
+* NATS does not have partitions. You can't map messages to consumers using key hash!
+  If you need something like this, do it manually: consume, map, republish.
+  This feature is intentionally missing because it makes things complicated: you need to plan your consumers upfront.
+*
+
+### Dead Letter Queue
+
+If a message hits the `MaxDeliver` number of retries, it is considered dead.
+It will be delivered to the `$JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.<STREAM>.<CONSUMER>` subject.
+It does not contain the payload — but has the `stream_seq` offset that you can read.
+
+Check its schema with:
+
+```console
+$ nats schema info io.nats.jetstream.advisory.v1.max_deliver
+JSON: type, id, timestamp, stream, consumer, stream_seq, deliveries
+```
+
+Terminated messages are published to `$JS.EVENT.ADVISORY.CONSUMER.MSG_TERMINATED.<STREAM>.<CONSUMER>`.
+See `$ nats schema info io.nats.jetstream.advisory.v1.terminated`.
+
+You can leverage those advisory messages to implement "Dead Letter Queue" (DLQ).
 
 
-### Key/Value
+## Key/Value
 JetStream has a persistent key/value store.
 
 You can create *buckets* and use them as *immediately* consistent (as opposed to *eventually* consistent) maps.
@@ -478,7 +566,7 @@ Because k/v is a value stream, you also have:
 * watch all changes
 * history: retrieve historical values
 
-Example:
+Example in CLI:
 
 ```console
 $ nats kv add my-kv
@@ -488,7 +576,7 @@ $ nats kv del my-kv Key1
 ```
 
 
-### Object Store
+## Object Store
 Stores arbitrarily large objects (this is achieved by chunking messages).
 
 Note: Object store is not a distributed storage system.
@@ -513,11 +601,7 @@ $ nats object watch myobjbucket
 
 
 
-
-
-
-
-## Subject Mapping and Partitioning
+# Subject Mapping and Partitioning
 
 Read more here: <https://docs.nats.io/nats-concepts/subject_mapping>
 
@@ -564,7 +648,7 @@ $ nats server mapping "foo.*.*" "foo.{{wildcard(1)}}.{{wildcard(2)}}.{{partition
 Partitions are useful when you need to scale consumers
 but preserve message ordering from a specific entity (same as Kafka partitions).
 
-### Weighted mappings
+## Weighted mappings
 Traffic can be split by percentage from one subject transform to multiple subject transforms.
 
 Use: For A/B testing or canary releases
@@ -579,13 +663,13 @@ myservice.requests: [
 
 
 
-## Authentication
+# Authentication
 
-Client authentication: Token, Username/Password, TLS Certificate, NKEY with challenge (Ed25519), JWT OAUTH,  Auth callout (script).
+Client authentication: Token, Username/Password, TLS Certificate, NKEY with challenge (Ed25519), JWT OAUTH, Auth callout (script).
 
 You can use accounts for multi-tenancy: each account has its own independent 'subject namespace'.
 
-## Connectivity
+# Connectivity
 
 * Plain NATS connections
 * TLS encrypted NATS connections

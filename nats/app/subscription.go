@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func consumerServe(ctx context.Context, k *nats.Conn) error {
+func subscriptionServe(ctx context.Context, k *nats.Conn) error {
 	// Async subscription: will invoke the callback
 	// It starts 1 goroutine that will call your callback. Running more goroutines is up to you.
 	// Message delivery: serial, one at a time.
@@ -24,6 +24,8 @@ func consumerServe(ctx context.Context, k *nats.Conn) error {
 	}
 	defer async_sub.Unsubscribe()
 
+
+
 	// Async chan subscription: will push to a channel
 	// It will not start a goroutine: instead, it will push messages to the channel
 	updates_chan := make(chan *nats.Msg, 3)
@@ -32,6 +34,8 @@ func consumerServe(ctx context.Context, k *nats.Conn) error {
 		return errors.Wrap(err, "Subscribe() failed")
 	}
 	defer chan_sub.Unsubscribe()
+
+
 
 
 
@@ -58,9 +62,13 @@ func consumerServe(ctx context.Context, k *nats.Conn) error {
 
 
 
+
+
+
 	// Queue Subscriptions
 	// Provide a queue name: the server will load-balance between all members of the queue group.
 	// Queue groups in NATS are dynamic and do not require any server configuration.
+	// NOTE: it's still not JetStream: just load-balancing in real time!
 	queue_sub, err := k.QueueSubscribe("jobs.>", "job_workers", func(msg *nats.Msg) {
 		fmt.Printf("job msg: %+v\n", msg)
 	})
