@@ -29,6 +29,70 @@ QoS: Core NATS provides "at most once" delivery guarantee: i.e. if a subscriber 
 the message is not received. This is the same level of guarantee that TCP/IP provides.
 For "at least once" and "exactly once", see JetStream: part of NATS that has durability.
 
+Here's now you init a client in Go:
+
+```go
+// app/main.go
+func serve() error {
+  // NATS Connect
+	k, err := nats.Connect(
+        strings.Join([]string{
+            // Front line servers in the cluster. They will tell the client about other ones.
+            "nats://app:verysecret@127.0.0.1:4222/APP",  // "/APP" is the account.
+            // Alternatively, you can use a token (nats://token@127.0.0.1/)
+            // or an NKEY (ed25519 key file) or an OAuth JWT token
+        }, ","),
+        // Connection name (for monitoring)
+        nats.Name("api-server"),
+        // Don't deliver my pub messages to me
+        // NOTE: turned off because this is exactly what we do here: send messages to ourselves :)
+        // nats.NoEcho(),
+        // Ping server every <duration>
+        nats.PingInterval(10 * time.Second),
+        // Timeout for draining a connection
+        nats.DrainTimeout(10*time.Second),
+        // Reconnect: default wait=2s, timeout=2s
+        // Ping interval: 2 minutes (heartbeat)
+        // Log connection events
+        nats.DisconnectErrHandler(func(_ *nats.Conn, err error) {
+            if err != nil {
+                log.Error().Err(err).Msg("NATS Disconnected")
+            } else {
+                log.Info().Msg("NATS Disconnected")
+            }
+        }),
+        nats.ReconnectHandler(func(_ *nats.Conn) {
+            log.Info().Msg("NATS Reconnected")
+        }),
+        nats.ClosedHandler(func(_ *nats.Conn) {
+            log.Info().Msg("NATS client closed")
+        }),
+        nats.DiscoveredServersHandler(func(nc *nats.Conn) {
+            log.Info().Strs("known", nc.Servers()).Strs("discovered", nc.DiscoveredServers()).Msg("NATS new servers discovered")
+        }),
+        nats.ErrorHandler(func(_ *nats.Conn, _ *nats.Subscription, err error) {
+            // E.g. slow consumer
+            // log, or maybe send to an error channel
+            log.Error().Err(err).Msg("NATS Error")
+        }),
+    )
+	if err != nil {
+		return errors.Wrap(err, "failed to connect to NATS")
+	}
+	defer k.Close()
+
+  //... work work work ...//
+
+  // Drain the connection, which will close it when done.
+  // It lets all handlers finish: unsubscribe, process all cached/inflight messages, clean-up.
+  // Drain() can be used instead of Unsubscribe()
+  // Do this before quitting.
+  if err := k.Drain(); err != nil {
+      return errors.Wrap(err, "Drain() failed")
+  }
+  return nil
+}
+```
 
 
 
@@ -132,6 +196,132 @@ When connecting to a globally distributed NATS super-cluster,
 NATS will automatically route messages within the same cluster (unless failover kicks in).
 
 
+
+
+## Publish/Subscribe in Go
+
+Publisher:
+
+```go
+// app/publisher.go
+func publisherServe(ctx context.Context, k *nats.Conn) error {
+	// Give the consumer some time :)
+	time.Sleep(100 * time.Millisecond)
+
+
+
+	// Publish one message
+	if err := k.Publish("updates", []byte("All is Well")); err != nil {
+		return errors.Wrap(err, "Publish() failed")
+	}
+
+
+
+	// Publish, expect a response (using "reply-subject" or "inbox")
+	resp, err := k.Request("request.hello", []byte("Hi there"), 1 * time.Second)
+	if err != nil {
+		return errors.Wrap(err, "Request() failed")
+	}
+	fmt.Printf("response: %+v\n", resp)//nocommit
+
+
+
+	// Send job (to a work queue, but we don't care)
+	if err := k.Publish("jobs.task", []byte("do this")); err != nil {
+		return errors.Wrap(err, "Publish() failed")
+	}
+
+
+	// Send a PING/PONG to the server to make sure all publishes are written
+	if err := k.FlushTimeout(time.Second); err != nil {
+		return errors.Wrap(err, "FlushTimeout() failed")
+	}
+
+
+	// Wait
+	<-ctx.Done()
+	return nil
+}
+```
+
+Subscriber:
+
+```go
+//app/subscription.go
+func subscriptionServe(ctx context.Context, k *nats.Conn) error {
+	// Async subscription: will invoke the callback
+	// It starts 1 goroutine that will call your callback. Running more goroutines is up to you.
+	// Message delivery: serial, one at a time.
+	async_sub, err := k.Subscribe("updates", func(msg *nats.Msg) {
+		fmt.Printf("async msg: %+v\n", msg)
+		// if err := msg.Ack(); err != nil {
+		// 	log.Error().Err(err).Msg("Ack() failed")
+		// }
+	})
+	if err != nil {
+		return errors.Wrap(err, "Subscribe() failed")
+	}
+	defer async_sub.Unsubscribe()
+
+
+
+	// Async chan subscription: will push to a channel
+	// It will not start a goroutine: instead, it will push messages to the channel
+	updates_chan := make(chan *nats.Msg, 3)
+	chan_sub, err := k.ChanSubscribe("updates", updates_chan)
+	if err != nil {
+		return errors.Wrap(err, "Subscribe() failed")
+	}
+	defer chan_sub.Unsubscribe()
+
+
+
+
+
+	// Wait for a message: "Sync Subscribe"
+	// Under the hood, it reads from a channel.
+	one_sub, err := k.SubscribeSync("request.*")
+	if err != nil {
+		return errors.Wrap(err, "SubscribeSync() failed")
+	}
+	// Auto-unsubscribe after N messages.
+	// Use case: when only 1 messages is expected
+	if err := one_sub.AutoUnsubscribe(1); err != nil {
+		return errors.Wrap(err, "AutoUnsubscribe() failed")
+	}
+	msg, err := one_sub.NextMsg(1 * time.Second)
+	if err != nil {
+		return errors.Wrap(err, "NextMsg(2) failed")
+	}
+	// Reply: Incoming messages may have a "reply-to" field: a subject where a reply is expected.
+	err = msg.Respond([]byte("nice to see you!"))
+	if err != nil {
+		return errors.Wrap(err, "Respond() failed")
+	}
+
+
+
+
+
+
+	// Queue Subscriptions
+	// Provide a queue name: the server will load-balance between all members of the queue group.
+	// Queue groups in NATS are dynamic and do not require any server configuration.
+	// NOTE: it's still not JetStream: just load-balancing in real time!
+	queue_sub, err := k.QueueSubscribe("jobs.>", "job_workers", func(msg *nats.Msg) {
+		fmt.Printf("job msg: %+v\n", msg)
+	})
+	if err != nil {
+		return errors.Wrap(err, "QueueSubscribe() failed")
+	}
+	defer queue_sub.Unsubscribe()
+
+
+	<-ctx.Done()
+	return nil
+}
+
+```
 
 
 
@@ -526,7 +716,151 @@ Practical notes:
 * NATS does not have partitions. You can't map messages to consumers using key hash!
   If you need something like this, do it manually: consume, map, republish.
   This feature is intentionally missing because it makes things complicated: you need to plan your consumers upfront.
-*
+
+
+JetStream in Go:
+
+```go
+// app/jetstream.go
+func serveJetstream(ctx context.Context, k *nats.Conn) error {
+	js, err := jetstream.New(k)
+	if err != nil {
+		return errors.Wrap(err, "JetStream() failed")
+	}
+
+	// A stream: a process within NATS that listens to subjects and stores everything it sees.
+	// AddStream() is idempotent! But use UpdateStream() to migrate
+	stream, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
+		// NOTE: stream names
+		// Stream name is also a subject that you can subscribe to!
+		// This is why in NATS you'd use UPPERCASE on stream names and consumers.
+		Name:     "orders",
+		Description: `Order statuses: new, processed`,
+		// Subjects that are consumed by the stream.
+		// Wildcards are supported
+		Subjects: []string{
+			"orders.*",  // -> orders.new, orders.processed
+		},
+		// Store where? File | Memory
+		Storage: jetstream.MemoryStorage,
+		// Retention Policy:
+		// * `limits`: limit N messages, storage size, message age: MaxAge, MaxMsgs, MaxBytes, MaxMsgsPerSubject
+		// * `work`: only keep messages until they're consumed, then delete (NOTE: in this mode consumer filters shouldn't overlap!)
+		// * `interest`: keep messages until *all* consumers have ACKed it. Messages are removed if no one is listening.
+		Retention: jetstream.LimitsPolicy,
+		DenyDelete: true,
+		DenyPurge: false,
+		AllowRollup: true, // requires purge permission
+	})
+	if err != nil {
+		return errors.Wrap(err, "AddStream() failed")
+	}
+
+	// Stream: get one last msg for subject
+	{
+	msg, err := stream.GetLastMsgForSubject(ctx, "orders.new")
+	if err != nil {
+		return errors.Wrap(err, "GetLastMsgForSubject() failed")
+	}
+	fmt.Printf("stream last msg: %+v\n", msg)
+	}
+
+
+	// Consumer: a view into the stream with their own cursor.
+	// Idempotent! But use UpdateConsumer() to migrate
+	consumer, err := js.CreateOrUpdateConsumer(ctx, "orders", jetstream.ConsumerConfig{
+		// Create a durable consumer: because it has a name.
+		// Consumer with no name: an ephemeral consumer with an "InactiveThreshold" removal timeout
+		//
+		// Durable consumers remember where they are. They can be used for load-balancing.
+		// Ephemeral consumer does not persist progress. It will get deleted when no one is connected (after a timeout)
+		Durable: "new",
+		// Description.
+		// Especially useful for Ephemeral consumers because they have no name.
+		Description: "New orders",
+		// Filter messages by subjects
+		// NOTE: work queues do not allow subjects to overlap! But regular streams ("limits") and interest streams can.
+		FilterSubjects: []string{
+			"orders.new",
+		},
+		// First launch: deliver all messages from the beginning? Only new ones?
+		// Replay one last message? Replay one last message per subject?
+		DeliverPolicy: jetstream.DeliverAllPolicy,
+		// How to ack messages? None|All|Explicit. Don't; ack all messages (batch); ack explicitly every single one
+		AckPolicy: jetstream.AckExplicitPolicy,  // ACK every message
+		AckWait: 30 * time.Second,
+		// Max number of times a message will be redelivered (when nack'ed)
+		MaxDeliver: 3,
+		// ACK wait time (?)
+		// AckWait: 30 * time.Second,
+		// MaxWaiting: 512,
+		// MaxAckPending: ,
+	})
+	if err != nil {
+		return errors.Wrap(err, "AddConsumer() failed")
+	}
+
+
+
+	// Publish some messages for ourselves.
+	// They will get stored in the JetStream.
+	for i := range 5 {
+		// Each PublishAsync() returns a promise.
+		// But we'll watch them all together using PublishAsyncComplete()
+		_, err := js.PublishAsync("orders.new", []byte(fmt.Sprintf("order #%d", i)))
+		if err != nil {
+			return errors.Wrap(err, "PublishAsync() failed")
+		}
+	}
+	// Wait for all Publish()es simultaneously:
+	// PublishAsyncComplete() returns a channel that gets closed when all outstanding requests are ACKed
+	select {
+	case <-js.PublishAsyncComplete():
+	case <-time.After(5 * time.Second):
+		fmt.Println("Did not resolve in time")
+	}
+	fmt.Println("Published")//nocommit
+
+
+
+
+	// Read messages one by one
+	{
+	msg, err := consumer.Next()
+	if err != nil {
+		return errors.Wrap(err, "Next() failed")
+	}
+	fmt.Printf("stream Next(): %+v\n", string(msg.Data()))
+	msg.Nak()
+	}
+
+
+	// Read them manually in batches:
+	// - Fetch(): receive a batch
+	// - Messages(): iterate over messages
+
+
+
+	// Start consuming messages: pull consumer.
+	// Unlike the legacy Subscribe(), it won't create a consumer but instead use the existing one.
+	consumeContext, err := consumer.Consume(func(msg jetstream.Msg){
+		fmt.Printf("stream msg: %s %+v\n", msg.Subject(), string(msg.Data()))
+		msg.Ack()
+	})
+	if err != nil {
+		return errors.Wrap(err, "Consume() failed")
+	}
+	defer consumeContext.Stop()
+
+	// Keep working
+	<-ctx.Done()
+
+
+	// Done
+	return nil
+}
+```
+
 
 ### Dead Letter Queue
 
@@ -575,6 +909,93 @@ $ nats kv get my-kv Key1
 $ nats kv del my-kv Key1
 ```
 
+Key/Value in Go:
+
+```go
+// app/kv.go
+
+func serveKvStorage(ctx context.Context, k *nats.Conn) error {
+	// KV is implemented using JetStreams.
+	js, err := jetstream.New(k)
+	if err != nil {
+		return errors.Wrap(err, "jetstream.New() failed")
+	}
+
+	// Create/Update KV store
+	// Use `KeyValue()` to lookup an existing store.
+	kv, err := js.CreateOrUpdateKeyValue(ctx, jetstream.KeyValueConfig{
+		// Bucket name.
+		// A "bucket" is an independent K/V store.
+		Bucket: "bucket-name",
+		Description: `Test bucket`,
+		// The number of historical values to keep per key.
+		// Default: 1. Max: 64
+		History: 1,
+		// Key expiration time.
+		// Default: no expiration.
+		TTL: 10 * time.Minute,
+		// Storage: file | memory
+		Storage: jetstream.MemoryStorage,
+		// RePublish: publish new values to a subject
+		RePublish: &jetstream.RePublish{
+			Source: "subject.pattern.>",  // from
+			Destination: "subject.pattern.>",  // to
+			HeadersOnly: false,
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "KeyValue() failed")
+	}
+
+
+	// Watch a key, or many keys
+	w, err := kv.Watch(ctx, "key-name")
+	if err != nil {
+		return errors.Wrap(err, "kv.Watch() failed")
+	}
+	defer w.Stop()
+	go func(){
+		for {
+			select {
+			// Will return updates to the key as they come.
+			// Will first report the current value, then `nil` as a separator.
+			// Opt out with: UpdatesOnly
+			case v, ok := <-w.Updates():
+				if ok {
+					if v == nil {
+						fmt.Printf("kv value update: %+v\n", v)
+					} else {
+						fmt.Printf("kv value update: %+v\n", string(v.Value()))
+					}
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	// Store a value
+	revision, err := kv.Put(ctx, "key-name", []byte("value1"))
+	if err != nil {
+		return errors.Wrap(err, "kv.Put() failed")
+	}
+
+	// Get a value
+	v, err := kv.Get(ctx, "key-name")
+	if err != nil {
+		return errors.Wrap(err, "kv.Get() failed")
+	}
+	fmt.Printf("kv value get: %+v\n", string(v.Value()))
+
+	// Get a specific revision
+	kv.GetRevision(ctx, "key-name", revision)
+
+
+
+	return nil
+}
+```
+
 
 ## Object Store
 Stores arbitrarily large objects (this is achieved by chunking messages).
@@ -596,6 +1017,144 @@ You can also watch for changes in a bucket:
 
 ```console
 $ nats object watch myobjbucket
+```
+
+Object Store in Go:
+
+```go
+// app/object.go
+
+func serveObjectStorage(ctx context.Context, k *nats.Conn) error {
+	// ObjectStore is implemented using JetStreams.
+	js, err := jetstream.New(k)
+	if err != nil {
+		return errors.Wrap(err, "jetstream.New() failed")
+	}
+
+	// Create/Update Object store
+	// Use `ObjectStore()` to lookup an existing store.
+	os, err := js.CreateOrUpdateObjectStore(ctx, jetstream.ObjectStoreConfig{
+		// Independent Object Store
+		Bucket: "avatars",
+		Description: `User avatars`,
+		// TTL
+		// Default: no expire
+		TTL: 365 * 24 * time.Hour,
+		// Max file size
+		MaxBytes: 100 * MB,
+		// Storage: file | memory
+		Storage: jetstream.MemoryStorage,
+	})
+	if err != nil {
+		return errors.Wrap(err, "CreateOrUpdateObjectStore() failed")
+	}
+
+	// Put: create/overwrite
+	buf := bytes.NewBufferString("contents")
+	savedObj, err := os.Put(ctx, jetstream.ObjectMeta{
+		Name: "filename.txt",
+		Description: `Whatever description`,
+	}, buf)
+	if err != nil {
+		return errors.Wrap(err, "Put() failed")
+	}
+	fmt.Println("\tChunks:", savedObj.Chunks)
+	fmt.Println("\tDigest:", savedObj.Digest)
+	fmt.Println("\tNUID:", savedObj.NUID)
+
+
+	// Get the file as I/O
+	obj, err := os.Get(ctx, "filename.txt")
+	if err != nil {
+		return errors.Wrap(err, "Get() failed")
+	}
+	contents, _ := io.ReadAll(obj)
+	fmt.Println("Contents:", string(contents))
+
+
+	// Watch for any updates
+	watcher, err := os.Watch(ctx)
+	for update := range watcher.Updates() {
+		fmt.Println("Update:", update)
+
+		// Just once
+		break
+	}
+
+	// Done
+	return nil
+}
+
+```
+
+
+## Microservices: Service Mesh and Discovery
+
+Experimental NATS support for microservices: discovery, RPC.
+Use JSON, Protobuf, whatever.
+
+```go
+// app/micro.go
+
+func microserviceServe(ctx context.Context, k *nats.Conn) error {
+	srv, err := micro.AddService(k, micro.Config{
+		Name:        "minmax",
+		Version:     "0.0.1",
+		Description: "Returns the min/max number in a request",
+		// Will by default listen on topic <group>.<endpoint>
+	})
+	if err != nil {
+		return errors.Wrap(err, "AddService() failed")
+	}
+
+	// Register microservice APIs
+	root := srv.AddGroup("minmax")
+	root.AddEndpoint("min", micro.HandlerFunc(handleMin))
+	root.AddEndpoint("max", micro.HandlerFunc(handleMax))
+
+
+	// Now make a request
+	requestData, _ := json.Marshal([]int{-1, 2, 100, -2000})
+	msg, _ := k.Request("minmax.min", requestData, 2*time.Second)
+	var res ServiceResult
+	json.Unmarshal(msg.Data, &res)
+	fmt.Printf("microservice response: %+v\n", res)//nocommit
+
+
+	// Done
+	return nil
+}
+
+
+
+func handleMin(req micro.Request) {
+	// JSON input
+	var arr []int
+	_ = json.Unmarshal([]byte(req.Data()), &arr)
+	slices.Sort(arr)
+
+	// Result
+	res := ServiceResult{Min: arr[0]}
+	req.RespondJSON(res)
+}
+
+
+func handleMax(req micro.Request) {
+	// JSON input
+	var arr []int
+	_ = json.Unmarshal([]byte(req.Data()), &arr)
+	slices.Sort(arr)
+
+
+	// Result
+	res := ServiceResult{Max: arr[len(arr)-1]}
+	req.RespondJSON(res)
+}
+
+type ServiceResult struct {
+	Min int `json:"min,omitempty"`
+	Max int `json:"max,omitempty"`
+}
 ```
 
 
