@@ -2185,6 +2185,10 @@ Also bridges:
 * JSM for RabbitMQ bridge
 * More
 
+Monitoring NATS:
+
+* <https://github.com/nats-io/nats-top>
+
 
 ## TLS
 
@@ -2251,6 +2255,10 @@ Request server stats:
 * `$SYS.REQ.SERVER.<id>.RELOAD`: hot reload configuration
 
 More: <https://docs.nats.io/running-a-nats-service/configuration/sys_accounts>
+
+
+
+
 
 
 
