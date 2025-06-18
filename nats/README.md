@@ -581,6 +581,42 @@ Mirroring example:
 ```
 
 
+## Config
+
+```
+# /nats-server.conf
+
+# Enable JetStream
+# It will automatically detect the available resources
+jetstream: enabled
+
+# Enable JetStream and specify limits. It's disabled by default.
+# By default, the JetStream subsystem will store data in the /tmp directory
+jetstream {
+  # Where to store the data. Disabled because CLI flag is used already.
+  # store_dir: /data/jetstream
+
+  # Max size of the "memory" storage.
+  # Default: 75% of the available memory
+  max_mem: 1G
+
+  # Max size of the "file" storage
+  # Default: 1TB
+  max_file: 100G
+
+  # Fsync interval.
+  # By default JetStream relies on stream replication for redundancy.
+  # If you run JetStream without replication, or with replication of just 2, set a shorter interval.
+  # Use "always" to fsync after each message — but this will slow down the throughput to a few hundred msg/s.
+  sync_interval: 120s
+
+  # Isolates the JetStream cluster to the local cluster. Recommended use with leaf nodes.
+  domain: acme
+}
+
+```
+
+
 ## Consumers
 A consumer is a stateful view of the stream:
 an interface to consume a subset of messages that keeps track of which messages
@@ -1213,6 +1249,8 @@ Transforms are applied:
 Example: because transforms are not recursive, this transform won't create a loop:
 
 ```
+# /nats-server.conf
+
 mappings: {
 	transform.order target.order
 	target.order transform.order
@@ -1268,6 +1306,8 @@ but preserve message ordering from a specific entity (same as Kafka partitions).
 Mapping examples:
 
 ```
+# /nats-server.conf
+
 mappings = {
   # Simple direct mapping.  Messages published to foo are mapped to bar.
   foo: bar
@@ -1307,6 +1347,8 @@ Traffic can be split by percentage from one subject transform to multiple subjec
 Use: For A/B testing or canary releases
 
 ```
+# /nats-server.conf
+
 myservice.requests: [
     { destination: myservice.requests.v1, weight: 98% },
     { destination: myservice.requests.v2, weight: 2% }
@@ -1360,6 +1402,8 @@ The easiest way to connect.
 This method is exclusive of user and password:
 
 ```
+# /nats-server.conf
+
 authorization {
   token: "s3cr3t"
 }
@@ -1384,6 +1428,8 @@ $2a$11$PWIFAL8RsWyGI3jVZtO9Nu8.6jOxzxfZo7c/W0eLk017hjgUKWrhy
 As an alternative to tokens, you may specify a single user/password (exclusive of tokens):
 
 ```
+# /nats-server.conf
+
 authorization: {
     user: a,
     password: b
@@ -1393,6 +1439,8 @@ authorization: {
 or provide multiple users:
 
 ```
+# /nats-server.conf
+
 authorization: {
     users: [
         {user: a, password: b},
@@ -1415,6 +1463,8 @@ $2a$11$V1qrpBt8/SLfEBr4NJq4T.2mg8chx8.MTblUiTBOLV3MKDeAy.f7u
 ```
 
 ```
+# /nats-server.conf
+
 authorization: {
     users: [
         {user: a, password: "$2a$11$V1qrpBt8/SLfEBr4NJq4T.2mg8chx8.MTblUiTBOLV3MKDeAy.f7u"},
@@ -1437,6 +1487,8 @@ Here's how you generate certificates: [NATS TLS](https://docs.nats.io/running-a-
 Configure the server to first verify certificates:
 
 ```
+# /nats-server.conf
+
 tls {
   cert_file: "server-cert.pem"
   key_file:  "server-key.pem"
@@ -1451,6 +1503,8 @@ It also makes sure that the client provides a certificate with the extended key 
 Specify `verify_and_map` to use information encoded in the certificate to authenticate a client:
 
 ```
+# /nats-server.conf
+
 tls {
   cert_file: "server-cert.pem"
   key_file:  "server-key.pem"
@@ -1481,6 +1535,8 @@ Certificate:
 The configuration to authorize this user would be as follow:
 
 ```
+# /nats-server.conf
+
 authorization {
   users = [
     {user: "email@localhost"}
@@ -1503,6 +1559,8 @@ The configuration to authorize this user requires you to specify the full subjec
 Mind the order or attributes!!
 
 ```
+# /nats-server.conf
+
 authorization {
   users = [
     {user: "OU=testuser@MacBook-Pro.local (Test User),O=mkcert development certificate"}
@@ -1529,6 +1587,8 @@ The first line starts with `S...`: it is the *seed* (the private key).
 The second line starts with `U...`: it is the *user* key (public key). It can be safely shared.
 
 ```
+# /nats-server.conf
+
 authorization: {
   users: [
     { nkey: UDXU4RCSJNZOIQHZNWXHXORDPRTGNJAHAHFRGZNEEJCPQTT2M7NLCNF4 }
@@ -1863,6 +1923,8 @@ $ nsc edit user --name U --account A --bearer
 To allow users to use MQTT, set `allowed_connection_types: ["MQTT"]` on them:
 
 ```
+# /nats-server.conf
+
 authorization {
   users [
     {user: foo password: foopwd, permission: {...}}
@@ -1876,6 +1938,8 @@ authorization {
 They'd also need permissions to use JetStreams for QoS1:
 
 ```
+# /nats-server.conf
+
 listen: 127.0.0.1:4222
 jetstream: enabled
 authorization {
@@ -2003,6 +2067,12 @@ Permissions map: more granular allow/deny lists:
 Example:
 
 ```
+# /nats-server.conf
+
+# No Auth User: The user to assume when no auth is provided.
+# Their permissions and account will be used.
+no_auth_user: app
+
 authorization {
   # Special entry: applies to all users that don't have specific permissions set.
   default_permissions = {
@@ -2044,6 +2114,8 @@ Example: queue permissions.
   They are, however, not allowed to use any queues with the name `*.prod`:
 
 ```
+# /nats-server.conf
+
 users = [
   {
     user: "a", password: "a", permissions: {
@@ -2070,6 +2142,8 @@ Accounts allow the grouping of clients, isolating them from clients in other acc
 The top-level `accounts{ }` maps account names to configs:
 
 ```
+# /nats-server.conf
+
 accounts: {
     A: {
         users: [
@@ -2112,6 +2186,8 @@ Configuration:
 Example:
 
 ```
+# /nats-server.conf
+
 accounts: {
     A: {
         users: [
@@ -2154,6 +2230,8 @@ a time-stamped OCSP response signed by the CA (certificate authority) to the ini
 When a certificate is configured with OCSP Must-Staple, the NATS Server will fetch staples from the configured OCSP responder URL that is present in a certificate.
 
 ```
+# /nats-server.conf
+
 [ ext_ca ]
 ...
 authorityInfoAccess = OCSP;URI:http://ocsp.example.net:80
@@ -2188,6 +2266,17 @@ Also bridges:
 Monitoring NATS:
 
 * <https://github.com/nats-io/nats-top>
+
+Config:
+
+```
+# /nats-server.conf
+
+# Default: 4222
+port: 4222
+monitor_port: 8222
+
+```
 
 
 ## TLS
@@ -2234,10 +2323,102 @@ Retained Messages:
 When the server receives a message published with the RETAIN flag set,
 it will store the message for future subscribers.
 
+Config:
+
+```
+# /nats-server.conf
+
+# MQTT Configuration
+# README: https://docs.nats.io/running-a-nats-service/configuration/mqtt/mqtt_config
+mqtt {
+  port: 1883
+
+  # The username to assume when no user is provided.
+  # Their permissions and account will be used.
+  no_auth_user: default_mqtt_client
+
+  # Explicit usernames.
+  # Use if there are no users configured for accounts.
+  authorization {
+    # Username/Password
+    # username: "my_user_name"
+    # password: "my_password"
+
+    # Or token (provided as "password" in the CONNECT packet)
+    # token: "my_token"
+  }
+
+  # JWT authentication: pass the JWT token as password. With any user name, except empty.
+  # The JWT has to have the Bearer boolean set to true, which can be done with nsc:
+  # $ nsc edit user --name U --account A --bearer
+
+
+  # Redeliver QoS 1 messages as a DUPLICATE if the server has not received the PUBACK
+  ack_wait: "30m"
+}
+
+# MQTT requires the server name to be set
+server_name: "my_mqtt_server"
+
+# This section is only useful if when no accounts are defined.
+# Otherwise, define your `authorization` and `authentication` in `account.users`
+authorization {
+  # When an MQTT client creates a QoS 1 subscription, this translates to the creation of a JetStream durable subscription.
+  # To receive messages for this durable, the NATS Server creates a subscription with a subject such as $MQTT.sub.
+  # and sets it as the JetStream durable's delivery subject.
+  # Therefore, if you have set some permissions for the MQTT user, you need to allow subscribe permissions on $MQTT.sub.>.
+  mqtt_perms = {  # <- variable
+    publish = ["baz"]
+    subscribe = ["foo", "bar", "$MQTT.sub.>"]
+  }
+
+  users [
+    # This user can only use MQTT
+    # Options: STANDARD WEBSOCKET LEAFNODE MQTT
+    {
+      user:mqtt, password:pass,
+      permissions: $mqtt_perms,
+      allowed_connection_types: ["MQTT"]
+    }
+  ]
+}
+```
+
 ## WebSocket
 
 WebSocket uses the [NATS Protocol](https://docs.nats.io/reference/reference-protocols/nats-protocol).
 You'll use `nats.ws` to be able to publish and subscribe.
+
+Config:
+
+```
+# /nats-server.conf
+
+# Turn on websockets
+websocket {
+  port: 443
+  no_tls: true  # for test environments
+  compression: true
+
+  # CORS
+  same_origin: true
+  allowed_origins [
+    "http://www.example.com"
+    "https://www.other-example.com"
+  ]
+
+  # Use this Cookie, if present, as the client's JWT.
+  # If the client specifies a JWT in the CONNECT protocol, this option is ignored.
+  jwt_cookie: "my_jwt_cookie_name"
+
+  # Separate "no_auth_user" for websocket clients
+  no_auth_user: "my_username_for_apps_not_providing_credentials"
+
+  # Limit websocket clients to specific users.
+  authorization {}
+}
+
+```
 
 # System Events
 System events:

@@ -13,8 +13,8 @@ services:
     volumes:
       - nats_data:/data
       # Choose one:
-      # - ./nats-server.conf:/nats-server.conf
-      - ./nats-server-jwt.conf:/nats-server.conf
+      - ./nats-server.conf:/nats-server.conf
+      # - ./nats-server-jwt.conf:/nats-server.conf
     networks:
     - nats
 
