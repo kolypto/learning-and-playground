@@ -17,7 +17,7 @@ func serveJetstream(ctx context.Context, k *nats.Conn) error {
 	}
 
 	// A stream: a process within NATS that listens to subjects and stores everything it sees.
-	// AddStream() is idempotent! But use UpdateStream() to migrate
+	// CreateStream() is idempotent! But use UpdateStream() to migrate
 	stream, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
 		// NOTE: stream names
 		// Stream name is also a subject that you can subscribe to!

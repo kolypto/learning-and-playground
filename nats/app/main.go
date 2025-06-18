@@ -60,13 +60,18 @@ func serve(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to connect to NATS")
 	}
-	defer k.Close()
     log.Info().
         Bool("connected", k.IsConnected()).
         Int64("max_payload", k.MaxPayload()).  // 1Mb default
         Str("addr", k.ConnectedAddr()).
         Msg("NATS Connected")
 
+    // Drain the connection, which will close it when done.
+    // It lets all handlers finish: unsubscribe, process all cached/inflight messages, clean-up.
+    // Drain() can be used instead of Unsubscribe()
+    // Do this before quitting.
+	// defer k.Close()
+    defer k.Drain()
 
 
 
@@ -84,15 +89,6 @@ func serve(ctx context.Context) error {
     if err := g.Wait(); err != nil {
         return errors.Wrap(err, "Wait() failed")
     }
-
-    // Drain the connection, which will close it when done.
-    // It lets all handlers finish: unsubscribe, process all cached/inflight messages, clean-up.
-    // Drain() can be used instead of Unsubscribe()
-    // Do this before quitting.
-    if err := k.Drain(); err != nil {
-        return errors.Wrap(err, "Drain() failed")
-    }
-
 
     // Quit
     return nil

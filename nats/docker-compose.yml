@@ -12,7 +12,9 @@ services:
       - 1883:1883  # MQTT
     volumes:
       - nats_data:/data
-      - ./nats-server.conf:/nats-server.conf
+      # Choose one:
+      # - ./nats-server.conf:/nats-server.conf
+      - ./nats-server-jwt.conf:/nats-server.conf
     networks:
     - nats
 
