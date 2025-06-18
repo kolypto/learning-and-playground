@@ -583,7 +583,7 @@ Mirroring example:
 
 ## Config
 
-```
+```nginx
 # /nats-server.conf
 
 # Enable JetStream
@@ -1248,7 +1248,7 @@ Transforms are applied:
 
 Example: because transforms are not recursive, this transform won't create a loop:
 
-```
+```nginx
 # /nats-server.conf
 
 mappings: {
@@ -1305,7 +1305,7 @@ but preserve message ordering from a specific entity (same as Kafka partitions).
 
 Mapping examples:
 
-```
+```nginx
 # /nats-server.conf
 
 mappings = {
@@ -1346,7 +1346,7 @@ Traffic can be split by percentage from one subject transform to multiple subjec
 
 Use: For A/B testing or canary releases
 
-```
+```nginx
 # /nats-server.conf
 
 myservice.requests: [
@@ -1401,7 +1401,7 @@ $ nsc edit user --name <n> --allow-sub "<subject> <queue>,..."
 The easiest way to connect.
 This method is exclusive of user and password:
 
-```
+```nginx
 # /nats-server.conf
 
 authorization {
@@ -1427,7 +1427,7 @@ $2a$11$PWIFAL8RsWyGI3jVZtO9Nu8.6jOxzxfZo7c/W0eLk017hjgUKWrhy
 ## Username/Password
 As an alternative to tokens, you may specify a single user/password (exclusive of tokens):
 
-```
+```nginx
 # /nats-server.conf
 
 authorization: {
@@ -1438,7 +1438,7 @@ authorization: {
 
 or provide multiple users:
 
-```
+```nginx
 # /nats-server.conf
 
 authorization: {
@@ -1462,7 +1462,7 @@ $ nats server passwd
 $2a$11$V1qrpBt8/SLfEBr4NJq4T.2mg8chx8.MTblUiTBOLV3MKDeAy.f7u
 ```
 
-```
+```nginx
 # /nats-server.conf
 
 authorization: {
@@ -1486,7 +1486,7 @@ Here's how you generate certificates: [NATS TLS](https://docs.nats.io/running-a-
 
 Configure the server to first verify certificates:
 
-```
+```nginx
 # /nats-server.conf
 
 tls {
@@ -1502,7 +1502,7 @@ It also makes sure that the client provides a certificate with the extended key 
 
 Specify `verify_and_map` to use information encoded in the certificate to authenticate a client:
 
-```
+```nginx
 # /nats-server.conf
 
 tls {
@@ -1534,7 +1534,7 @@ Certificate:
 
 The configuration to authorize this user would be as follow:
 
-```
+```nginx
 # /nats-server.conf
 
 authorization {
@@ -1558,7 +1558,7 @@ Certificate:
 The configuration to authorize this user requires you to specify the full subject.
 Mind the order or attributes!!
 
-```
+```nginx
 # /nats-server.conf
 
 authorization {
@@ -1586,7 +1586,7 @@ UDXU4RCSJNZOIQHZNWXHXORDPRTGNJAHAHFRGZNEEJCPQTT2M7NLCNF4
 The first line starts with `S...`: it is the *seed* (the private key).
 The second line starts with `U...`: it is the *user* key (public key). It can be safely shared.
 
-```
+```nginx
 # /nats-server.conf
 
 authorization: {
@@ -1922,7 +1922,7 @@ $ nsc edit user --name U --account A --bearer
 
 To allow users to use MQTT, set `allowed_connection_types: ["MQTT"]` on them:
 
-```
+```nginx
 # /nats-server.conf
 
 authorization {
@@ -1937,7 +1937,7 @@ authorization {
 
 They'd also need permissions to use JetStreams for QoS1:
 
-```
+```nginx
 # /nats-server.conf
 
 listen: 127.0.0.1:4222
@@ -2066,7 +2066,7 @@ Permissions map: more granular allow/deny lists:
 
 Example:
 
-```
+```nginx
 # /nats-server.conf
 
 # No Auth User: The user to assume when no auth is provided.
@@ -2113,7 +2113,7 @@ Example: queue permissions.
 * User "b" has permissions for queue subscriptions as well as plain subscriptions.
   They are, however, not allowed to use any queues with the name `*.prod`:
 
-```
+```nginx
 # /nats-server.conf
 
 users = [
@@ -2141,7 +2141,7 @@ Accounts allow the grouping of clients, isolating them from clients in other acc
 
 The top-level `accounts{ }` maps account names to configs:
 
-```
+```nginx
 # /nats-server.conf
 
 accounts: {
@@ -2185,7 +2185,7 @@ Configuration:
 
 Example:
 
-```
+```nginx
 # /nats-server.conf
 
 accounts: {
@@ -2229,7 +2229,7 @@ a time-stamped OCSP response signed by the CA (certificate authority) to the ini
 
 When a certificate is configured with OCSP Must-Staple, the NATS Server will fetch staples from the configured OCSP responder URL that is present in a certificate.
 
-```
+```nginx
 # /nats-server.conf
 
 [ ext_ca ]
@@ -2269,7 +2269,7 @@ Monitoring NATS:
 
 Config:
 
-```
+```nginx
 # /nats-server.conf
 
 # Default: 4222
@@ -2325,7 +2325,7 @@ it will store the message for future subscribers.
 
 Config:
 
-```
+```nginx
 # /nats-server.conf
 
 # MQTT Configuration
@@ -2391,7 +2391,7 @@ You'll use `nats.ws` to be able to publish and subscribe.
 
 Config:
 
-```
+```nginx
 # /nats-server.conf
 
 # Turn on websockets
