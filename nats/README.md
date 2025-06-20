@@ -29,7 +29,7 @@ QoS: Core NATS provides "at most once" delivery guarantee: i.e. if a subscriber 
 the message is not received. This is the same level of guarantee that TCP/IP provides.
 For "at least once" and "exactly once", see JetStream: part of NATS that has durability.
 
-Here's now you init a client in Go:
+Here's how you init a client in Go:
 
 ```go
 // app/main.go
@@ -38,15 +38,14 @@ func serve() error {
 	k, err := nats.Connect(
         strings.Join([]string{
             // Front line servers in the cluster. They will tell the client about other ones.
-            "nats://app:verysecret@127.0.0.1:4222/APP",  // "/APP" is the account.
+            "nats://app:verysecret@127.0.0.1:4222/",
             // Alternatively, you can use a token (nats://token@127.0.0.1/)
             // or an NKEY (ed25519 key file) or an OAuth JWT token
         }, ","),
         // Connection name (for monitoring)
         nats.Name("api-server"),
         // Don't deliver my pub messages to me
-        // NOTE: turned off because this is exactly what we do here: send messages to ourselves :)
-        // nats.NoEcho(),
+        nats.NoEcho(),
         // Ping server every <duration>
         nats.PingInterval(10 * time.Second),
         // Timeout for draining a connection
