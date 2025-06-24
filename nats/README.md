@@ -1396,6 +1396,44 @@ $ nsc edit user --name <n> --deny-sub "<subject> <queue>,..."
 $ nsc edit user --name <n> --allow-sub "<subject> <queue>,..."
 ```
 
+However, you can use the config file:
+
+```nginx
+# /nats-server.conf
+
+accounts {
+  # Separate account
+  APP: {
+    # Enable JetStream for this account
+    jetstream { }
+
+    # Default permissions:
+    # applied to users within this account, if permissions are not explicitly defined for them.
+    default_permissions = {
+      publish = "SANDBOX.*"
+      subscribe = ["PUBLIC.>", "_INBOX.>"]
+    }
+
+    # Clients connecting without authentication can be associated with a particular user within an account.
+    no_auth_user: nobody
+
+    # User accounts
+    users: [
+      # You can use encrypted passwords: use NATS cli:
+      # $ nats server passwd
+      # Each "user confiruation map" can have: {user, password, nkey, permissions}
+      # In turn, "permissions" has: {publish, subscribe, allow_responses}
+      { user:app_admin, password:admin },
+      { user:app, password:verysecret },
+      { user:default_mqtt_client, password:verysecret },
+      # Use NKEYs (ed25519 keys):
+      # $ nk -gen user -pubout
+      { nkey: UDXU4RCSJNZOIQHZNWXHXORDPRTGNJAHAHFRGZNEEJCPQTT2M7NLCNF4 },
+    ]
+  }
+}
+```
+
 ## Tokens
 The easiest way to connect.
 This method is exclusive of user and password:
@@ -1515,9 +1553,9 @@ tls {
 
 The server will now check if a Subject Alternative Name (SAN) maps to a user.
 It will search:
-* All email addresses first
-* All DNS names
-* Finally, it will try the certificate subject
+* All email addresses first: `email@localhost`
+* All DNS names: `localhost`
+* Finally, it will try the certificate subject: `CN=1234,O=Company`
 
 ```console
 $ openssl x509 -noout -text -in  client-cert.pem
@@ -1603,6 +1641,98 @@ NATS would PUB a request to `$SYS.REQ.USER.AUTH` and expect a response (from a s
 with a JWT for this user. The JWT would contain permissions.
 
 Read more: <https://docs.nats.io/running-a-nats-service/configuration/securing_nats/auth_callout>
+
+In short, generate an nkey pair:
+
+```console
+$ nsc generate nkey --account
+SAAAZ6JS5HHMSDWKS4AQBQLPOOOZH3F22Y7GERECOTIWSHRJ6RFE3XQPOM
+AAB7FG2N7JRFCNNLIM2ZB3ZPRUB7UUNO6YN2MRQPAZOTMDJFPPRQKWGX
+```
+
+Now add this section to the config:
+
+```nginx
+accounts {
+  # Auth Callout
+  AUTH: {
+    users: [
+      { user: auth_callout, password: auth_callout }
+    ]
+  }
+
+}
+
+authorization {
+  auth_callout {
+    issuer: AAB7FG2N7JRFCNNLIM2ZB3ZPRUB7UUNO6YN2MRQPAZOTMDJFPPRQKWGX
+    auth_users: [ auth_callout ]
+    account: AUTH
+  }
+}
+```
+
+NOTE: all users in the NATS config will be DISABLED! Only `auth_callout` user will work!
+All other users, including system users, will be authenticated through the auth callout!
+
+Your service should be listening to requests on `$SYS.REQ.USER.AUTH`. They'll look like this:
+
+```js
+ "nats": {
+    "version": 2
+    "type": "authorization_request",
+    "server_id": {
+      "name": "experiment",
+      "host": "0.0.0.0",
+      "id": "NC53IRNSXV2EEX6SUJU7FX2PTPK3XTJLQQQWC2OD7IORUBSIEY3B3XZM",
+      "version": "2.11.3"
+    },
+    "user_nkey": "UAGVYTOLYVTE3GUDYVWJL6GGIYBKNNXJACRKMRKAYPTB5L3XPUPBED6A",
+    "client_info": {
+      "host": "172.19.0.1",
+      "id": 26,
+      "user": "username",  // mqtt username (if provided)
+      "kind": "Client",
+      "type": "mqtt", // mqtt
+      "mqtt_id": "XW63uwz86Nq75s5YYc5Un3"  // mqtt client id
+    },
+    "connect_opts": {
+      "user": "username", // mqtt username
+      "protocol": 0
+    },
+    "client_tls": {
+      "version": "1.3",
+      "cipher": "TLS_AES_128_GCM_SHA256",
+      "verified_chains": [
+        // The full TLS certificate
+        ["-----BEGIN CERTIFICATE-----\nMIIEWDCCA...\n"]
+      ]
+    },
+}
+```
+
+The service is expected to respond with a JWT:
+
+```js
+{
+  nats: {
+    jwt: '...',  // the encoded user claims with pubs and subs permissions
+    error: '...',  // or an error message sent back to the NATS server if authorization failed
+    issuer_account: '', // (optional) the public NKey of the issuing account
+    tags: ['...'], // (optional) user tags (for templates)
+  }
+}
+```
+
+See examples:
+* [JWT in Go](https://natsbyexample.com/examples/auth/nkeys-jwts/go)
+* [Example: Auth Callout Config](https://natsbyexample.com/examples/auth/callout/cli)
+  and [Go Service](https://github.com/ConnectEverything/nats-by-example/tree/main/examples/auth/callout/cli/service)
+* [Example: Auth Callout + JWT static users](https://natsbyexample.com/examples/auth/callout-decentralized/cli) -- best
+
+Example Go service for auth callout: <https://github.com/ConnectEverything/nats-by-example/blob/main/examples/auth/callout/cli/service/main.go>
+
+
 
 # Decentralized JWT Authentication
 
@@ -2072,6 +2202,8 @@ Example:
 # Their permissions and account will be used.
 no_auth_user: app
 
+# This section is only useful when no accounts are defined.
+# Otherwise, define your users within accounts.
 authorization {
   # Special entry: applies to all users that don't have specific permissions set.
   default_permissions = {
@@ -2158,6 +2290,14 @@ accounts: {
 ```
 
 While the name account implies one or more users, it is much simpler and enlightening to think of one account as a messaging container for one application.
+
+Accounts are especially cool when using multiple servers:
+each server would usually define the same set of accounts in their configuration, but then they may have different rules
+for how messages get published into these accounts. For instance:
+* On server A there might be an MQTT TLS server, whereas
+* on server B there might be an MQTT noTLS server, yet
+* they're joined into one cluster that "merges" these accounts
+
 
 ## Import/Export Subjects
 
@@ -2288,9 +2428,96 @@ NATS prefers this scheme:
 3. You switch to TLS
 
 However, the server can be configured to do TLS handshake right away: `handshake_first: true`.
+Also possible: `handshake_first: auto` with a timeout to fallback to the original behavior.
 
-More details about TLS: <https://docs.nats.io/running-a-nats-service/configuration/securing_nats/tls>
+More details about TLS:
+* <https://docs.nats.io/running-a-nats-service/configuration/securing_nats/tls>
 
+To configure TLS:
+
+* Specify `cert_file`, `key_file`, and optionally, `ca_file`
+* Set `verify` to require and verify client certificates
+* Specify `verify_and_map` to use information encoded in the certificate to authenticate a client.
+* Set `verify_cert_and_check_known_urls` to match *all* DNS entries within a certificate against all gateway urls.
+  Only the full wildcard `*` is supported for the left most label.
+
+One major gotcha: if the client has a TLS certificate to connect to a server, the certificate will only be valid
+for connecting to this very domain! That is, you won't be able to use the same certificate
+for connecting to another domain: clients won't be able to reuse it between dev and prod!
+
+> Common problem: failed identity validation.
+> The IP or DNS name to connect to needs to match a Subject Alternative Name (SAN) inside the certificate.
+> Meaning, if a client/browser/server connect via tls to 127.0.0.1, the server needs to present a certificate with a SAN
+> containing the IP 127.0.0.1 or the connection will be closed with a handshake error.
+>
+> When verify_cert_and_check_known_urls is specified, Subject Alternative Name (SAN) DNS records are necessary.
+> In order to successfully connect there must be an overlap between the DNS records provided as part of the certificate and the urls configured.
+>
+> To be able to grow your cluster, use DNS wildcards (RFC6125).
+
+Another requirement: proper *key usage* and *extended key usage*.
+The necessary values for key usage depend on the ciphers used. Digital Signature and Key Encipherment are an interoperable choice.
+
+* NATS Server needs a certificate with `TLS WWW server authentication`: `extendedKeyUsage=serverAuth`
+* Clients need certificates with `TLS WWW client authentication` (only when "verify*" is set to true): `extendedKeyUsage=clientAuth`
+
+If you have a TLS-Terminating Reverse Proxy (like Traefik), there will be a mismatch:
+the server appears to be insecure but the client is told to connect securely.
+To fix this, the server must be configured as "tls available":
+
+```nginx
+# /nats-server.conf
+
+tls {}
+allow_non_tls: true
+```
+
+### Self-Signed Certificate for Testing
+Use `mkcert`: it will generate a CA and install it into your system.
+
+Generate an install a certificate valid for server authentication by `localhost` and the IP `::1`:
+
+```console
+$ mkcert -install
+$ mkcert -cert-file server-cert.pem -key-file server-key.pem localhost ::1
+$ nats-server --tls --tlscert=server-cert.pem --tlskey=server-key.pem -ms 8222
+```
+
+To generate certificates for users, use `-client`:
+
+```console
+$ mkcert -client -cert-file client-cert.pem -key-file client-key.pem localhost ::1 email@localhost
+```
+
+Inspect certificates:
+
+```console
+$ openssl x509 -noout -text -in server-cert.pem
+$ openssl x509 -noout -text -in client-cert.pem
+```
+
+Alternatively, you can use `openssl` to generate certificates:
+* [StackOverflow HowTo](https://stackoverflow.com/questions/10175812/how-can-i-generate-a-self-signed-ssl-certificate-using-openssl)
+* [DigitalOcean Tutorial](https://www.digitalocean.com/community/tutorials/openssl-essentials-working-with-ssl-certificates-private-keys-and-csrs#generating-csrs)
+
+Create a server certificate:
+
+```console
+$ openssl req -x509 -newkey rsa:4096 -sha256 -nodes -keyout server_key.pem -out server.pem \
+  -subj "/C=NO/ST=State/L=City/O=Company/OU=Unit/CN=example.com/emailAddress=user@localhost" \
+  -addext "subjectAltName=DNS:example.com,DNS:*.example.com,IP:10.0.0.1" \
+  -addext "keyUsage = digitalSignature, keyEncipherment, dataEncipherment, cRLSign, keyCertSign" \
+  -addext "extendedKeyUsage = serverAuth,clientAuth"
+```
+
+it's valid for `example.com` as well as it's subdomains `*.example.com`.
+also valid for the IP address `10.0.0.1` (SAN).
+
+But even better, you can become a CA and sign your own CSR with your CA key:
+* [How do you sign a Certificate Signing Request with your Certification Authority?](https://stackoverflow.com/questions/21297139/how-do-you-sign-a-certificate-signing-request-with-your-certification-authority/21340898#21340898)
+* [CockroachDB Tutorial](https://www.cockroachlabs.com/docs/stable/create-security-certificates-openssl)
+
+See: [tls/](tls/)
 
 ## MQTT
 For an MQTT client to connect to the NATS server, the user's account must be JetStream enabled.
@@ -2436,10 +2663,55 @@ Request server stats:
 
 More: <https://docs.nats.io/running-a-nats-service/configuration/sys_accounts>
 
+Inspect system events like this:
+
+```console
+$ nats sub '>'
+```
 
 
 
 
 
 
+# Cluster
 
+All NATS servers gossip about and connect to all of the servers they know, thus dynamically forming a full mesh.
+This cluster can dynamically grow, shrink, and self-heal.
+They'd forward messages — but with only one hop: each `nats-server` will only forward messages it has received from a client
+to the immediately adjacent instance to which is has routes.
+
+Each NATS server listens on a "cluster URL" specified as `-cluster` (or in the config):
+a `host:port` they'd listen to for cluster gossip.
+
+Additional servers can add these "cluster URLs" to their `-routes` argument to join the cluster:
+they'd connect to the "seed server". There's nothing special about it: it just serves as a starting point.
+
+The first server becomes the "seed server", everyout else joins in:
+
+```console
+$ nats-server -p 4222 -cluster nats://localhost:4248 --cluster_name test-cluster
+$ nats-server -p 5222 -cluster nats://localhost:5248 -routes nats://localhost:4248 --cluster_name test-cluster
+$ nats-server -p 6222 -cluster nats://localhost:6248 -routes nats://localhost:4248 --cluster_name test-cluster
+```
+
+Because the clustering protocol gossips members of the cluster, all servers are able to discover other server in the cluster.
+
+Alternatively, use config file:
+
+```nginx
+listen: 127.0.0.1:4222
+http: 8222
+
+cluster {
+  listen: 127.0.0.1:4248
+}
+```
+
+Read more about high-load clusters and pools: <https://docs.nats.io/running-a-nats-service/configuration/clustering/v2_routes>
+
+Read more about JetStream in clusters: <https://docs.nats.io/running-a-nats-service/configuration/clustering/jetstream_clustering>
+
+## Leaf Nodes
+
+Read: <https://docs.nats.io/running-a-nats-service/configuration/leafnodes>

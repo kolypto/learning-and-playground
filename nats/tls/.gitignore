@@ -1,0 +1,9 @@
+/*.csr
+/*.crt
+/*.key
+certs/*.csr
+certs/*.crt
+certs/*.key
+certs/*.pem
+/index.txt*
+/serial.txt*

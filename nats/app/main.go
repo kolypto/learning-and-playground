@@ -19,10 +19,14 @@ func serve(ctx context.Context) error {
 	k, err := nats.Connect(
         strings.Join([]string{
             // Front line servers in the cluster. They will tell the client about other ones.
-            "nats://app:verysecret@127.0.0.1:4222/APP",  // "/APP" is the account.
+            "nats://app:verysecret@127.0.0.1:4222/",
             // Alternatively, you can use a token (nats://token@127.0.0.1/)
             // or an NKEY (ed25519 key file) or an OAuth JWT token
         }, ","),
+        nats.UserJWTAndSeed(
+            "...",
+            "...",
+        ),
         // Connection name (for monitoring)
         nats.Name("api-server"),
         // Don't deliver my pub messages to me

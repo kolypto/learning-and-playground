@@ -6,15 +6,51 @@ services:
     - --http_port=8222
     - --jetstream  # JetStream enable
     - -sd=/data    # JetStream store
+    # # Debug mode
+    # - --debug
+    # - --trace
+    # Cluster
+    - --cluster_name=NATS
+    - --cluster=nats://0.0.0.0:6222/
+    - --routes=nats://nats_cluster:password@nats_mqtt_notls:6222/
     ports:
       - 4222:4222  # NATS clients
+      - 6222:6222  # Cluster
       - 8222:8222  # monitoring
-      - 1883:1883  # MQTT
+      # - 1883:1883  # MQTT
+      - 8883:8883  # MQTTS
     volumes:
       - nats_data:/data
       # Choose one:
+      # 1) Sample
       - ./nats-server.conf:/nats-server.conf
-      # - ./nats-server-jwt.conf:/nats-server.conf
+      # 2) JWT config (decentralized: clients bearing their JWT tokens)
+      - ./nats-server-mqtt-jwt.conf:/nats-server.conf
+      # 3) TLS with MQTT, clustered together with a server with noTLS
+      - ./nats-server-mqtt-tls.conf:/nats-server.conf
+      - ./tls/ca.crt:/ca.crt
+      - ./tls/certs/server.crt:/server.crt
+      - ./tls/certs/server.key:/server.key
+    networks:
+    - nats
+
+  # Plain MQTT server, no TLS
+  nats_mqtt_notls:
+    image: nats:latest
+    command:
+    - -c=/nats-server.conf
+    - --jetstream
+    - -sd=/data
+    # Cluster
+    - --cluster_name=NATS
+    - --cluster=nats://0.0.0.0:6222/
+    - --routes=nats://nats_cluster:password@nats:6222/  # connect to the seed
+    ports:
+      # - 4222:4222  # NATS clients
+      # - 8222:8222  # monitoring
+      - 1883:1883  # MQTT
+    volumes:
+      - ./nats-server-mqtt-notls.conf:/nats-server.conf
     networks:
     - nats
 
@@ -28,9 +64,10 @@ services:
     - nats
     networks:
     - nats
+    volumes:
+    - ./nsc:/nsc  # Persist nsc keys
     environment:
-      # NATS_URL: nats://sys:admin@nats:4222/
-      NATS_URL: nats://app_admin:admin@nats:4222/
+      NATS_URL: nats://sys:admin@nats:4222/
 
   # See: easily add nodes to a cluster:
   #   https://docs.nats.io/running-a-nats-service/nats_docker
