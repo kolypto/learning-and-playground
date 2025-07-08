@@ -27,6 +27,7 @@ func serveJetstream(ctx context.Context, k *nats.Conn) error {
 		// Subjects that are consumed by the stream.
 		// Wildcards are supported
 		Subjects: []string{
+			// NOTE: No two streams can have overlapping subjects!
 			"orders.*",  // -> orders.new, orders.processed
 		},
 		// Store where? File | Memory

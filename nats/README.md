@@ -469,7 +469,9 @@ must not overlap! That is, each subject captured by the stream can only have one
 So, with Work Queues, the messages will be removed as soon as the Consumer received an Acknowledgement.
 
 With *Interest Policy*, messages will be removed as soon as *all* (!) Consumers of the stream for that subject
-have received an Acknowledgement for the message. This policy
+have received an Acknowledgement for the message. 
+In other words, *interest-based retention* is a message retention policy where messages are stored in a stream as long as there are active consumers interested in those messages:
+i.e. messages are retained only for as long as there are active consumers with an active subscription and have not yet acknowledged or terminated the message.
 
 Note that limits always apply, even to a work queue.
 
@@ -538,6 +540,9 @@ Stream configuration: [see whole list](https://docs.nats.io/nats-concepts/jetstr
 * Description. For humans.
 * Storage: file, memory
 * Subjects: a list of subjects to bind. Default: subject with name = stream name.
+
+  NOTE: No two streams can have overlapping subjects!
+
 * Replicas: how many
 * DuplicateWindow: ns time for deduplication
 * Limits: MaxAge, MaxBytes, MaxMsgs, MaxMsgsPerSubject; Retention; Discard
@@ -664,7 +669,8 @@ Consumer configuration [see whole list](https://docs.nats.io/nats-concepts/jetst
 * `MaxAckPending`: max messages in flight, un-acked.
   For push consumers, this is the only form of flow control.
 * `MaxDeliver`: how many times to retry a message if timeout/negative-ack?
-  Note: messages that have reached MaxDeliver will stay in the stream.
+  Note: messages that have reached MaxDeliver will stay in the stream, and a notification will be delivered to an advisory subject (see: `MAX_DELIVERIES`). 
+  Same with terminated messages: `MSG_TERMINATED`.
 * `Replicas`: the number of replicas. Default: same as stream
 
 For high throughput, set `MaxAckPending` to a high value.
@@ -760,6 +766,17 @@ Practical notes:
   If you need something like this, do it manually: consume, map, republish.
   This feature is intentionally missing because it makes things complicated: you need to plan your consumers upfront.
 
+  
+## Ordered Consumer
+
+Libraries also have the so-called "ordered consumers".
+
+An OrderedConsumers are managed by the library and provide a simple way to consume
+messages from a stream. These are ephemeral in-memory pull consumers. 
+They have InactiveThreshold=5m and are thus are resilient to deletes and restarts.
+
+This is just a library short-cut: nothing special, just an easy way to read a stream.
+  
 
 ## JetStream in Go:
 
@@ -782,6 +799,7 @@ func serveJetstream(ctx context.Context, k *nats.Conn) error {
 		// Subjects that are consumed by the stream.
 		// Wildcards are supported
 		Subjects: []string{
+            // NOTE: No two streams can have overlapping subjects!
 			"orders.*",  // -> orders.new, orders.processed
 		},
 		// Store where? File | Memory
@@ -914,11 +932,31 @@ Advanced features (as NATS headers):
 * `"Nats-Rollup"` Header: purge all prior messages (in the stream or in the subject)
 * `"Nats-Marker-Reason"` Header: reason for message deletion
 
+### JetStream Events
+
+JetStream also has a subject-based API: commands are sent to specific subjects, responses flow to response subjects.
+This is called *JetStream wire API Reference*. 
+
+Example:
+
+* `$JS.API.STREAM.MSG.DELETE.<stream>`: Delete specific message by id
+* `$JS.API.STREAM.MSG.GET.<stream>`: Get specific message by id
+* `$JS.EVENT.ADVISORY.API`: All JetStream API actions are reported here
+* NOTE: there's no "stream store" event because you're supposed to write to a subject :) 
+
+In short, all CRUD operations can be monitored here!
+
+See: <https://docs.nats.io/reference/reference-protocols/nats_api_reference>
+
+
+
 ### Dead Letter Queue
 
 If a message hits the `MaxDeliver` number of retries, it is considered dead.
 It will be delivered to the `$JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.<STREAM>.<CONSUMER>` subject.
 It does not contain the payload — but has the `stream_seq` offset that you can read.
+
+All events: <https://docs.nats.io/reference/reference-protocols/nats_api_reference>
 
 Check its schema with:
 

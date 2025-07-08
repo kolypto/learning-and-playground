@@ -1,6 +1,11 @@
 services:
   nats:
-    image: nats:latest
+    # Run me:
+    # $ docker compose exec -it nats nats-server --signal reload
+
+    # NOTE: the 'alpine' tag has some Linux binaries line "sh" and "wget".
+    # Vanilla "nats:latest" only has the NATS binary and no way to inspect the container
+    image: nats:alpine
     command:
     - -c=/nats-server.conf
     - --http_port=8222
@@ -33,6 +38,7 @@ services:
       - ./tls/certs/server.key:/server.key
     networks:
     - nats
+    healthcheck: { test: 'wget http://localhost:8222/healthz -q -S -O -', interval: 30s, timeout: 3s, retries: 3, start_period: 3s }
 
   # Plain MQTT server, no TLS
   nats_mqtt_notls:
@@ -55,6 +61,10 @@ services:
     - nats
 
   natsbox:
+    # Run me:
+    # $ docker compose run --rm natsbox nats account info
+    # $ docker compose run --rm natsbox nats --context=app account info
+    # $ docker compose run --rm natsbox nats sub '>'
     image: natsio/nats-box:latest
     tty: true
     restart: no
@@ -68,6 +78,7 @@ services:
     - ./nsc:/nsc  # Persist nsc keys
     environment:
       NATS_URL: nats://sys:admin@nats:4222/
+      # NATS_CONTEXT: sys
 
   # See: easily add nodes to a cluster:
   #   https://docs.nats.io/running-a-nats-service/nats_docker
