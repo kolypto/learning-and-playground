@@ -16,5 +16,5 @@ rm $SEEN_FILES~
 
 # Find new files
 find $DIRS -type f -type f ! -path '**/target/**' ! -path '**/.embuild/**' ! -name '*.lock'  \
-    | { fgrep -v -x -f $SEEN_FILES || true ; } >> $OUTFILE
+    | { fgrep -v -x -f $SEEN_FILES || true ; } | sort >> $OUTFILE
 

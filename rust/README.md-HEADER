@@ -1,0 +1,33 @@
+# Rust
+
+Date: 2025-10, Rust edition = "2024", version 1.90.0
+
+URL: <https://doc.rust-lang.org/book/>
+
+# Installation
+
+This version of the text assumes you’re using Rust 1.85.0 (released 2025-02-17) or later
+with edition = "2024" in the `Cargo.toml`.
+
+Installation:
+
+```console
+# apt install rustc cargo
+```
+
+Or with Mise:
+
+```console
+$ mise use -g rust@1.90
+```
+
+Or with `rustup`, a command line tool for managing Rust versions and associated tools.
+Get rustup with curl and bash: <https://rustup.rs/>
+
+You will also need a *linker*. Linux users should generally install GCC or Clang.
+
+Update it:
+
+```console
+$ rustup update
+```
