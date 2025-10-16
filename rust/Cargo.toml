@@ -1,0 +1,28 @@
+# A workspace brings together multiple crates
+[workspace]
+resolver = "3"
+members = [
+    "rust/a01-hello",
+    "rust/a02-guessing-game",
+    "rust/a03-variables",
+    "rust/a04-control-flow",
+    "rust/a06-struct",
+    "rust/a07-enum",
+    "rust/a08-packages",
+    "rust/a09-collections",
+    "rust/a10-errors",
+    "rust/a11-generics-traits-lifetimes",
+    "rust/a12-tests",
+    "rust/a13-command-line-app",
+    "rust/a14-functional",
+    "rust/a15-cargo",
+    "rust/a16-smart-pointers",
+    "rust/a17-concurrency",
+    "rust/a18-async-await",
+    "rust/a19-oop",
+    "rust/a20-match",
+    "rust/a21-advanced",
+    "rust/a22-appendix",
+    "rust/b01-rust-by-example",
+    "rust/b02-tour-of-rust",
+]

@@ -1,13 +1,84 @@
 # Rust
 
+Date: 2025-10, Rust edition = "2024", version 1.90.0
+
+URL: <https://doc.rust-lang.org/book/>
+
+# Installation
+
+This version of the text assumes you’re using Rust 1.85.0 (released 2025-02-17) or later
+with edition = "2024" in the `Cargo.toml`.
+
+Installation:
+
+```console
+# apt install rustc cargo
+```
+
+Or with Mise:
+
+```console
+$ mise use -g rust@1.90
+```
+
+Or with `rustup`, a command line tool for managing Rust versions and associated tools.
+Get rustup with curl and bash: <https://rustup.rs/>
+
+You will also need a *linker*. Linux users should generally install GCC or Clang.
+
+Update it:
+
+```console
+$ rustup update
+```
 
 
 
 
-# rust/a01-hello/src
+
+# rust
+# Libraries
+
+Error handling:
+
+* anyhow / eyre (fork)
 
 
-# rust/a01-hello/src/main.rs
+
+
+
+
+
+# rust/a01-hello
+
+
+# rust/a01-hello/Cargo.toml
+
+```toml
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[package]
+name = "a01-hello"
+version = "0.1.0"
+
+# "Edition" is a major release of the language, released every couple of years.
+# Edition changes only affect the way the compiler initially parses code:
+# if you use a crate that wants an older edition, Rust will comply.
+edition = "2024"
+
+# Got to specify this because we did not follow the standard "src/main.rs" file path
+[[bin]]
+name = "main"
+path = "main.rs"
+
+[dependencies]
+ferris-says = "0.3.2"
+
+```
+
+
+
+# rust/a01-hello/main.rs
 
 ```rust
 // Create a new app with:
@@ -15,11 +86,11 @@
 
 // Run me with:
 // $ cargo run
-// or
-// $ rustc main.rs
-// $ ./main
+// $ rustc main.rs && ./main
 
 // To build it:
+// Check:
+// $ cargo check
 // For release, with optimizations:
 // $ cargo build --release
 
@@ -28,11 +99,12 @@
 use ferris_says::say; // use function `say()` from the crate
 use std::io::{stdout, BufWriter};
 
+
 fn main() {
     // Simple print.
     // This is a Rust macro: as indicated by the `!`
     println!("Hello, world!");
-    
+
     // Print using Ferris-Says
     let stdout = stdout();
     let message = String::from("Hello fellow Rustaceans!");
@@ -47,102 +119,83 @@ fn main() {
 
 
 
-# rust/a01-hello
+# rust/a02-guessing-game/src
 
 
-# rust/a01-hello/Cargo.toml
-
-```toml
-[package]
-name = "a01-hello"
-version = "0.1.0"
-
-# "Edition" is a major release of the language, released every couple of years.
-# Edition changes only affect the way the compiler initially parses code:
-# if you use a crate that wants an older edition, Rust will comply.
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-ferris-says = "0.3.1"
-
-```
-
-
-
-
-
-# rust/a02_guessing_game/src
-
-
-# rust/a02_guessing_game/src/main.rs
+# rust/a02-guessing-game/src/main.rs
 
 ```rust
-/* The program will generate a random integer 0..100 and tell the user whether their guess is too low or high
+/* Guessing game:
+ * The program will generate a random integer 0..100
+ * and tell the user whether your guess is too low or high
  */
 
 
 // Default built-ins are called "prelude"
-// Import a library:
+// You don't have to import them:
+// https://doc.rust-lang.org/std/prelude/index.html
+
+
+// Bring into scope: the Standard Library's IO for stdin/stdout
 use std::io;
 
 // Random numbers generator
+// Added with: $ cargo add rand
 // The `Rng` trait defines methods that random number generators implement
 use rand::Rng;
 
 // `Ordering` is an enum, with variants: Less, Greater, Equal
 use std::cmp::Ordering;
 
+
 fn main() {
     // Welcome message
     println!("Guess the number!");
 
     // Generate a random number
-    // This is an immutable value: there's not `let mut`
-    // `thread_rng()` is a random number generator: local to the current thread, seeded by the OS.
+    // This is an immutable value: there's no `let mut`, just `let`
+    //
+    // `rng()` is a random number generator: local to the current thread (thread_rng feature), seeded by the OS.
     // this method is brought into scope with the `use rand::Rng` statement.
     // `gen_range()` takes a range expression and generates a random number.
+    //
     // Range expression: `start..=end`. It's inclusive on the lower and upper bounds.
-    let secret_number = rand::thread_rng().gen_range(1..=100);
-    println!("The secret number is: {secret_number}"); // Cheat line
-    
+    let secret_number = rand::rng().random_range(1..=100);
+    println!("The secret number is: {secret_number}"); // Cheat line. You're not supposed to see this.
+
     // Loop. Allows the user to guess multiple times.
     loop {
-        // Input from the user
-        println!("Input your guess:");
-
+        // Prepare a var to read into.
+        //
         // Create a variable to store user input
         // Variables are immutable by default, we add `mut` to make the value mutable.
-        // `String` is a growable UTF-8 encoded text
-        // `::new()` is an "associated function" of a type: i.e. implemented on that type.
-        let mut guess = String::new();
+        let mut guess = String::new();  // `String`: a growable UTF-8 encoded text
 
+        // Read from stdin.
+        //
         // `stdin()` returns an instance of std::io::Stdin. It handles standard input.
-        // `.read_line()` reads the input and appends it to `&mut guess`: a reference to `guess` (not a copy).
+        //
+        // `.read_line()` reads the input into `&mut guess`: a reference to `guess` (not a copy).
         // References are also immutable by default, hence we use `&mut`, not just `&guess`
-        // `.expect()` handles failures: `.read_line()` returns a `Result`: an enum. It encodes error-handling information.
+        //
+        // `.expect()` handles failures: it will crash and display the error.
+        // It is a method of `Result`: an enum: a type that can be in one of multiple possible states.
         // Result can be: `Ok`, `Err`. The `Err` variant contains information about how the operation failed.
-        // `.expect()` will crash and display the error message.
+        println!("Input your guess:");
         io::stdin()
-            .read_line(&mut guess)
-            .expect("Failed to read line");
+            .read_line(&mut guess)  // read into mutable reference
+            .expect("Failed to read line"); // crash on failure
+        println!("You guessed: {guess}");   // String with a placeholder.
+        println!("You guessed: {}", guess); // Alternatively: provide vals as arguments
 
-        // Print the value.
-        // `{guess}` is a placeholder: a variable name. It formats a variable value. 
-        // Alternatively, use `{}` and provide the variable as an argument.
-        println!("You guessed: {guess}");
-
-        // Convert `guess` to u32.
-        // Rust allows to "shadow" the previous variable. 
-        // `.trim()` removes whitespace
-        // `.parse()` converts to another type: the type of the variable.
-        // Use `.parse().expect("...")` to crash on error; but we rather add error handling
+        // Convert `guess` string to u32.
+        // Rust allows to "shadow" the previous variable.
         let guess: u32 = match guess
-            .trim()
-            .parse()
+            .trim()  // remove whitespace
+            .parse() // convert to another type: the type of the variable
+            // Crash on error; but we would rather add error handling
             // .expect("Please enter a number!");
-            { // This is a "match expression"
+            { // This is a "match expression":
                 // When ok, use the value. It will be returned.
                 Ok(num) => num,
                 // When failed, continue the loop.
@@ -151,9 +204,9 @@ fn main() {
             };
 
         // Compare the guess to the secret number
-        // `.cmp()` compares the numbers and returns a `std::cmp::Ordering`
-        // `match` expression has three "arms": patterns to match against. They are checked in turn.
-        match guess.cmp(&secret_number) {
+        match guess.
+            cmp(&secret_number)  // `.cmp()` compares the numbers and returns a `std::cmp::Ordering`
+            { // `match` expression has three "arms": patterns to match against. They are checked in turn.
             Ordering::Less => println!("Too small!"),
             Ordering::Greater => println!("Too big!"),
             Ordering::Equal => {
@@ -172,16 +225,16 @@ fn main() {
 
 
 
-# rust/a03_variables/src
+# rust/a03-variables/src
 
 
-# rust/a03_variables/src/main.rs
+# rust/a03-variables/src/main.rs
 
 ```rust
 fn main() {
     // Variables are immutable by default: you can't change them. Rust compiler will guarantee that.
     #[allow(unused_variables)] // disable compiler warning
-    let x = 5;  
+    let x = 5;
     // x = 6;  // error[E0384]: cannot assign twice to immutable variable `x`
 
     // You make a variable mutable by using `mut`.
@@ -193,6 +246,7 @@ fn main() {
 
     // Constants are always immutable.
     // They can only be set to a constant expression. It's evaluated at compile time.
+    // Use SCREAMING_SNAKE_CASE.
     #[allow(dead_code)]
     const THREE_HOURS_IN_SECONDS: u32 = 60 * 60 * 3;
 
@@ -203,11 +257,11 @@ fn main() {
     // Unsigned: u8, u16, u32, u64, u128, usize (arch-dependent)
     // If an integer overflows: debug => panics, release => wraps around without failure
     let _x: i64 = 98_222;
-    let _x: i64 = 0xFF;
+    let _x: i64 = 0xFF;  // `_x`: unused variable
     let _x: i64 = 0o755;
     let _x: i64 = 0b1111_0000;
     let _x: u8 = b'A';  // byte, `u8` only
-    
+
     // Floats: f32, f64
     // Default is f64: same speed, but more precision
     let _x: f64 = 2.0;
@@ -216,58 +270,63 @@ fn main() {
     let _t = true;
     let _t: bool = false;
 
-    // Character: one UTF8 scalar value
+    // Character: one UTF8 scalar value (4 bytes)
     let _c = 'z';
     let _cat = '😻';
+
+    // Cast
+    let x: u8 = 30;
+    let y: u64 = 20;
+    let sum = x as u64 + y;  // cast
 
 
 
     // === Compound types. === //
-    
+
     // Tuple. Groups together a variety of types into a compound type.
     // They cannot grow or shrink in size.
     let _tup: (i32, f64, u8) = (500, 3.14, 1);
     let (_x, _y, _z) = _tup; // destructure
     let _x = _tup.0; // get one value
 
-    // "Unit": a tuple without any values. 
+    // "Unit": a tuple without any values.
     // Represents an empty return type.
     // Expressions implicitly return the "unit" value if they don't return any other value.
     let _x = ();
 
-    // Array. Elements must have the same type. Arrays are fixed-length.
+    // Arrays are fixed-length: [type; size]
     // Arrays are useful when you want your data allocated on the stack rather than the heap.
-    let _a = [1,2,3,4,5];
+    let _a = [1, 2, 3, 4, 5];
     let _months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     let _a: [i32; 5] = [1, 2, 3, 4, 5]; // array type with size
-    let _a = [0; 5]; // fill with 5 values `0`
+    let _a = [0; 5];    // init array with the same element: [value; size]
     let _first = _a[0]; // access element
-    // let _nonexistent = _a[5]; // will panic: "index out of bounds: the length is 5 but the index is 5"
+    // Invalid element access panics
+    // let _nonexistent = _a[5]; //> panic: "index out of bounds: the length is 5 but the index is 5"
 
     // Vector. Like array, but of a dynamic size.
+    // Vec<T>.
+    // See chapter 9: Collections
 }
-
 ```
 
 
 
 
 
-# rust/a04_flow/src
+# rust/a04-control-flow/src
 
 
-# rust/a04_flow/src/main.rs
+# rust/a04-control-flow/src/main.rs
 
 ```rust
 fn main() {
-    println!("Hello, world!");
-
     // Function call
     let ret = another_function(42, 'h');
     println!("Return: {ret}");
 
-    // `if` expression
-    // Blocks of code associated with the condition are called "arms".
+    // `if` expression.
+    // Branches are called "arms".
     // When too many arms, use `match`.
     let number = 3;
     if number < 5 {
@@ -287,13 +346,13 @@ fn main() {
     // `loop`: forever
     loop {
         println!("forever");
-        
-        break; // okay, not forever 
+
+        break; // okay, not forever
         #[allow(unreachable_code)]
-        continue; // skip iteration   
+        continue; // skip iteration
     }
 
-    // A `loop` can return a value: useful for retry operations
+    // A `loop` is an expression: it can return a value: useful for retry operations
     let mut counter = 0;
     let result = loop {
         // Keep incrementing
@@ -314,19 +373,20 @@ fn main() {
         }
     }
 
-    // Conditional loops
+    // while: conditional loop
     let mut number = 3;
     while number >= 0 {
         number -= 1;
     }
 
-    // Loop through a collection
+    // for .. in .. : Loop through a collection
     let a = [1, 2, 3, 4, 5];
     for element in a {
         println!("a[]: {element}");
     }
 
     // Loop through a range
+    // Range: (1..4)
     for number in (1..4).rev() {
         println!("Countdown: {number}!");
     }
@@ -341,14 +401,15 @@ fn another_function(value: i32, unit: char) -> i32 {
     let _x = 6; // statement
     // let _x = (let _x = 6); // Fails: "note: variable declaration using `let` is a statement"
 
-    // Expression: this block evaluates to 4
+    // A block is an expression: it can return a value (final statement)
     let _x = {
         let x = 3;
         x + 1
     };
 
-    // Return value: final expression returns implicitly
-    // Expression: without ";"
+    // Same applies to functions:
+    // return value is the final expression: it returns implicitly
+    // Note: an expression is without ";"
     _x
 }
 
@@ -358,22 +419,26 @@ fn another_function(value: i32, unit: char) -> i32 {
 
 
 
-# rust/a05_ownership
+# rust/a05-ownership
 ## Ownership
 
+Ownerhip enables Rust to make memory safety guarantees without needing a garbage collector.
+
 Ownership: rules that govern how a program manages memory.
-It's checked by the compiler. None of the features of ownership will slow down the program 
+It's checked by the compiler. None of the features of ownership will slow down the program
 while it's running.
 
 Memory is managed differently depending on whether it's in the stack or in the heap.
 
-* Stack: FIFO, requires structures of a known size.
-* Heap: allocate memory. It's slower because it requires more work to find a big enough space.
+* Stack: LIFO order (push, pop); requires structures of a known size.
 
-Accessing data on the heap is also slower: you have to follow a pointer to get there.
+    When a function is called, arguments and local variables get pushed onto the stack.
+    When the function is over, those values get popped back off the stack.
 
-When a function is called, arguments and local variables get pushed onto the stack. 
-When the function is over, those values get popped back off the stack. 
+* Heap: uses memory allocation. It's slower because it requires more work to find a big enough space.
+
+    Accessing data on the heap is also slower: you have to follow a pointer to get there.
+
 
 ## Ownership rules
 
@@ -395,8 +460,9 @@ A declared variable is valid until the end of the current *scope*:
 ```
 
 Such values are of a known size and can be stored on the stack and popped off the stack
-when their scope is over. String literals are immutable.
+when their scope is over.
 
+String literals are immutable.
 The `String` type, however, is mutable, and is allocated on the heap.
 It can be mutated:
 
@@ -408,7 +474,7 @@ println!("{}", s);  //-> "hello, world!"
 ```
 
 This string allocates a memory, and should return this memory to the allocator when we're done with it.
-Rust automatically returns the memory once the variable that owns it goes out of scope: 
+Rust automatically returns the memory once the variable that owns it goes out of scope:
 Rust calls a special function for us, `drop()`, and it's where the author of `String` can return the memory.
 
 Here's what happens when multiple variables use a value:
@@ -427,20 +493,27 @@ in the heap:
 
 ```rust
 // "bind" the value to `s1`
-// On the stack, it stores: 
+// On the stack, it stores:
 //  `ptr` pointer to the heap, `len` length of the string, `capacity` the amount of allocated memory
 // On the heap, it stores:
 //  the actual string, "hello", located at `ptr` memory address
 let s1 = String::from("hello");
 
-// make a copy of the (`ptr`, `len`, `capacity`). The string data is not copied: it is referenced.
+// *Move* the value into another variable (it's not copy).
+// NOTE: the string data is not copied: it is referenced.
 // It points to the same memory address, so it can't be freed when `s2` goes out of scope.
 let s2 = s1;
 ```
 
-To ensure memory safety, Rust considers `s1` as no longer valid, and doesn't need to free anything
-when `s1` goes out of scope.
-Here's what happens if you try to use `s1` after `s2` is created: Rust prevents you from using an invalidated reference:
+NOTE: The `String` type does not implement the `Copy` trait, therefore it does not get *copied*
+when you do `s2 = s1`: instead, the value gets *moved* and the old reference `s1` invalidated.
+Because Rust invalidates the first variable `s1` instead of making a *shallow copy*, it's known as a *move*.
+We would say that `s1` was *moved* into `s2`.
+
+Simple types (like integers, booleans, chars, ...) have `Copy` and get copied on assignment.
+
+Here, to Rust considers `s1` to be a *moved value*: so when it goes out of scope,
+Rust doesn't need to free anything. It also prevents you from using an invalidated reference:
 
 ```rust
 println!("{}, world!", s1);
@@ -450,19 +523,20 @@ Error:
 
 ```
 error[E0382]: borrow of moved value: `s1`
-  --> src/main.rs:10:28
-   |
-7  |      let s1 = String::from("hello");
-   |          -- move occurs because `s1` has type `String`, which does not implement the `Copy` trait
-8  |     let s2 = s1;
-   |              -- value moved here
-9  |
-10 |     println!("{}, world!", s1);
-   |                            ^^ value borrowed here after move
+ --> main.rs:4:9
+  |
+2 |     let s1 = String::from("hey");
+  |         -- move occurs because `s1` has type `String`, which does not implement the `Copy` trait
+3 |     let s2 = s1;
+  |              -- value moved here
+4 |     _ = s1.len();
+  |         ^^ value borrowed here after move
+  |
+help: consider cloning the value if the performance cost is acceptable
+  |
+3 |     let s2 = s1.clone();
+  |                ++++++++
 ```
-
-Because Rust invalidates the first variable `s1` instead of making a *shallow copy*, it's known as a *move*. 
-We would say that `s1` was *moved* into `s2`.
 
 If we wanted to make a deep copy of the value including its heap data, we can use a common method `.clone()`.
 Do this when the performance cost is acceptable:
@@ -488,37 +562,33 @@ If a type implements the `Copy` trait, variables that use it do not move, but ra
 Such values are still valid after that assignment.
 The `Copy` trait is only valid if the type, or any of its parts, has not implemented the `Drop` trait.
 
-Simple scalar types do implement the `Copy` trait: integers, boolean, float, char, tuples. 
+Simple scalar types do implement the `Copy` trait: integers, boolean, float, char, tuples.
 
 ### Ownership and Functions
 
-Passing a value to a function will move or copy, just as assignment does.
+Passing a value to a function will *move* or *copy*: just as an assignment operation would.
 
 ```rust
 fn main() {
-    let s = String::from("hello");  // `s` comes into scope
+    // move
+    let s = String::from("hello");
+    takes_ownership(s); // `s` has *moved* into function. It's no longer valid here.
 
-    takes_ownership(s);             // `s`s value moves into the function...
-                                    // ... and so is no longer valid here
+    // copy
+    let x = 5; // implements `Copy` trait
+    makes_copy(x); // `x` is *copied* into function; still usable here
 
-
-    let x = 5;                      // `x` comes into scope
-
-    makes_copy(x);                  // `x` would move into the function,
-                                    // but i32 is Copy, so it's okay to still
-                                    // use `x` afterward
-
-} // Here, `x` goes out of scope, then `s`. 
+} // Here, `x` goes out of scope, then `s`.
   // But because `s`s value was moved, nothing special happens.
 
 
-fn takes_ownership(some_string: String) { // `some_string` comes into scope
+fn takes_ownership(some_string: String) {
     println!("{}", some_string);
-} // Here, `some_string` goes out of scope and `drop` is called. The backing memory is freed.
+} // Here, `some_string` goes out of scope and `drop()` is called. The backing memory is freed.
 
 fn makes_copy(some_integer: i32) { // `some_integer` comes into scope
     println!("{}", some_integer);
-} // Here, `some_integer` goes out of scope. Nothing special happens.
+} // Here, `some_integer` goes out of scope. Nothing special happens. No `drop()` needed.
 ```
 
 ### Return Values and Scope
@@ -531,34 +601,28 @@ fn main() {
 
     let s2 = String::from("hello");     // `s2` comes into scope
 
-    let s3 = takes_and_gives_back(s2);  // `s2` is moved into `takes_and_gives_back`, 
+    let s3 = takes_and_gives_back(s2);  // `s2` is moved into `takes_and_gives_back`,
                                         // its return value moves into `s3`
-                                        
-} // `s3` goes out of scope and is dropped. 
-  // `s2` was moved, so nothing happens. 
+
+} // `s3` goes out of scope and is dropped.
+  // `s2` was moved, so nothing happens.
   // `s1` goes out of scope and is dropped.
 
 
-
-fn gives_ownership() -> String {             // will move its return value into the caller
-
-    let some_string = String::from("yours"); // `some_string` comes into scope
-
-    some_string                              // is returned and moves out to the caller
+// Will move its return value into the caller's scope
+fn gives_ownership() -> String {
+    let some_string = String::from("yours");
+    some_string // return and move to the called
 }
 
+// Will take a value and move it back
 fn takes_and_gives_back(a_string: String) -> String { // `a_string` comes into scope
-
-    a_string  // is returned and moves out to the caller
+    a_string  // is returned and moved back to the caller
 }
 ```
 
-The ownership of a variable follows the same pattern every time: assigning a value to another variable moves it. 
-When a variable that includes data on the heap goes out of scope, the value will be cleaned up by drop unless ownership 
-of the data has been moved to another variable.
-
-But what if we want to let a function use a value but not take ownership?
-We can return the same value just to have it moved back to where we've taken it.
+What if: a function wants to use a value but not take ownership?
+Return the same value: it'll get moved back to where it was taken.
 Rust allows you to return multiple values using a tuple:
 
 ```rust
@@ -571,9 +635,8 @@ fn calculate_length(s: String) -> (String, usize) {
 
 // Here's how to use it
 fn main() {
-    let s1 = String::from("hello");
-
-    let (s2, len) = calculate_length(s1);
+    let s1 = String::from("hello");d
+    let (_s1, len) = calculate_length(s1);
 }
 ```
 
@@ -590,9 +653,15 @@ Let's see how Rust lets you transfer references.
 
 ## References and Borrowing
 
-Instead of returning the value to the caller, we can provide a reference to the `String` value.
-A reference is like a pointer to a value owned by some other variable. 
-Unlike a pointer, a reference is guaranteed to point to a valid value of a particular type for the life of that reference.
+A reference: keep ownership, but let someone else use the value.
+
+In idiomatic Rust, functions do not take ownership of their arguments
+unless they need to. When calling a function, you don't have to transfer ownership:
+instead, we can provide a reference to the `String` value.
+
+A reference is like a pointer to a value owned by some other variable.
+Unlike a pointer, a reference is guaranteed to point to a valid value for the lifetime of that reference.
+A reference can't outlive the owner, though.
 
 ```rust
 // The `&String` is a reference
@@ -600,7 +669,7 @@ fn calculate_length(s: &String) -> usize {
     s.len()
 } // the reference is dropped, but the value is not
 
-// Here's how to use it
+// Here's how to use it:
 fn main() {
     let s1 = String::from("hello");
 
@@ -614,10 +683,31 @@ fn main() {
 
 We call it *borrowing*: the action of creating a reference. You don't own it.
 
-Such a reference is a double-pointer: `&String` points to a `String`, 
+Such a reference is a double-pointer: `&String` points to a `String`,
 which in turn points to the heap where the string bytes are stored.
 
-By the way, to dereference a pointer, you would do `*s`. 
+By the way, to dereference a pointer, you would do `*s`.
+This does not take ownership: it just accesses the value behind the reference.
+
+Most of the time you don't need to dereference a borrowed value (reference):
+Rust has automatic dereferencing in many cases, like method calls and some operators:
+
+```rust
+let s = String::from("hello");
+let r = &s;
+println!("{}", r.len());  // Auto-dereferences, no * needed
+```
+
+But explicit `*` is required when:
+
+1. Assigning or comparing: `let y = *r;`
+2. Modifying through mutable reference: `*r += 1`
+3. When type inference needs help:
+
+  ```rust
+  let r = &Box::new(5);
+  let val = **r;  // Need explicit derefs
+  ```
 
 
 
@@ -658,7 +748,7 @@ let mut s = String::from("hello");
 let r2 = &mut s;
 ```
 
-Note that a reference’s scope starts from where it is introduced and continues through the last time that reference is used. 
+Note that a reference’s scope starts from where it is introduced and continues through the last time that reference is used.
 That is, you can create a mutable reference where other references are not used any more:
 
 ```rust
@@ -687,9 +777,21 @@ fn dangle() -> &String {
 Error:
 
 ```
+error[E0106]: missing lifetime specifier
+ --> main.rs:6:16
   |
-5 | fn dangle() -> &String {
+6 | fn dangle() -> &String {
   |                ^ expected named lifetime parameter
+  |
+  = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+  |
+6 | fn dangle() -> &'static String {
+  |                 +++++++
+help: instead, you are more likely to want to return an owned value
+  |
+6 - fn dangle() -> &String {
+6 + fn dangle() -> String {
   |
 ```
 
@@ -727,9 +829,10 @@ let s = String::from("hello world");
 let hello = &s[..5]; // range: [0, 5)
 let world = &s[6..]; // range: [6, 11)
 let helloworld = &s[..]; // whole string
+// The start..end syntax is a Range: [start, end)
 ```
 
-NOTE: String slice range indices must occur at valid UTF-8 character boundaries. 
+NOTE: String slice range indices must occur at valid UTF-8 character boundaries.
 If you attempt to create a string slice in the middle of a multibyte character, your program will exit with an error.
 
 Let's write a function that takes a string, and returns the first word:
@@ -762,7 +865,7 @@ fn main() {
 
     let word = first_word(&s);
 
-    // Modify the string 
+    // Modify the string
     s.clear(); // error!
 }
 ```
@@ -778,10 +881,10 @@ Error:
    |     ^^^^^^^^^ mutable borrow occurs here
 ```
 
-Recall from the borrowing rules that if we have an immutable reference to something, we cannot also take a mutable reference. 
+Recall from the borrowing rules that if we have an immutable reference to something, we cannot also take a mutable reference.
 This is exactly what happens here: `.clear()` needs a mutable reference, and Rust disallows it.
 
-One improvement of the function we've defined: 
+One improvement of the function we've defined:
 because string literals are `&str`: that is, slices of a string, we can do this:
 
 ```rust
@@ -809,10 +912,11 @@ assert_eq!(slice, &[2, 3]);
 
 
 
-# rust/a06_structs/src
+
+# rust/a06-struct/src
 
 
-# rust/a06_structs/src/main.rs
+# rust/a06-struct/src/main.rs
 
 ```rust
 #[allow(unused_variables)]
@@ -839,8 +943,8 @@ fn main() {
     // NOTE: the entire instance must be mutable. You cannot mark individual fields as mutable.
     user.email = String::from("john@gmail.com");
 
-    // Define a function that create an instance of the structure.
-    // Here we use the "field init shorthand": to avoid repetition
+    // Define a function that creates an instance of the structure.
+    // Here we use the "field init shorthand" to avoid repetition (like in JS)
     fn build_user(email: String, username: String) -> User {
         User {
             active: true,
@@ -866,6 +970,8 @@ fn main() {
     // The `User` struct implemented it using the attribute #[derive(Debug)]
     println!("{:?}", user2);  //-> User { active: true, username: "john", email: "john@msn.com", sign_in_count: 1 }
     println!("{:#?}", user2); //-> same, but with newlines. Easier to read.
+
+    // dbg!(): print value={value} like in Python
     dbg!(user2); //-> [src/main.rs:51] user2 = User { ... }
     // The `dbg!()` macro can be used as an expression:
     user.email = dbg!(String::from("john@mail.ru")); //-> [src/main.rs:54] String::from("john@mail.ru") = "john@mail.ru"
@@ -891,7 +997,7 @@ fn main() {
 
 
     // A "unit-like" structure is a tuple without any fields.
-    // Imagine: we can implement behavior for this type such that every instance is always equal 
+    // Imagine: we can implement behavior for this type such that every instance is always equal
     // to every instance of any other type!
     struct AlwaysEqual;
     let subject = AlwaysEqual;
@@ -902,7 +1008,7 @@ fn main() {
 
 
     // Methods.
-    // Unlike functions, methods are defined within the context of a struct, enum, or a trait object.
+    // Methods are defined within the context of a struct, enum, or a trait object.
     #[derive(Debug)]
     struct Rectangle {
         width: u32,
@@ -951,9 +1057,14 @@ fn main() {
     }
 
     // Use the method
-    // Rust automatically de/references the `self` when you use the `.` operator.
     let rect = Rectangle::square(32);
     println!("Area: {}", rect.area());
+    // Automatic de/referencing.
+    // Remember how C has two different operators for calling methods: `.` and `->`?
+    // Rust does *automatic referencing and dereferencing* here: i.e.
+    // when you call `object.somethind()`, Rust automatically adds in `&`, `&mut`, or `*`
+    // so that `object` matches the signature of the method.
+    // Calling methods is one of the few places in Rust with this behavior.
 }
 
 ```
@@ -962,16 +1073,16 @@ fn main() {
 
 
 
-# rust/a07_enums_and_patterns/src
+# rust/a07-enum/src
 
 
-# rust/a07_enums_and_patterns/src/main.rs
+# rust/a07-enum/src/main.rs
 
 ```rust
 #[allow(unused_variables)]
 #[allow(dead_code)]
 fn main() {
-    // An Enum encodes meaning along with data. 
+    // An Enum encodes meaning along with data.
     // It says that a value is one of a possible set of values.
     enum IpAddressKind {
         V4,
@@ -980,6 +1091,8 @@ fn main() {
     let kind = IpAddressKind::V4;
 
     // We can put data directly into each enum variant: it will have an associated value:
+    // Internally, it is implemented as a *tagged union*:
+    //   discriminant (tag) + enough space for the largest variant's data
     enum IpAddress {
         V4(String),
         V6(String),
@@ -997,7 +1110,7 @@ fn main() {
     }
 
     let home = IpAddress2::V4(127, 0, 0, 1);
-    let loopback = IpAddress2::V6(String::from("::1"));    
+    let loopback = IpAddress2::V6(String::from("::1"));
 
     // More variants with embedded types:
     enum Message {
@@ -1011,7 +1124,7 @@ fn main() {
         ChangeColor(i32, i32, i32),
     }
 
-    // We could have defined 4 structs instead, but then it wouldn't be so easy 
+    // We could have defined 4 structs instead, but then it wouldn't be so easy
     // to define a function to take any of these kinds of messages.
 
     // We can define methods on enums
@@ -1043,8 +1156,9 @@ fn main() {
     // Here's how to use it
     let x: i8 = 5;
     let y: Option<i8> = Some(5);
-    // let sum = x + y; // ERROR: Rust doesn't know how to add `i8` and `Option<i8>` because they are different types.
-    // To add them, you first need to convert `Option<i8>` into `i8` and handle the nullable case explicitly.
+
+    // let sum = x + y; // ERROR: cant add `i8` and `Option<i8>` because they are different types.
+    // You first need to convert `Option<i8>` into `i8` and handle the nullable case explicitly.
 
 
 
@@ -1053,7 +1167,7 @@ fn main() {
 
     // === Match expression
     // Match expression: it will run different code depending on which variant of the enum it has.
-    // Match compares a value against a series of patterns: literal values, variable names, wildcards, ... 
+    // Match compares a value against a series of patterns: literal values, variable names, wildcards, ...
     // See more in Chapter 18.
 
     // Coin matching: map to a value
@@ -1082,6 +1196,15 @@ fn main() {
         Alabama,
         Alaska,
         // ...
+    }
+    impl UsState {
+        fn existed_in(&self, year: u16) -> bool {
+            match self {
+                UsState::Alabama => year >= 1819,
+                UsState::Alaska => year >= 1959,
+                // -- snip --
+            }
+        }
     }
 
     enum UsCoin {
@@ -1115,12 +1238,12 @@ fn main() {
     fn plus_one(x: Option<i32>) -> Option<i32> {
         match x {
             None => None,
-            // Match and bind 
+            // Match and bind
             Some(i) => Some(i+1),
         }
     }
 
-    // Matches are exhaustive: the patterns must cover all possibilities. 
+    // Matches are exhaustive: the patterns must cover all possibilities.
     // The compiler won't let you forget a variant.
 
 
@@ -1151,7 +1274,8 @@ fn main() {
     // === if let
     let config_max = Some(3u8);
 
-    // too wordy
+    // too wordy: annoying boilerplate:
+    // we have to add _ => () after processing just one variant.
     match config_max {
         Some(max) => println!("The maximum is configured to be {}", max),
         _ => (),
@@ -1159,6 +1283,7 @@ fn main() {
 
     // more concise.
     // It takes a pattern and an expression and does the matching, but for only one arm.
+    // Like pattern matching/destructuring, with enum unwrap.
     if let Some(max) = config_max {
         println!("The maximum is configured to be {}", max);
     }
@@ -1170,8 +1295,37 @@ fn main() {
     } else {
         //...
     }
-}
 
+    // Here's a way to stay on the happy path and exit early:
+    fn describe_state_quarter(coin: UsCoin) -> Option<String> {
+        // Take advantage of the fact that expressions produce a value
+        let state = if let UsCoin::Quarter(state) = coin {
+            state
+        } else {
+            // Exit early
+            return None;
+        };
+
+        if state.existed_in(1900) {
+            Some(format!("{state:?} is pretty old, for America!"))
+        } else {
+            Some(format!("{state:?} is relatively new."))
+        }
+    }
+    // To make this common pattern nicer to express, Rust has `let ... else`:
+    fn describe_state_quarter2(coin: UsCoin) -> Option<String> {
+        // Unwrap or exit early
+        let UsCoin::Quarter(state) = coin else {
+            return None;
+        };
+
+        if state.existed_in(1900) {
+            Some(format!("{state:?} is pretty old, for America!"))
+        } else {
+            Some(format!("{state:?} is relatively new."))
+        }
+    }
+}
 
 fn add_fancy_hat(){}
 fn remove_fancy_hat(){}
@@ -1183,7 +1337,7 @@ fn move_player(_other: i32){}
 
 
 
-# rust/a08_packages
+# rust/a08-packages
 ## Packages, Creates, Modules, Paths
 
 Module system includes:
@@ -1194,7 +1348,7 @@ Module system includes:
 * Paths: A way of naming an item, such as a struct, function, or module
 
 A *crate* is the smallest amount of code that Rust compiler considers at a time.
-A single source file is a crate. 
+A single source file is a crate.
 
 A *crate* can come in one of two forms:
 
@@ -1205,14 +1359,14 @@ A *crate* can come in one of two forms:
 The *crate root* is a source file that the Rust compiler starts from.
 It makes up the root module of your crate.
 
-A *package* is a bundle of one or more crates: it has a `Cargo.toml` file that describes 
+A *package* is a bundle of one or more crates: it has a `Cargo.toml` file that describes
 how to build those crates. A package can contain many binary crates, but at most one library crate.
 
 In `Cargo.toml`, there's no reference to `src/main.rs`: cargo follows a convention that this file is
 the crate root of a binary crate, named after the package.
 
 If a package contains both `src/main.rs` and `src/lib.rs`, it has two crates: a binary crate, and a library crate.
-A package can have multiple binary crates by placing files in the `src/bin` directory: 
+A package can have multiple binary crates by placing files in the `src/bin` directory:
 each file will be a separate binary crate.
 
 ### Modules Cheat Sheet
@@ -1221,33 +1375,87 @@ How modules work:
 
 * When compiling a crate, the compiler first looks in the crate root file (usually `src/main.rs` or `src/lib.rs`).
 * In the crate root file, you can declare new modules:
-  
+
   ```rust
   mod garden;
   ```
 
-  The compiler will look for the module's code in: `mod garden { ... }`, or in `src/garden.rs`, or in `src/garden/mod.rs`.
+  The compiler will look for the module's code in:
+  * `mod garden { ... }`, or in
+  * `src/garden.rs`, or in
+  * `src/garden/*.rs` files, or in
+  * `src/garden/mod.rs` (older style).
 
-* A submodule can be defined as `mod vegetables { ... }`, or in `src/garden/vegetables.rs`, or in `src/garden/vegetables/mod.rs` (older style).
+* A submodule can be defined as:
+
+  * `mod vegetables { ... }`, or in
+  * `src/garden/vegetables.rs`, or in
+  * `src/garden/vegetables/*.rs` files, or in
+  * `src/garden/vegetables/mod.rs` (older style).
+
 * Module code is private by default. Use `pub mod` to declare a module public.
 * You can refer to submodule types as `crate::garden::vegetables::Asparagus`.
 * Bring types into scope with `use crate::garden::vegetables::Asparagus` to reduce typing.
 
+So, module's code lives in `module.rs`: it's the "header file",
+and its submodules live in `module/*.rs` files.
 
 
 
 
 
-# rust/a08_packages/src
+# rust/a08-packages/src
 
 
-# rust/a08_packages/src/main.rs
+# rust/a08-packages/src/garden.rs
 
 ```rust
-use crate::garden::vegetables::Asparagus;
+// I am module: crate::garden
+
+// Include module:   vegetables
+// Re-publish it as: garden::vegetables
+pub mod vegetables;
+
+```
+
+
+
+
+
+# rust/a08-packages/src/garden
+
+
+# rust/a08-packages/src/garden/vegetables.rs
+
+```rust
+// I am module: garden::vegetables
+
+#[derive(Debug)]
+pub struct Asparagus {}
+
+```
+
+
+
+
+
+# rust/a08-packages/src
+
+
+# rust/a08-packages/src/main.rs
+
+```rust
+// This is the binary crate: src/main.src
+// It will be compiled into a binary.
+
 
 // Tells the compiler to include garden.rs
-pub mod garden;
+// It tells the compiler: this module exists and should be compiled as a part of this crate.
+mod garden;
+
+// Use module: garden/vegetables.rs, struct Asparagus
+// Tells the compiler: give me a shortcut to this thing.
+use crate::garden::vegetables::Asparagus;
 
 fn main() {
     let plant = Asparagus {};
@@ -1258,37 +1466,7 @@ fn main() {
 
 
 
-# rust/a08_packages/src/garden.rs
-
-```rust
-// Includes vegetables.rs
-pub mod vegetables;
-
-```
-
-
-
-
-
-# rust/a08_packages/src/garden
-
-
-# rust/a08_packages/src/garden/vegetables.rs
-
-```rust
-#[derive(Debug)]
-pub struct Asparagus {}
-
-```
-
-
-
-
-
-# rust/a08_packages/src
-
-
-# rust/a08_packages/src/lib.rs
+# rust/a08-packages/src/lib.rs
 
 ```rust
 // This is a library crate.
@@ -1297,15 +1475,22 @@ pub struct Asparagus {}
 
 // Define a module.
 // A module groups related definitions together.
+//
+// The code can be in back_office.rs
 mod back_office {
     // All items are private by default.
     // So, if you want to make an item private, you put it in a module.
     // That is, Rust is hiding inner implementation details by default.
-    
-    // Items in a parent module can't use the private items inside child modules.
-    // However, items in child modules can use the items in their ancestor modules. 
-    // This is because child modules wrap and hide their implementation details, 
-    // but child modules can see the context in which they are defined.
+
+    // Items in a parent module can't use the private items inside child modules:
+    // child modules are *implementation details* of the parent; parents can't see them.
+    //
+    // However, child modules know the context they're defined in:
+    // e.g. they can use public methods and definitions of the parent.
+    //
+    // Also, if the child has made something `pub`, then the parent could use it.
+    //
+    // ❗ So, every definition flows inward, but only `pub` definitions flow outward.
 
     // Making a module public doesn't make the items public.
     // Every exported item must be marked with `pub` as well.
@@ -1342,7 +1527,7 @@ pub fn eat_at_restaurant() {
     back_office::hosting::add_to_waitlist();
 
     // Bring `hosting` into scope to reduce typing. It's just a shortcut.
-    // It is idiomatic to bring the module into scope rather than just the function: 
+    // It is idiomatic to bring the module into scope rather than just the function:
     // module name makes it clear that it's not a local function.
     use back_office::hosting;
     hosting::add_to_waitlist();
@@ -1372,143 +1557,18 @@ use std::collections::*;
 
 
 
-# rust/a09_collections/src
+# rust/a09-collections
 
 
-# rust/a09_collections/src/main.rs
+# rust/a09-collections/Cargo.toml
 
-```rust
-#[allow(unused_variables)]
-fn main() {
-    // === Vector === //
-    // Vector: Vec<T> is a list of items of the same type, stored in the heap, next to each other in memory.
-    let v: Vec<i32> = Vec::new();
+```toml
+[package]
+name = "a09-collections"
+version = "0.1.0"
+edition = "2024"
 
-    // Empty vector needs a type.
-    // When values are provided, the compiler will infer the type from the values:
-    let mut v = vec![1, 2, 3]; // macro
-
-    // Add elements
-    // NOTE: don't forget to make the value mutable!
-    v.push(4);
-
-    // Get element
-    let third: &i32 = &v[2];  // Will panic if index is out of bounds
-    let third: Option<&i32> = v.get(2); // Will not panic, but return an Option<T>
-    match third {
-        Some(third) => println!("Third={third}"),
-        None => println!("Third=<none>"),
-    }
-
-    // Iterate
-    for i in &mut v { // iterate mutable: make changes
-        *i += 50;
-    }
-    for i in &v { // iterate immutable: just read
-        println!("i={i}");
-    }
-
-    // Vectors can store values that are the same type.
-    // Let's use enums to store different value types:
-    enum SpreadsheetCell {
-        Int(i32),
-        Float(f64),
-        Text(String),
-    }
-    let row = vec![
-        SpreadsheetCell::Int(3),
-        SpreadsheetCell::Text(String::from("blue")),
-        SpreadsheetCell::Float(10.12),
-    ];
-
-
-
-
-
-
-    // === String === //
-    // `str` literals are stored in the program's binary.
-    // `String` are growable, mutable, owned, UTF8-encoded.
-    // Strings are implemented as a vector of bytes + methods used when those bytes are interpreted as text.
-    let s = "initial string".to_string();
-    let s = String::from("initial_string");
-
-    // Append a string
-    let mut s = String::new();
-    s.push_str("Hello");
-
-    // Append a byte, a single character
-    s.push('!');
-
-    // Concat strings
-    let s1 = String::from("Hello, ");
-    let s2 = String::from("world!");
-    let s3 = s1 + &s2;  // NOTE: `s1` has been moved here, `s1` can no longer be used
-                        // NOTE: `&s2` because of the method signature: `fn add(self, s: &str)`
-
-    // Format: add multiple strings together
-    let s1 = String::from("tic");
-    let s2 = String::from("tac");
-    let s3 = String::from("toe");
-
-    let s = format!("{s1}-{s2}-{s3}");
-
-    // Indexing. Because of UTF-8, you can only use ranges:
-    let hello = "Здравствуйте";
-    let s = &hello[0..4]; // takes the first 4 bytes: 2 letters. It will panic if a letter is broken.
-
-    // Iterate over characters
-    for c in "Зд".chars() { // iterate: characters
-        println!("{c}");
-    }
-    for b in "Зд".bytes() { // iterate: bytes
-        println!("{b}");
-    }
-
-
-
-
-
-
-    // === Hash Maps === //
-    // HashMap.
-    // Uses `SipHash` by default: it's slow, but resistant to DoS attacks with hash tables.
-    // Use a faster "hasher" if you like: a type that implements the `BuildHasher` trait.
-    use std::collections::HashMap;
-
-    // Create a hash map
-    let mut scores = HashMap::new();
-
-    // Add values
-    scores.insert(String::from("Blue"), 10);
-    scores.insert(String::from("Yellow"), 50);
-
-    // Lookup a value
-    let team_name = String::from("Blue");
-    let score = scores.get(&team_name).copied().unwrap_or(0);
-    // .get()       -> Option<&i32>
-    // .copied()    -> Option<i32>
-    // .unwrap_or() -> i32
-
-    // Iterate
-    for (key, value) in &scores {
-        println!("{key}: {value}");
-    }
-
-    // If a value is already there: 1) overwrite
-    scores.insert(String::from("Blue"), 25);
-
-    // If a value is already there: 2) insert only if not present
-    scores.entry(String::from("Blue")).or_insert(50);
-
-    // If a value is already there: 3) update
-    let text = "hello world wonderful world";
-    let mut wordcount = HashMap::new();
-    for word in text.split_whitespace() {
-        let count = wordcount.entry(word).or_insert(0);
-        *count += 1;
-    }
-}
+[dependencies]
 
 ```
 
@@ -1516,22 +1576,24 @@ fn main() {
 
 
 
-# rust/a10_errors
+# rust/a10-errors
 
 
-# rust/a10_errors/Cargo.toml
+# rust/a10-errors/Cargo.toml
 
 ```toml
 [package]
-name = "a10_errors"
+name = "a10-errors"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [profile.release]
 # Default panic!() behavior: unwinding:
-# that is, Rust walks back up the stack and cleans up the data from each function.
-# This is expensive. Alternative: immediate aborting, with no cleaning up.
+#   Rust walks back up the stack and cleans up the data from each function.
+# This is expensive.
+# Alternative: immediate aborting, with no cleaning up.
 # To be used when you need a binary to be as small as possible.
+# Difference:
 panic = 'abort'
 
 [dependencies]
@@ -1542,26 +1604,30 @@ panic = 'abort'
 
 
 
-# rust/a10_errors/src
+# rust/a10-errors/src
 
 
-# rust/a10_errors/src/main.rs
+# rust/a10-errors/src/main.rs
 
 ```rust
+// Improt the Error trait ("interface")
 use std::error::Error;
 
 
-// The `Box<dyn Error>` is a "trait object". For now, you can read it to mean "any kind of error"
+
+// Rust does not have exceptions, but functions can return result/error:
+// - `Result<T, E>` for recoverable errors,
+// - `panic!()` macro for unrecoverable errors
+//
+// The `Box<dyn Error>` is a "trait object".
+// For now, you can read it to mean "any kind of error"
+//
+// main() can return a Result
+// with any type that implements `std::process::Termination` trait: converts to an ExitCode.
 fn main() -> Result<(), Box<dyn Error>> {
-    // Rust has two types:
-    // `Result<T, E>` for recoverable errors,
-    // `panic!()` macro for unrecoverable errors
-
-
-
-
 
     // === Result<T, E> === //
+    // Result<T, E> is an enum with two options:
     // enum Result<T,E> { Ok(T), Err(E) }
 
     // Example: open a file, handle result
@@ -1587,7 +1653,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     // There's a lot of `match`.
-    // In Chapter 13, you'll learn about closures. They can be more concise: e.g. `unwrap_or_else()`
+    // In Chapter 13, you'll learn about closures. They can be more concise:
+    // e.g. use `unwrap_or_else()`: provides fallback value on err
+    //
+    // Docs: `unwrap_or_else()`: Returns the contained Ok value or computes it from a closure.
     let greeting_file = File::open("hello.txt").unwrap_or_else(|error| {
         if error.kind() == ErrorKind::NotFound {
             File::create("hello.txt").unwrap_or_else(|error| {
@@ -1670,10 +1739,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 
 
-# rust/a11_generics_traits_lifetimes/src
+# rust/a11-generics-traits-lifetimes/src
 
 
-# rust/a11_generics_traits_lifetimes/src/main.rs
+# rust/a11-generics-traits-lifetimes/src/main.rs
 
 ```rust
 use std::fmt::Display;
@@ -1683,10 +1752,13 @@ use std::fmt::Debug;
 #[allow(unused_variables)]
 #[allow(dead_code)]
 fn main() {
+    //=== Generics ===//
+
     // A function that finds the largest item in the slice
-    // The <T> must be a comparable value: have a trait that allows comparisons
+    // The <T> must be a comparable value: have a *trait* that allows comparisons:
+    //            std::cmp::PartialOrd
     fn largest<T: std::cmp::PartialOrd>(list: &[T]) -> &T {
-        let mut largest = &list[0];
+        let mut largest = &list[0]; // bad but fine for now
 
         for item in list {
             if item > largest {
@@ -1713,7 +1785,7 @@ fn main() {
         }
     }
 
-    // Constraints: we can implement methods only on Poing<f32> instances
+    // Constraints: we can implement methods only on Point<f32> instances
     impl Point<f32> {
         fn distance_from_origin(&self) -> f32 {
             (self.x.powi(2) + self.y.powi(2)).sqrt()
@@ -1736,29 +1808,31 @@ fn main() {
         fn summarize(&self) -> String;
     }
 
-    // Implement a trait
+    // Implement a trait on a struct:
     pub struct NewsArticle {
         pub headline: String,
         pub location: String,
         pub author: String,
         pub content: String,
     }
-
-    impl Summary for NewsArticle {  // implements a trait
+    // No duck typing in Rust: a struct must explicitly implement a trait to satisfy it.
+    impl Summary for NewsArticle {
         fn summarize(&self) -> String {
             format!("{}, by {} ({})", self.headline, self.author, self.location)
         }
     }
 
 
-    // A trait with a default behavior.
-    // It will be overridden by specific implementationa
+    // A trait function can have a body: this is the default behavior.
+    // It will be overridden by specific implementation.
     pub trait Summary2 {
         fn summarize(&self) -> String {
             String::from("(Read more...)")
         }
     }
-    impl Summary2 for NewsArticle {} // use the default implementation
+    impl Summary2 for NewsArticle {
+        // use the default implementation
+    }
 
 
     // A function that has a trait as a parameter:
@@ -1767,11 +1841,16 @@ fn main() {
         println!("Breaking news! {}", item.summarize());
     }
 
-    // `&impl Summary` parameter is actually synax sugar for a longer form:
+    // `&impl Summary` parameter is actually syntax sugar for a longer form:
     // the "trait bound":
     pub fn notify2<T: Summary>(item: &T) {
         println!("Breaking news! {}", item.summarize());
     }
+    // Note that the "trait bound" is actually a generic with a constraint:
+    // - "impl Trait" is static dispatch (monomorphization):
+    //   compiler generates a separate version of func for each concrete type used
+    // - "dyn Trait" is dynamic dispatch (vtable) at runtime:
+    //   single function uses *vtable* for method lookup at runtime
 
     // Specify multiple trait bounds
     pub fn notify3(item: &(impl Summary + Display)) {}
@@ -1779,7 +1858,7 @@ fn main() {
 
     // Trait bounds can get very long. That's why Rust has an alternate syntax:
     fn some_function<T, U>(t: &T, u: &U) -> i32
-    where
+    where // table of trait bounds:
         T: Display + Clone,
         U: Clone + Debug,
     {
@@ -1819,7 +1898,7 @@ fn main() {
     // Blanket implementation:
     // implement a method for *any* type that satisfies the trait bounds.
     // This is how standard library has the `.to_string()` method on any type that implements the `Display` trait:
-    impl<T: Display> ToString for T {
+    impl<T: Display> std::string::ToString for T {
         // --snip--
     }
 
@@ -1830,36 +1909,47 @@ fn main() {
 
     // === Lifetimes === //
     // Lifetime: a kind of generic. It ensures that references are valid as long as we need them to be.
+    //
     // Every reference has a "lifetime": the scope for which that reference is valid.
     // Most of the time, lifetimes are implicit or inferred.
+    // We only have to annotate lifetimes when the lifetimes of references could be related in a few different ways.
 
     // The main aim of lifetimes is to prevent "dangling references".
 
-    // Rust has no values. But Rust won't let you use this variable unless you initialize it.
+    // This variable has no value,
+    // but Rust won't let you use this variable unless you initialize it.
     let r;
 
-    // `x` only lives inside this scope. So it we wanted to do `r = &x`, it would fail: `x` doesn't live long enough.
+    // `x` only lives inside this scope. So it we wanted to do `r = &x`, it would fail:
+    //   `x` doesn't live long enough.
     // `r` lives longer, though, because it's defined in the outer scope.
     {
         let x = 5;
-        r = &x;  // will fail
+        r = &x;  // will fail: > `x` does not live long enough
     }
     println!("r: {}", r);
 
 
-    // This will not fail:
+    // This will not fail: because `x` lives long enough.
     let x = 5;
     let r = &x;
 
 
-    // Let's write a function that returns the longest of two strings.
-    // We don't want it to take ownership, so its parameters are references.
 
-    // This won't compile because Rust doesn't know whether the return value referes to `a` or `b`.
-    // Actually, we don't know either: it's dynamic. So the borrow checker won't be able to evaluate lifetimes.
-    //      fn longest(a: &str, b: &str) -> &str {
+
+    // Let's write a function that returns the longest of two strings.
+    // We don't want it to take ownership, so its parameters are references:
+    fn longest1(x: &str, y: &str) -> &str {
+        if x.len() > y.len() { x } else { y }
+    }
+    // This won't compile: > error: expected named lifetime parameter
+    // because Rust doesn't know whether the return value refers to `a` or `b`.
+    // Actually, we don't know either: it's dynamic.
+    // So the borrow checker won't be able to evaluate lifetimes.
+
     // We need to add a lifetime annotation that expresses the following constraint:
     // the returned reference will be valid as long as both the parameters are valid.
+    //
     // The lifetime annotations become part of the contract of the function.
     // The returned reference's lifetime will be equal to: the smallest of the lifetimes of `a` and `b`
     fn longest<'a>(a: &'a str, b: &'a str) -> &'a str {
@@ -1869,17 +1959,18 @@ fn main() {
             b
         }
     }
-
     // A lifetime annotation is placed after the `&` reference.
-    // It's just a named marker. They are used to describe the relationships of the lifetimes of multiple references.
-    let v: &'a i32 = 10;
-    let v2: &'a mut i32 = 20; // has the same lifetime!
+    // It's just a named marker.
+    // They are used to describe the relationships of the lifetimes of multiple references:
+    // if two values have the same marker, they're expected to be valid together.
 
 
 
     // So far, our structs had owned types.
     // When a struct holds references, you'd need to add a lifetime annotation on every reference:
-    struct ImportantExcerpt<'a> { // <'a> means the struct can't outlive the `part` field value's reference
+    struct ImportantExcerpt<'a> {
+        // <'a> means the struct can't outlive the reference in the `part` field.
+        // That is, the "part" field must be valid for as long as the struct is valid.
         part: &'a str,
     }
     let novel = String::from("Call me Ishmael. Some years ago...");
@@ -1891,19 +1982,20 @@ fn main() {
     // In Rust, every reference has a lifetime.
     // In many cases, the compiler can infer lifetimes using "lifetime elision rules".
     // If the compiler is not able to resolve an ambiguity, you will need to write the lifetimes explicitly.
-
-    // "Input lifetimes": lifetimes on function or method parameters
-    // "Output lifetimes": lifetimes on return values
-
+    //
     // Rules:
     // 1. Every reference parameter gets a separate lifetime parameter
     // 2. If there is exactly 1 input lifetime parameter, it is assigned to all output lifetime parameters
     // 3. If one parameter is `&self` (it's a method), the lifetime of `self` is assigned to all output lifetimes.
+    //
+    // "Input lifetimes": lifetimes on function or method parameters
+    // "Output lifetimes": lifetimes on return values
 
 
 
 
-    // The 'static lifetime: this reference can live for the entire duration of the program.
+    // The 'static lifetime:
+    // this reference can live for the entire duration of the program.
     // All string literals are static.
     let s: &'static str = "I have a static lifetime";
 
@@ -1912,7 +2004,8 @@ fn main() {
 
 
 
-    // All generics together:
+    // All generics together, in one function:
+    // traits, trait bounds, lifetimes
 
     fn longest_with_an_announcement<'a, T>( // func, with <'a> lifetime generic, with <T> generic
         x: &'a str,
@@ -1942,29 +2035,44 @@ fn main() {
 
 
 
-# rust/a12_tests/src
+# rust/a12-tests/src
 
 
-# rust/a12_tests/src/lib.rs
+# rust/a12-tests/src/lib.rs
 
 ```rust
+// This crate is a library, created with:
+// $ cargo new <name> --lib
+
 // The function to test
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
 
+// A test in Rust is a function that's annotated with the "test" attribute:
+// #[test]
+// When you run
+// $ cargo test
+// Rust builds a test runner binary that runs the annotated functions.
+
+// When you create a library create, Rust generates a test function already in the same file:
+// $ cargo new <name> --lib
 
 // The convention is to create a module "tests" in each file, and annotate the module with `#[cfg(test)]`:
-// this annotation tells Rust to only compile this code when you run `cargo test`, not `cargo build`
-#[cfg(test)]
-mod tests {
-    // Import all names from the root module
+// this annotation tells Rust to only compile this code when you run `cargo test`, not `cargo build`.
+//
+// Alternatively, create a "tests/*.rs" directory and put your tests there.
+// Every file in "tests/*.rs" is compiled as a separate crate.
+#[cfg(test)] // Only build for `cargo test`, never for `cargo build`
+mod tests {  // Tests module
+    // Import all names from the root module.
+    // Remember that in Rust submodules can have access to parent modules: because
+    // submodules are "implementation detail" of the parent module.
     use super::*;
 
     // A test is any function annotated with the "test" attribute
     #[test]
     fn it_works() {
-        // NOTE: visibility: child modules can use the items from their ancestor modules.
         let result = add(2, 2);
 
         // `assert_eq!()` macro compares the two values. It will panic if the test fails.
@@ -2004,10 +2112,10 @@ mod tests {
 
 
 
-# rust/a12_tests/tests
+# rust/a12-tests/tests
 
 
-# rust/a12_tests/tests/common.rs
+# rust/a12-tests/tests/common.rs
 
 ```rust
 pub fn setup(){
@@ -2017,7 +2125,7 @@ pub fn setup(){
 
 
 
-# rust/a12_tests/tests/integration_test.rs
+# rust/a12-tests/tests/integration_test.rs
 
 ```rust
 // Rust will compile each file under ./tests as an individual crate.
@@ -2034,22 +2142,64 @@ fn it_adds_two() {
     common::setup();
     assert_eq!(4, a12_tests::add(2, 2));
 }
+
 ```
 
 
 
 
 
-# rust/a13_cli_app/src
+# rust/a13-command-line-app/src
 
 
-# rust/a13_cli_app/src/lib.rs
+# rust/a13-command-line-app/src/main.rs
 
 ```rust
-// has: Files & filesystem
+// use: Environment and arguments
+use std::env;
+
+// use: Exit()
+use std::process;
+
+// Our lib: we use `Config`, `run()`
+use a13_command_line_app as minigrep;
+
+fn main() {
+    // Get cmdline arguments.
+    // NOTE: it will panic if argument contains invalid Unicode.
+    // To accept invalid unicode, use `args_os()` instead.
+    let args: Vec<String> = dbg!(env::args().collect());
+
+    // Config(): our library func that returns a Config
+    let config = minigrep::Config::new(&args).unwrap_or_else(|err| {
+        // `eprintln!()` prints to stderr
+        eprintln!("Problem parsing arguments: {err}");
+        eprintln!("Usage: {} <pattern> <filename>", args[0]);
+        process::exit(255);
+    });
+    println!("config={config:?}");
+
+    // Logic moved into lib.rs
+    // run() the logic
+    if let Err(e) = minigrep::run(config) {
+        eprintln!("Application error: {e}");
+        process::exit(1);
+    }
+}
+```
+
+
+
+# rust/a13-command-line-app/src/lib.rs
+
+```rust
+// use: Files & filesystem
 use std::fs;
 
-// has: Error
+// use: Environment
+use std::env;
+
+// use: Error
 use std::error::Error;
 
 // Logic
@@ -2060,7 +2210,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let contents = fs::read_to_string(config.file_path)?;
 
     // Search
-    for line in search(&config.pattern, &contents) {
+    for line in search(&config.pattern, &contents, &config.ignore_case) {
         println!("{line}");
     }
 
@@ -2069,15 +2219,21 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 
 // Search: pattern in file
 // Lifetime `'a`: the result will live as long as the `contents` argument
-fn search<'a>(pattern: &str, contents: &'a str) -> Vec<&'a str> {
+fn search<'a>(pattern: &str, contents: &'a str, ignore_case: &bool) -> Vec<&'a str> {
     let mut results = Vec::new();
 
     // Search
     for line in contents.lines() {
-        if line.contains(pattern) {
+        if *ignore_case && line.to_lowercase().contains(pattern) {
+            results.push(line);
+        }
+        if !*ignore_case && line.to_lowercase().contains(pattern) {
             results.push(line);
         }
     }
+
+    // Alternatively, use functional approach:
+    results = contents.lines().filter(|line| line.contains(pattern)).collect();
 
     // Done
     results
@@ -2093,11 +2249,47 @@ impl Config {
             return Err("not enough arguments");
         }
 
+        // clone() fixes ownership problems — but has runtime cost.
+        // Developers avoid using clone() for more efficient methods.
         let pattern = args[1].clone();
         let file_path = args[2].clone();
+
+        // Read env
+        let ignore_case = env::var("IGNORE_CASE").is_ok();
+
+        // Done
         Ok(Config{
             pattern,
             file_path,
+            ignore_case,
+        })
+    }
+
+    // An improved version of `new()` using iterators that don't need `clone()`:
+    pub fn build(
+        mut args: impl Iterator<Item = String>,
+    ) -> Result<Config, &'static str> {
+        // Skip arg[0]
+        args.next();
+
+        // arg[1]: pattern
+        let pattern = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a query string"),
+        };
+
+        // arg[2]: file path
+        let file_path = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a file path"),
+        };
+
+        let ignore_case = env::var("IGNORE_CASE").is_ok();
+
+        Ok(Config {
+            pattern,
+            file_path,
+            ignore_case,
         })
     }
 }
@@ -2107,6 +2299,7 @@ impl Config {
 pub struct Config {
     pattern: String,
     file_path: String,
+    ignore_case: bool,
 }
 
 
@@ -2131,55 +2324,19 @@ Pick three.
 
 
 
-# rust/a13_cli_app/src/main.rs
-
-```rust
-// has: Environment and arguments
-use std::env;
-
-// has: Exit()
-use std::process;
-
-// Our lib: we use `Config`, `run()`
-use a13_cli_app as minigrep;
-
-fn main() {
-    // Get cmdline arguments.
-    // NOTE: it will panic if argument contains invalid Unicode.
-    // To accept invalid unicode, use `args_os()` instead.
-    let args: Vec<String> = dbg!(env::args().collect());
-    let config = minigrep::Config::new(&args).unwrap_or_else(|err| {
-        // `eprintln!()` prints to stderr
-        eprintln!("Problem parsing arguments: {err}");
-        eprintln!("Usage: {} <pattern> <filename>", args[0]);
-        process::exit(255);
-    });
-    println!("config={config:?}");
-
-    // Logic moved into lib.rs
-    // Run it, handle errors
-    if let Err(e) = minigrep::run(config) {
-        eprintln!("Application error: {e}");
-        process::exit(1);
-    }
-}
-```
 
 
+# rust/a14-functional/src
 
 
-
-# rust/a14_functional/src
-
-
-# rust/a14_functional/src/main.rs
+# rust/a14-functional/src/main.rs
 
 ```rust
 use std::collections::HashMap;
 
 // === Closures.
-// Closures capture values from their scope and can use them elsewhere,
-// even it evaluated in a different context.
+// Closures capture values from their scope and can use them.
+// Even if evaluated in a different context.
 
 #[derive(Debug, Eq, PartialEq, Hash, Copy, Clone)]
 enum ShirtColor {
@@ -2257,13 +2414,25 @@ fn main() {
     // * `FnMut`:  closures that don't move captured values out of their body,
     //             but that might mutate the captured values.
     //             This trait is used when a closure is going to be called multiple times
-
-    // Another explanation:
+    // Every `Fn` is also `FnMut`, and every `FnMut` is also `FnOnce`.
+    //
     // With closures as input parameters, the closure's complete type must be annotated:
-    // * `Fn` the closure uses the captured value by reference (`&T`)
-    // * `FnMut` the closure uses ehe captured value by mutable reference (`&mut T`)
+    // * `Fn`     the closure uses the captured value by reference (`&T`)
+    // * `FnMut`  the closure uses ehe captured value by mutable reference (`&mut T`)
     // * `FnOnce` the closure uses the captured value by value
     // The compiler will capture variables in the least restrictive manner possible.
+    //
+    // In other words:
+    // Closures auto-implement traits based on what they do with captured values:
+    // `FnOnce` - Consumes captured values, can only run once
+    let consume = || drop(s);  // Moves s out
+    // `FnMut`  - Mutates captured values, can run multiple times
+    let mut count = 0;
+    let mut increment = || count += 1;
+    // `Fn`     - Only reads captured values (or captures nothing), can run multiple times even concurrently.
+    let print = || println!("{count}");
+
+
 
     // Example: a list of rectangles
     let mut list = [
@@ -2302,7 +2471,7 @@ fn main() {
     // `.into_iter()` creates an iterator that takes ownership of `v1` and returns owned values
     // `.iter_mut()` creates an iterator over mutable references
     let v1_iter = v1.iter(); // store the iterator
-    for value in v1_iter {  // use the iterator. The loop take ownership and makes it mutable (!)
+    for value in v1_iter {  // use the iterator. The loop takes ownership and makes it mutable (!)
         println!("Iterated value: {value}");
     }
 
@@ -2366,16 +2535,17 @@ struct Rectangle {
     width: u32,
     height: u32,
 }
+
 ```
 
 
 
 
 
-# rust/a15_cargo/src
+# rust/a15-cargo/src
 
 
-# rust/a15_cargo/src/lib.rs
+# rust/a15-cargo/src/lib.rs
 
 ```rust
 //! # My crate
@@ -2396,11 +2566,11 @@ struct Rectangle {
 /// This code will actually be run as a unit-test:
 ///
 /// ```rust
-/// # // line prefixed with `#` is ignored in the documetation, but is still tested!
+/// # // line prefixed with `#` is ignored in the documentation, but is still tested!
 /// let arg = 5;
 /// let answer = a15_cargo::add_one(arg);
 /// assert_eq!(6, answer);
-/// ```
+/// ```=]p-----
 ///
 /// # Panics
 /// never panics
@@ -2455,25 +2625,26 @@ pub mod artistic {
 
 // Re-export a type/function for convenience
 pub use self::artistic::PrimaryColor;
+
 ```
 
 
 
 
 
-# rust/a15_cargo
+# rust/a15-cargo
 
 
-# rust/a15_cargo/Cargo.toml
+# rust/a15-cargo/Cargo.toml
 
 ```toml
-# crate medata
+# Cargo.toml: crate metata
 # used when publishing to crates.io:
 # $ cargo publish
 [package]
 name = "a15_cargo"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 license = "MIT"  # open-source :)
 description = "A crate that does nothing"
@@ -2493,19 +2664,29 @@ opt-level = 3  # the default
 
 
 # A "workspace" is a set of packages that share the same `Cargo.lock` and output directory.
-# It you to split one large lib.rs into smaller packages.
-# Run this to create a binary sub-crate:
+# It allows you to split one large lib.rs into smaller packages.
+#
+# Why? Because:
+# * Modules share the same compilation unit and dependencies.
+# * Crates in a workspace are separate compilation units with independent dependencies.
+# Benefits:
+# * Cargo can compile independent crates simultaneously.
+# * Recompilation boundaries: change code in one crate -- and it recompiles only one crate,
+#   not the whole thing. Faster recompilation when testing.
+#
+# Run this to create a library sub-crate:
 # $ cargo new adder --lib
 #
 # The workspace has one target directory.
 # Compiled artifacts will end up in ./target
-[workspace]
-members = [
-    # sub-library.
-    # Generate it with:
-    # $ cargo new adder --lib
-    "adder"
-]
+# # NOTE: commented out because our top-level Cargo.toml complains
+# [workspace]
+# members = [
+#     # sub-library.
+#     # Generate it with:
+#     # $ cargo new adder --lib
+#     "adder"
+# ]
 
 
 
@@ -2525,27 +2706,13 @@ pretty_assertions = "1"
 
 
 
-# rust/a15_cargo/adder/src
+# rust/a15-cargo/src
 
 
-# rust/a15_cargo/adder/src/lib.rs
-
-```rust
-pub fn add_one(x: i32) -> i32 {
-    x + 1
-}
-```
-
-
-
-
-
-# rust/a15_cargo/src
-
-
-# rust/a15_cargo/src/main.rs
+# rust/a15-cargo/src/main.rs
 
 ```rust
+// Use our sub-crate as a library
 use adder;
 
 fn main() {
@@ -2560,64 +2727,103 @@ fn main() {
 
 
 
-# rust/a16_smart_pointers/src
+# rust/a15-cargo/adder/src
 
 
-# rust/a16_smart_pointers/src/main.rs
+# rust/a15-cargo/adder/src/lib.rs
+
+```rust
+pub fn add_one(x: i32) -> i32 {
+    x + 1
+}
+```
+
+
+
+
+
+# rust/a16-smart-pointers/src
+
+
+# rust/a16-smart-pointers/src/main.rs
 
 ```rust
 fn main() {
-    // Smart pointers: data structures that act like a pointer, but also have additional capabilities.
+    // Smart pointers: data structures that act like a pointer, but also have
+    // additional capabilities:
     // E.g. `Rc`: reference counting smart pointer that allows data to have multiple owners.
 
     // In many cases, smart pointers *own* the data they point to.
     // `String` and `Vec<T>` count as smart pointers because they own some memory
     // and allow you to manipulate it.
-    // As for extra capacities: `String` stores its capacity, and has the ability to ensure valid UTF-8;
+    // As for extra capacities:
+    // `String` stores its capacity, and has the ability to ensure valid UTF-8;
 
     // Smart pointers implement `Deref` and `Drop` traits:
-    // * `Deref` allows an instance of the smart pointer (usually a struct) to behave like a reference
-    // * `Drop` allows you to customize the code that's run when an instance goes out of scope (destructor?)
+    // * `Deref` allows an instance of the smart pointer (usually a struct)
+    //    to behave like a reference
+    // * `Drop` customizes the code that's run when an instance goes out of scope
 
     // Many libraries have their own smart pointers, but here are the most common ones:
     // * `Box<T>` for allocating values on the heap
+    //    called this way because it "boxes" a value: puts a container on the heap.
+    //    "Boxing" is old programming terminology: "wrap a value in a heap-allocated object".
     // * `Rc<T>` a reference counting type that enables multiple ownership
-    // * `Ref<T>` and `RefMut<T>`: enforces the borrowing rules at runtime instead of compile time.
-    //   They are accessed through `RefCell<T>`
-    // * "Interior mutability": when an immutable type exposes and API for mutating an interior value
+    //   Note that `Rc` only gives shared references: you can't mutate throught it.
+    //   ❗ Only for single-threaded uses! Because it uses non-atomic reference counting.
+    //   ❗ For multi-threaded, use `Arc<T>` with an atomic counter under the hood.
+    //   Why? Atomic operations are slower than regular inc/decrements:
+    //   there is synchronization overhead involved. Simpl, `Rc<T>` is cheaper.
+    // * `RefCell<T>` moves borrow checking from compile time to runtime.
+    //   It solves mutability problem for `Rc<T>`:
+    //   Mutable: Rc::new(RefCell::new(vec![1, 2, 3]));
+    //   Use `.borrow()`     to get `Ref<T>`    (immutable borrow)
+    //   Use `.borrow_mut()` to get `RefMut<T>`   (mutable borrow)
+    //   It panics if you violate borrowing rules: e.g. multiple mutable borrows
+    //   ❗ NOTE: `RefCell<T>` is only for use in single-threaded scenarios!!
+    //   ❗ See `Mutex<T>`: the thread-safe version of RefCell<T>
+    // * `Ref<T>` and `RefMut<T>`: enforce borrowing rules at runtime.
+    //   You never construct them directly: only get them from a RefCell<T>.
 
-
-    // An overview:
+    // Comparison:
     // * `Rc<T>` enables multiple owners of the same data;
     //   `Box<T>` and `RefCell<T>` have single owners.
     // * `Box<T>` allows immutable or mutable borrows checked at compile time;
     //   `Rc<T>` only allows immutable borrows checked at compile time;
     //   `RefCell<T>` allows immutable or mutable borrows checked *at run time*.
-    // * With `RefCell<T>`, you can mutate the value inside it even when the `RefCell<T>` is immutable.
+    // * `RefCell<T>` allows you to mutate the value inside it
+
 
 
 
 
     // === Box<T>
-    // Boxes allow you to store data on the heap rather than the stack. The stack will only have a pointer to the heap.
+    // Boxes allow you to store data on the heap rather than the stack.
+    // The stack will only keep a pointer to the heap.
+    //
     // Boxes don't have performance overhead (other than storing their data on the heap).
     // Use boxes when:
     // * When you have a type whose size can't be known at compile time
     // * When you have a large amount of data and want to transfer ownership without copying data
-    // * When you want a value of any type, but with a specific trait
+    // * When you want to own a value — and you only care that it's a type that implements a trait
+    //   rather than being of a specific type.
 
     // Store this `i32` on the heap.
     // When the owned Box goes out of scope, it will be deallocated.
     let _ = Box::new(5 as i32);  // example: type casting
 
-    // Boxes enable "recursive types": a type that can have another value of the same type as part of itself.
-    // Recursive types pose an issue because at compile time Rust needs to know how much space a type takes up.
+    // Boxes enable "recursive types": a type that can have another value of the same type
+    // as part of itself. Recursive types pose an issue because at compile time Rust needs to know
+    // how much space a type takes up.
+    //
     // Example: cons list. It comes from Lisp, and is a version of a linked list:
-    // each item contains 2 elements: [the value of the current item, next item]. Recursion ends with `Nil`.
-    //  (1, 2, (3, Nil))
+    // each item contains 2 elements:
+    // [the value of the current item, next item]. Recursion ends with `Nil`.
+    // Example: (1, 2, (3, Nil))
 
     enum List {
-        // This naive example will fail: "recursive type `List` has infinite size": "recursive without indirection"
+        // This naive example will fail:
+        // > "recursive type `List` has infinite size": "recursive without indirection"
         // This is because Rust can't figure out how much space it needs to store a `List` value.
         Cons(i32, List),  //FAILS
 
@@ -2663,13 +2869,16 @@ fn main() {
 
     impl<T> MyBox<T> {
         fn new(x: T) -> MyBox<T> {
+            // In our rudimentary example, the value is not even on the heap.
+            // Use std::alloc::alloc() to get memory in the heap.
             MyBox(x)
         }
     }
 
     use std::ops::Deref;
     impl<T> Deref for MyBox<T> {  // implement the `Deref` trait
-        // Defines an associated type for the `Deref` trait to use: it's like a generic parameter
+        // Defines an associated type for the `Deref` trait to use: it's like a generic parameter.
+        // Will explain later, in chapter "Advanced Features"
         type Target = T;
 
         fn deref(&self) -> &Self::Target {
@@ -2696,7 +2905,8 @@ fn main() {
         }
     }
 
-    // Rust won't let you call `.drop()` manually because it will run this function itself. It'd be a double-free.
+    // Rust won't let you call `.drop()` manually:
+    // because it would be a double-drop(): you, then Rust.
     // Use `std::mem::drop()` function if you must:
     let c = CustomSmartPointer{
         data: String::from("hey"),
@@ -2717,12 +2927,12 @@ fn main() {
     // The `Rc<T>` type keeps track of the number of references to a value to determine
     // whether or not the value is still in use. The value is cleaned up when there are 0 references.
 
-    // Example: a person enters the TV room and turn it on. Others come in and join: the TV is still on.
+    // Example: a person enters the TV room and turns it on. Others come in and join: the TV is still on.
     // When the last person leaves the room, they turn the TV off: it's no longer being used.
     // But if someone turns the TV off while others are still watching, there would be an uproar!! :)
 
     // ❗ NOTE: `Rc<T>` is only for use in single-threaded scenarios!!
-    // See Chapter 16: using `Rc<T>` in multithreaded systems.
+    // See Chapter 16: using `Arc<T>` in multithreaded systems.
 
     // Let's implement a value that can be added to two lists:
     let two = Box::new(2); // a value
@@ -2732,8 +2942,9 @@ fn main() {
     // it fails because `list_a` owns the value of `two`: no one else can own it
     use std::rc::Rc;
     let two = Rc::new(2); // a value
+    // Rc::clone() doesn't clone anything: it increments the reference count.
     let _list_a = vec![Rc::new(1), Rc::clone(&two), Rc::new(3)];
-    let _list_b = vec![Rc::new(1), Rc::clone(&two), Rc::new(3)];  // Rc::clone() increments the reference count
+    let _list_b = vec![Rc::new(1), Rc::clone(&two), Rc::new(3)];
 
     // NOTE: two.clone() is also ok, but for most types, it creates a deep copy.
     // The convention is to use Rc::clone() that always makes a shallow copy. It's cheaper.
@@ -2742,7 +2953,7 @@ fn main() {
     println!("RC count for `two`: {}", Rc::strong_count(&two));  //-> 3
 
     // NOTE: `Rc<T>` returns immutable references. You cannot modify the value. It's read-only.
-    // For mutable refrences, see `RefCell<T>`
+    // For mutable references, see `RefCell<T>`
 
 
 
@@ -2750,10 +2961,13 @@ fn main() {
 
 
     // === RefCell<T>
+    // "Interior mutability": when an immutable type exposes and API for mutating an interior value.
+    //
     // "Interior mutability" allows you to mutate data even when there are immutable references to that data.
     // This is normally disallowed, but this pattern uses `unsafe` code to bend the usual rules:
     // code marked as `unsafe` promises to check the rules manually.
-    // So: with `RefCell<T>`, you can mutate the value inside it even when the `RefCell<T>` is immutable.
+    //
+    // So: with `RefCell<T>`, you can mutate the value inside it even as the `RefCell<T>` is immutable.
 
     // This pattern is useful when the conservative compiler doesn't let you do something that you're sure
     // you can safely handle yourself. The compiler is "conservative" in that it would rather reject
@@ -2823,6 +3037,7 @@ fn main() {
     struct MockMessenger {
         // The interface defines `send(&self)` as an immutable reference.
         // But we need a mutable reference that will let us modify the value.
+        //
         // This is where interior mutability can help!
         // We'll store `sent_messages` within a RefCell<T>, which is itself immutable,
         // but the value that it points to is mutable.
@@ -2955,10 +3170,31 @@ fn main() {
 
 
 
-# rust/a17_concurrency/src
+# rust/a17-concurrency/src
+# Rust/Go FFI Performance
+
+What's wrong with FFI?
+CGo uses a separate thread for FFI, which involves copying parameters back and forth.
+The overhead is quite significant. If you're making a lot of FFI calls, e.g. interfacing
+with a C library to process multimedia .. Go is the wrong language.
+Its CGo is 2x slower than Rust. Benchmarks show CGo can add 50-100ns per call vs Rust's ~10ns.
+Because in Rust, an FFI is just a direct function call.
+
+Bottom line: yes, if you're doing heavy FFI (game engines, media processing, database drivers),
+Rust's zero-cost FFI is a real advantage over CGo. For occasional FFI calls, doesn't matter much.
+
+Same applies to syscalls: because they're FFI calls into the kernel.
+In Go, every syscall has CGo-like overhead: the runtime has to coordinate goroutine scheduling
+around blocking syscalls. This is why Rust can be faster for I/O-heavy workloads
+that aren't using async. Lots of read(), write(), open() syscalls? Rust's direct approach wins.
+Go mitigates this with its async I/O under the hood (syscalls go through the netpoller
+when possible), but the runtime overhead is still there. For most applications this doesn't
+matter—network latency dwarfs syscall overhead. But for high-performance systems —
+Rust is measurably faster.
 
 
-# rust/a17_concurrency/src/main.rs
+
+# rust/a17-concurrency/src/main.rs
 
 ```rust
 use std::thread;
@@ -2966,10 +3202,15 @@ use std::time::Duration;
 
 
 fn main() {
-    //=== Threads
+    // === Threads
     // Rust stdlib uses a 1:1 model of thread implementation: one OS thread per one language thread.
-    // Why? Because the M:N model requires a runtime, and Rust, being a systems programming language, shouldn't have one.
-    // There are crates that implement other models of threading.
+    // Why? Because the M:N model requires a runtime, and Rust, being a systems programming language,
+    // shouldn't have one.
+    // Actually, Rust used to have "green threads" — but they were removed in Rust 1.0.
+    // There are crates that implement other models of threading:
+    // - Tokio: async tasks multiplexed on thread pool
+    // The Go-style M:N threading model never took off in Rust.
+    // The decision was intentional—predictable performance, no hidden runtime, easier FFI.
 
     // `thread::spawn()` starts a closure in a thread.
     let handle = thread::spawn(|| {
@@ -3054,7 +3295,10 @@ fn main() {
     // When the scope ends, the mutable reference is dropped, and the mutex is auto-unlocked!
     {
         // Get a mutable reference.
-        // `.lock()` will fail if another thread holding the value panicked. No one would able to get the lock.
+        // The `.lock()` blocks the current thread until it is able to acquire the mutex.
+        // Upon returning, the thread is the only thread with the lock held.
+        //
+        // Note: `.lock()` will fail if another thread holding the value panicked. No one would able to get the lock.
         // So we use `.unwrap()` to have this thread panic in this situation.
         let mut num = m.lock().unwrap();
 
@@ -3072,6 +3316,7 @@ fn main() {
     // We need to use `Arc<T>`: atomic reference count.
     use std::sync::Arc;
 
+    // Arc<Mutex> shares the mutex between threads
     let counter = Arc::new(Mutex::new(0)); // shared between threads
     for _ in 0..10 {
         let counter = Arc::clone(&counter);
@@ -3102,7 +3347,10 @@ fn main() {
     use std::marker::Send;
 
     // The `Sync` marker trait indicates that it is safe for the type to be referenced from multiple threads.
-    // Any type `T` is `Sync` if `&T` is `Send`: i.e. an immutable reference to `T` can be sent.
+    //
+    // Any type `T` implements `Sync` if `&T` (an immutable reference to T) implements `Send`,
+    // meaning the reference can be sent safely to another thread. Similar to `Send`,
+    //
     // Primitive types are `Sync`, and types composed entirely of `Sync` types are also `Sync`.
     // `Rc<T>` is not `Sync`: it's not thread-safe.
     // `Mutex<T>` is `Sync`.
@@ -3118,10 +3366,317 @@ fn main() {
 
 
 
-# rust/a18_oop/src
+# rust/a18-async-await/src
 
 
-# rust/a18_oop/src/main.rs
+# rust/a18-async-await/src/lib.rs
+
+```rust
+// Alternative approach to asynchronous programming:
+// Futures, Streams, async/await.
+
+// Differences between parallelism and concurrency:
+// - Concurrency: switching between tasks.                  Example: single-core CPU.
+// - Parallelism: executing tasks at exactly the same time. Example:  multi-core CPU
+// Async in Rust is concurrency.
+// It can, however, use parallelism under the hood (e.g. threadpool)
+
+
+//=== Future ===//
+// A *future* is a value that may not be ready now — but will become ready
+// at some point in the future. Each future holds its own information about the progress
+// that has been made ans what "ready" means.
+//
+// Rust provides a `Future` trait to be used as an interface.
+// You can implement your own data types.
+//
+// You can apply the `async` keyword to blocks and functions to specify that they can be
+// interrupted and resumed.
+// Within an `async` block or function you can use the `await` keyword to *await a future*:
+// that is, wait for it to become ready. This is where functions can be paused & resumed.
+
+
+// Our First Async Program: a little web scraper.
+// We'll pass in two URLs from the command line and fetch both concurrently,
+// then pull their <title> and print out whichever finishes first.
+
+// Use: HTTP requests
+// $ cargo get reqwest
+use reqwest;
+
+
+/// Takes an URL, fetches it, and returns the text in the <title> element
+pub async fn fetch_page_title(url: &str) -> Result<Option<String>, reqwest::Error> {
+    // Load page
+    // ❗ NOTE: Futures in Rust are *lazy*: they won't do anything unless you `await` on them.
+    // This is different from how many other languages approach async!
+    //
+    // NOTE: In Rust, `await` is a postfix keyword! Uncommon, but allows nicer chaining.
+    // Every `await point` is a place where control is handed back to the runtime.
+    // It's actually a state machine that can suspend and result:
+    // the Rust compiler transforms async functions into state machines:
+    // (init, await point 1, await point 2, ..., done)
+    let response = reqwest::get(url).await?;
+
+    // Get text
+    // The method is also async because we have to wait for the entire response to arrive.
+    let response_text = response.text().await?;
+
+    // Parse HTML
+    Ok(extract_title(&response_text))
+}
+
+// This is what we have done.
+//
+// When Rust sees a block marked with the `async` keyword, it compiles it
+// into a unique, anonymous data type that implements the Future trait.
+//
+// When Rust sees a function marked with `async`, it compiles it into a non-async function
+// whose body is an async block: i.e. it returns that anonymous data type with Future trait.
+//
+// Thus, writing an async fn is equivalent to writing a function that returns
+// a *future* of the return type:
+pub fn fetch_page_title_async(url: &str) -> impl Future<Output = Result<Option<String>, reqwest::Error>> {
+    async move {
+        fetch_page_title(url).await
+    }
+}
+
+
+/// Extract <title> from HTML string
+fn extract_title(html: &str) -> Option<String> {
+    // TODO: use "scrape" create with xpath query
+    use regex::Regex;
+    let re = Regex::new(r"(?i)<title>(.*?)</title>").unwrap();
+    re.captures(html)?.get(1).map(|m| m.as_str().to_string())
+}
+
+```
+
+
+
+# rust/a18-async-await/src/main.rs
+
+```rust
+fn main() -> Result<(), Box<dyn Error>> {
+    // Get args
+    let args: Vec<String> = std::env::args().collect();
+    let args = &args[1..]; // skip the 1st one
+
+    // Async code needs a *runtime*: a Rust crate that manages the details of executing async code.
+    // Rust does not bundle a runtime: instead, there are many different runtimes available, each
+    // with different tradeoffs suitable to the use case it targets: huge server or tiny microcontroller.
+    // A runtime executes async functions -- which are hidden state machines.
+    //
+    // Under the hood, every `Future` has a `poll()` method that returns:
+    // are you ready? or still pending? But polling in a loop would be a waste!
+    // Runtimes (like tokio) utilize OS-level I/O readiness mechanisms like epoll/kqueue/select.
+    // The `poll()` method is only called when the underlying resources is likely ready:
+    // the runtime registers a Waker with the driver that will wake up the future.
+    use tokio::runtime::Runtime;
+    let r = Runtime::new()?;
+
+
+    // Fetch one URL to test
+    let title = r.block_on(
+        a18_async_await::fetch_page_title(&args[0])
+    )?.expect("page has no title");
+    println!("Test fetch: {title}");
+
+    // Race our two URLs
+    let title = r.block_on(async {
+        // Futures are only defined and not executed until they're awaited on.
+        let title1 = fetch_page_title(&args[0]);
+        let title2= fetch_page_title(&args[1]);
+
+        // Pin.
+        //
+        // Pin puts a value to the stack so it can't be moved in memory.
+        // Pin is a wrapper for pointer-like types such as &, &mut, Box, and Rc.
+        // (Technically, Pin works with types that implement the Deref or DerefMut traits, but this is effectively the same thing)
+        // It makes sure that the value (the Future's state machine with await points and state)
+        // remains at the same place in memory and is not moved: e.g.
+        // when you move it into a `Vec` or pass it to `join_all` or even return from a function.
+        //
+        // Normally, Rust handles moves itself — but async state machines are a hack.
+        // And Rust won't introduce hidden costs: that's why you have to `pin!()` manually.
+        // So: a Pin is when you move the pointer around, but the data it points to is in the same place.
+        //
+        // Most types are perfectly safe to move around. They have the `Unpin` marker trait.
+        // We only have to pin where items have internal references.
+        // Pinning is required for some futures that are self-referential: with pointers
+        // to their own fields. Without pin!(), you'd need `Box::pin(fut)` to heap-allocate it.
+        let title1 = pin!(title1);
+        let title2 = pin!(title2);
+
+        // select() waits for either one of two Futures to complete
+        match future::select(title1, title2).await {
+            Either::Left((a, _f2)) => a,
+            Either::Right((b, _f1)) => b,
+        }
+    })?;
+
+    // Print it
+    match title {
+        Some(title) => println!("Page title: {title}"),
+        None => println!("Page had no title"),
+    };
+
+    // Use channels to communicate
+    r.block_on(async{
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+
+        // Work in the background.
+        // We ignore the return value: join handle.
+        let tx_fut = async move {
+            for i in 0..3 {
+                tx.send(i.to_string()).unwrap();  // doesn't block.
+                tokio::time::sleep(Duration::from_millis(250)).await;
+            }
+            // We don't have to drop it because it goes out of scope automatically:
+            // thanks to "move" block!
+            // drop(tx);
+        };
+
+        // Receive until exhausted
+        let rx_fut = async {
+            // recv() is async
+            while let Some(value) = rx.recv().await {
+                println!("received '{value}'");
+            }
+        };
+
+        // Join
+        futures::join!(tx_fut, rx_fut);
+        println!("Done");
+    });
+
+    // Spawn N worker threads
+    r.block_on(async{
+        // Spawn tasks: a background worker starts immediately on the executor's thread pool.
+        // It ay execute on the current thread, or it may be sent to a different thread to be executed.
+        // If you `await`, that's like `join()`ing a thread.
+        // NOTE: no need to `pin!()`: `spawn()` pins internally.
+        // Key difference: spawn requires 'static lifetime (no borrowed data), because
+        // the task might outlive the current scope.
+        // Use spawn for parallelism, async blocks for composition.
+        let mut futures = Vec::new();
+        for i in 0..10 {
+            let fut = tokio::task::spawn(async move {
+                println!("task {i}");
+            });
+            futures.push(fut);
+        }
+
+        // Wait on them
+        futures::future::join_all(futures).await;
+    });
+
+    // Collect results from futures:
+    r.block_on(async{
+        let a = async { 1u32 };
+        let b = async { "Hello!" };
+
+        // Collect results
+        let (result_a, result_b) = futures::join!(a, b);
+        println!("results: {result_a}, {result_b}");
+    });
+
+    // More info
+    r.block_on(streams())?;
+
+    // Done
+    Ok(())
+}
+
+
+use std::error::Error;
+use std::time::Duration;
+use std::vec;
+use std::{pin::pin};
+use std::future::Future;
+
+use a18_async_await::fetch_page_title;
+
+use futures::channel::mpsc::UnboundedReceiver;
+use futures::{
+    future::{self, Either},
+};
+use tokio;
+use tokio_stream::{self, StreamExt};
+
+async fn streams() -> Result<(), Box<dyn Error>> {
+    // === Streams === //
+    // The async `recv()` method that we used is known as a *Stream pattern*.
+    // It's like iterator's `.next()` method: `async recv()`.
+    //
+    // Under the hool, Streams also use polling: `poll_next()` (different method)
+
+    // This means that you can create a stream from an iterator:
+    let list = vec![1,2,3];
+    let iter = list.iter().map(|x| x*2);
+    let stream = tokio_stream::iter(iter); // convert to stream
+
+    // Filter stream. Yes, async.
+    let mut stream = stream.filter(|x| x % 3 == 0);
+
+    // Note: methods from traits can only be used if they're in scope.
+    // We use StreamExt to get additional methods on the stream.
+    use tokio_stream::StreamExt;
+    while let Some(value) = stream.next().await {
+        println!("The value was: {value}");
+    }
+
+    // Unique stream features: composing streams.
+    let letters = vec2stream(vec!["a".to_string(), "b".to_string(), "c".to_string()]);
+    let numbers = vec2stream(vec!["1".to_string(), "2".to_string(), "3".to_string()]);
+    // Merge streams
+    // It actually has many Rx features: like `map()`, `throttle()`, ...
+    let stream = letters.merge(numbers);
+
+    // Print them
+    // Stream with a timeout. It comes from `StreamExt` trait.
+    let mut stream = pin!(stream.timeout(Duration::from_millis(300)));
+    while let Some(result) = stream.next().await {
+        match result {
+            Ok(message) => println!("message={message}"),
+            Err(reason) => eprintln!("Problem: {reason:?}"),
+        }
+    }
+
+    // Done
+    Ok(())
+}
+
+
+// Convert: vector to stream
+// It creates a channel and returns the `rx` end: the stream.
+fn vec2stream(messages: Vec<String>) -> impl futures::Stream<Item = String> {
+    // tx, rx
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+
+    // Send messages
+    tokio::task::spawn(async move {
+        for message in messages {
+            tx.send(message);
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    });
+
+    // Return
+    tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
+}
+
+```
+
+
+
+
+
+# rust/a19-oop/src
+
+
+# rust/a19-oop/src/main.rs
 
 ```rust
 fn main() {
@@ -3162,6 +3717,7 @@ fn main() {
     }
 
     // Implement a `Draw` type
+    // NOTE: You explicitly specify which trait you implement
     pub struct Button {
         pub w: u32,
         pub h: u32,
@@ -3181,6 +3737,9 @@ fn main() {
     };
     screen.run();
 
+    // Also, you can bring trait objects with default methods into scope
+    // to get additional methods on existing types!
+    // They're usually called `*Ext`.
 }
 
 ```
@@ -3189,10 +3748,10 @@ fn main() {
 
 
 
-# rust/a19_match/src
+# rust/a20-match/src
 
 
-# rust/a19_match/src/main.rs
+# rust/a20-match/src/main.rs
 
 ```rust
 fn main() {
@@ -3385,6 +3944,8 @@ fn main() {
 
 
     // "@ bindings": create a variable while matching
+    // Lets us create a variable that holds a value at the same time we're matching that value:
+    // it combines a condition + a variable
     enum Say {
         Hello{id: i32},
     }
@@ -3413,10 +3974,10 @@ struct Point {
 
 
 
-# rust/a20_advanced/src
+# rust/a21-advanced/src
 
 
-# rust/a20_advanced/src/main.rs
+# rust/a21-advanced/src/main.rs
 
 ```rust
 use std::slice;
@@ -3455,9 +4016,9 @@ fn main() {
     let mut num = 5;
 
     // Raw pointers
-    let r1 = &num as *const i32;
-    let r2 = &mut num as *mut i32;
-    let r = 0x012345 as *const i32;  // points somewhere :shrug:
+    let r1 = &num as *const i32;  // immutable raw pointer
+    let r2 = &mut num as *mut i32;  // mutable   raw pointer
+    let r = 0x012345 as *const i32;  // points somewhere 🤷
 
     // You can only dereference them in "unsafe" code
     unsafe {
@@ -3509,9 +4070,10 @@ fn main() {
 
     // Here's how you use "abs" function from the "C" standard library.
 
-    // The "C" which ABI (application binary interface) the external function uses: "C" is most common.
+    // The "C" part defints which ABI (application binary interface) the external function uses:
+    // i.e. how to call this function at the assembly level. The "C" ABI is the most common.
     // It governs how functions are called, in terms of which registers to use, etc.
-    extern "C" {
+    unsafe extern "C" {
         // List of function signatures
         fn abs(input: i32) -> i32;
     }
@@ -3564,6 +4126,8 @@ fn main() {
 
 
 
+    // NOTE: Use Miri to check unsafe code!
+    // It requires a nightly Rust build.
 
 
 
@@ -3580,7 +4144,9 @@ fn main() {
 
         fn next(&mut self) -> Option<Self::Item>; // refers to the associated type
     }
+    // Use me: Iterator<Item = str>
 
+    // Implement it for a specific type
     struct Counter{}
     impl Iterator for Counter {
         type Item = u32; // choose the type we implement the trait for
@@ -3591,17 +4157,21 @@ fn main() {
     }
 
 
-    // Question: associated types look very similar to generics. Why not define our iterator like this?
+    // Question: associated types look very similar to generics.
+    // Why not define our iterator like this?
     pub trait GenericIterator<T> {
         fn next(&mut self) -> Option<T>;
     }
     // Because with generics, you can implement a trait multiple times:
-    // an `Iterator<string> for Counter`, then another `Iterator<i32> for Counter`.
-    // So, when a trait has a generic parameter, it can be implemented for a type multiple times,
-    // and we'd need to provide a type annotation every time we called `.next()`.
+    // i.e. have multiple implementations of `Iterator<T> for Counter`.
+    // In other words, when a trait has a generic parameter, it can be implemented for a type
+    // multiple times, changing the concrete types of the generic type parameters each time.
+    // Then, when using `.next()`, we would have to provide type annotations every time
+    // to indicate which implementation of `Iterator` we want to use.
     // With associated types, we don't need to annotate types: it can only be implemented once.
 
-    // However, generic parameters may have a default value: a "default type parameter".
+    // Another difference:
+    // generic parameters may have a default value: a "default type parameter".
     // You'll use them in cases where most users won't need to customize your code.
     pub trait GenericIterator2<T=Self> {
         fn next(&mut self) -> Option<T>;
@@ -3676,7 +4246,8 @@ fn main() {
         fn fly(&self) { println!("Up!"); }
     }
     impl Human {
-        fn fly(&self) { println!("*waving arms furiously*"); } }
+        fn fly(&self) { println!("*waving arms furiously*"); }
+    }
 
     // Two traits implement a method named "fly". Also, a `Human` has their own.
     // Which one to use?
@@ -3867,6 +4438,15 @@ fn main() {
     // "Declarative macros": allow you to write something similar to the `match` expression:
     // they compare literal Rust source code to a pattern, and replaces it with code associated with the pattern.
 
+    // This is a simple macro named `say_hello`.
+    macro_rules! say_hello {
+        // `()` indicates that the macro takes no argument.
+        () => {
+            // The macro will expand into the contents of this block.
+            println!("Hello!")
+        };
+    }
+
     // The `vec!` macro:
     #[macro_export]  // make it available whenever this crate is brought into scope
     macro_rules! vec {  // macro "vec"
@@ -3920,10 +4500,10 @@ fn main() {
 
 
 
-# rust/a21_appendix/src
+# rust/a22-appendix/src
 
 
-# rust/a21_appendix/src/main.rs
+# rust/a22-appendix/src/main.rs
 
 ```rust
 fn main() {
@@ -3967,7 +4547,10 @@ fn main() {
     // Array literals
     let _ = [1; 32]; // array literal containing 32x copies of `1`
 
-    // Turbofish:  `method::<T>` specifies parameters for a generic function/method in an expression
+    // Turbofish:
+    // `method::<T>` specifies parameters for a generic function/method in an expression
+    // Append `::<T>` to a function call
+    // Called this way because ::<> resembles a fish :D
     let numbers: Vec<i32> = vec![
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
     ];
@@ -4009,10 +4592,10 @@ fn main() {
 
 
 
-# rust/a22_rust_by_example/src
+# rust/b01-rust-by-example/src
 
 
-# rust/a22_rust_by_example/src/main.rs
+# rust/b01-rust-by-example/src/main.rs
 
 ```rust
 use std::mem;
@@ -4021,6 +4604,9 @@ use std::str;
 use std::str::FromStr;
 use std::num::ParseIntError;
 use std::error;
+
+
+// Source: https://doc.rust-lang.org/rust-by-example/
 
 
 fn main() {
@@ -4093,15 +4679,15 @@ fn main() {
     // The `From` trait's `.from()` method
     let _my_string = String::from("123");
 
-    // Example: caset from `i32`:
-    struct Num(i32);
+    // Example: implement a trait that casts from `i32`:
+    struct Num(i32);  // tuple struct wrapper
     impl From<i32> for Num {
         fn from(item: i32) -> Self {
             Num(item)
         }
     }
 
-    let _n = Num::from(30);
+    let _n = Num::from(30); // benefit
 
     // The `Into` is simply the reciprocal of the `From` trait.
     // If you have implemented the `From` for your type, `Into` will call it when necessary.
@@ -4133,7 +4719,7 @@ fn main() {
         }
     }
 
-    assert_eq!(EvenNumber::try_from(8), Ok(EvenNumber(8)));
+    assert_eq!(EvenNumber::try_from(8).unwrap(), EvenNumber(8));
 
 
     // === `ToString` and `FromString`
@@ -4143,6 +4729,7 @@ fn main() {
     // For parsing, use the `parse()` function.
     // Either arrange for type inference, or specify the type to parse using the turbofish syntax:
 
+    // Str to int: parse()
     let parsed: i32 = "5".parse().unwrap(); // type inference
     let parsed = "10".parse::<i32>().unwrap(); // turbofish
 
@@ -4166,7 +4753,7 @@ fn main() {
     let result = loop {
         counter +=1;
         if counter >= 10 {
-            break counter*2;
+            break counter*2; // return value from the loop
         }
     }; // returns 20
     println!("result={result}"); //-> 20
@@ -4209,6 +4796,8 @@ fn main() {
 
 
     // It can be used to control error flow: abort or unwind?
+    // Unwind: stack trace. Expensive.
+    // Abort: just quit the app. Cheaper.
     // Control it with:
     // $ rustc lemonade.rs -C panic=abort
     #[cfg(panic = "unwind")]
@@ -4518,1402 +5107,7 @@ fn main() {
 
 
 # rust
-# Further reading
+# Read More
 
-* [Procedural Macros](https://doc.rust-lang.org/book/ch19-06-macros.html#procedural-macros-for-generating-code-from-attributes)
-* [Macros](https://doc.rust-lang.org/rust-by-example/macros.html)
-* [Async Rust](https://rust-lang.github.io/async-book/)
-* [Rust Language Reference](https://doc.rust-lang.org/reference/index.html)
-* [Rust Standard Library](https://doc.rust-lang.org/std/index.html)
-* [Rustonomicon: Unsafe Rust](https://doc.rust-lang.org/nomicon/index.html)
-
-
-
-
-
-# embedded
-
-# Embedded Rust
-
-Reading:
-
-* [Embeeded Discovery Book](https://docs.rust-embedded.org/discovery/): small fun projects to teach you bare metal programming.
-* [The Embedded Rust Book](https://doc.rust-lang.org/stable/embedded-book/): if you are familiar with embedded development
-* [OS Tutorials](https://github.com/rust-embedded/rust-raspberrypi-OS-tutorials): learn to write an embedded OS in Rust! On Pi.
-* [Embedonomicon](https://docs.rust-embedded.org/embedonomicon/): a deep dive into the implementation of the foundational crates: linker, symbols, and ABIs.
-
-More resources:
-
-* [Awesome Embedded Rust](https://github.com/rust-embedded/awesome-embedded-rust): curated list of libraries and teaching materials
-
-
-
-
-
-
-
-# Introduction
-
-
-## Libstd
-The standard library contains primitives to interact with OS systems: FS, network, memory, threads, etc.
-In a bare-metal environment, no code has been loaded before your program, so there's no OS abstractions
-and no POSIX that the standard library depends upon.
-
-To prevent Rust from loading the standard library, use `#![no_std]`. It's a crate-level attribute
-
-The missing libstd also provides a runtime: takes care of setting up stack overflow protection,
-processes command-line arguments, spawns the main thread before a program's `main` is invoked, etc.
-This runtime also won't be available.
-
-The platform-agnostic parts of the standard library are available through [libcore](https://doc.rust-lang.org/core/).
-It also excludes things that are not always desirable in an embedded environment, like the memory allocator:
-use crates of your choice.
-
-The `libcore` contains:
-APIs for language primitives (floats, strings, slices, etc),
-APIs that expose processor features like "atomic" operations and SIMD instructions,
-etc.
-
-However, it lacks APIs for anything that involves platform integration:
-because it can be used for any kind of bootstrapping (stage 0) code like bootloaders, firmware, or kernels.
-
-
-
-## Tooling
-
-Install:
-
-* `rustup`: installs Rust and tooling
-* [`cargo-generate`](https://github.com/cargo-generate/cargo-generate): a cargo subcommand to generate projects from templates. Alternatively, clone a git repo.
-* `cargo-binutils`: tools for LLVM use to inspect binaries: `objdump`, `nm`, `size`
-* `qemu-system-arm`: emulate ARM systems locally, run programs without having any hardware with you!
-* GDB: you may not always have the luxury to log stuff to the host console.
-  Also, LLDB doesn't yet support `load` that uploads the program to the target hardware.
-  So, currently, GDB is recommended.
-* OpenOCD/ESPtool: GDB isn't able to communicate directly with the hardware: it needs a translator.
-  OpenOCD translates between GDB protocol and ST-Link's USB protocol. It knows to to read/write flash.
-  It also knows how to interact with ARM CoreSight debug peripheral,
-  which interacts with memory-mapped registers allow to breakpoint/watchpoint, read CPU registers, continue, etc.
-
-Also you might want to add:
-
-* `cargo-embed`: cargo-embed is the big brother of `cargo-flash`.
-  It can flash a target, and it can also open an RTT terminal as well as a GDB server.
-  Installed as a part of `probe-rs` tools.
-* `minicom` to open a terminal with a USB-connected device
-
-Install:
-
-```console
-$ sudo apt install cargo-binutils qemu-system-arm gdb-multiarch libudev-dev
-$ cargo install cargo-generate
-$ cargo install probe-rs --features cli,ftdi
-$ sudo apt install esptool espflash stm32flash openocd
-```
-
-However, the recommended way is to install using Rustup:
-this is a more mature environment:
-
-```console
-$ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-$ cargo install cargo-binutils cargo-generate
-$ cargo install probe-rs --features cli,ftdi
-$ rustup component add llvm-tools-preview
-```
-
-To use ST-Link without root privileges, you may need to create a udev rule:
-[more info here](https://doc.rust-lang.org/stable/embedded-book/intro/install/linux.html):
-
-```udev
-# STM32F3DISCOVERY rev A/B - ST-LINK/V2
-ATTRS{idVendor}=="0483", ATTRS{idProduct}=="3748", TAG+="uaccess"
-
-# STM32F3DISCOVERY rev C+ - ST-LINK/V2-1
-ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374b", TAG+="uaccess"
-
-# CMSIS-DAP for microbit
-SUBSYSTEM=="usb", ATTR{idVendor}=="0d28", ATTR{idProduct}=="0204", MODE:="666"
-```
-
-
-
-
-Test that it works: with ST-Link: one of these:
-
-```console
-$ openocd -f interface/stlink.cfg -f target/stm32f3x.cfg
-$ openocd -f interface/stlink-v2.cfg -f target/stm32f3x.cfg
-$ openocd -f interface/stlink-v2-1.cfg -f target/stm32f3x.cfg
-...
-Info : Target voltage: 2.919881
-Info : stm32f3x.cpu: hardware has 6 breakpoints, 4 watchpoints
-```
-
-if you don't have the "breakpoints" line, use a different config file.
-
-
-
-
-
-
-
-## Enable Target Cross-Compilation
-
-By default, Rust only supports native compilation.
-
-Check the list of targets:
-
-```console
-$ rustc --print target-list
-thumbv4t-none-eabi
-thumbv5te-none-eabi
-thumbv6m-none-eabi
-thumbv7a-pc-windows-msvc
-thumbv7a-uwp-windows-msvc
-thumbv7em-none-eabi
-thumbv7em-none-eabihf
-thumbv7m-none-eabi
-thumbv7neon-linux-androideabi
-thumbv7neon-unknown-linux-gnueabihf
-thumbv7neon-unknown-linux-musleabihf
-thumbv8m.base-none-eabi
-thumbv8m.main-none-eabi
-thumbv8m.main-none-eabihf
-...
-riscv32imc-esp-espidf
-...
-```
-
-This is how architectures are added:
-
-```console
-$ rustup target add thumbv6m-none-eabi
-```
-
-
-
-
-## Terminology
-
-* PAC: Peripheral Access Crate. Provides a safe-ish direct interface to the peripherals of the chip.
-  Normally you only deal with PACs if the higher level doesn't fulfil your needs.
-* HAL: Hardware Abstraction Layer. It builds upon the chip's PAC and provides an abstraction.
-  You can use the chip without knowing all the special behavior of the chip.
-* BSP: Board Support Crate. Abstracts a whole board away at once, with all its sensors, leds, etc.
-  Quite often, you will work with the HAL, and get drivers for your sensors from crates.io.
-
-The central piece: (`embedded-hal`)[https://crates.io/crates/embedded-hal]: provides a set of traits
-that describe behavior common to specific peripherals. These are common interfaces.
-Drivers that are written in such a way are called platform agnostic. Most drivers are.
-
-
-
-
-
-
-## Flashing and Debugging
-
-NOTE: for ESP32 on Xtensa, see `./a01-rust-on-esp32`.
-This tutorial is for `cargo-embed`: it supports: ARM, RISC-V, CMSIS-DAP, STLink, JLink. See [probe-rs](https://probe.rs/).
-
-Create a new project:
-
-```console
-$ cargo new <projectname>
-```
-
-Microcontroller programs are different from standard programs in two aspects:
-
-* `#![no_std]`: this program won't use the `std` crate, which assumes an underlying OS.
-  It will instead use the `core` create: a subset of `std` that can run on bare metal systems.
-* `#![no_main]`: this program won't use the standard `main` interface, which is
-  tailored for command-line applications that receive arguments.
-  Instead, we'll use the `#[entry]` attribute from the `cortex-m-rt` create to define
-  a custom entry point.
-
-Check this `src/main.rs` file:
-
-```rust
-#![deny(unsafe_code)]
-#![no_main]
-#![no_std]
-
-use cortex_m_rt::entry;
-use panic_halt as _;
-use microbit as _;
-use rtt_target::{rprintln, rtt_init_print};
-
-#[entry]
-fn main() -> ! {  // `!`: this program never returns
-  // Set up RTT structures in the memory and read/write data from/to them
-  // Note: you can set up multiple channels: input channels, output channels. No problem.
-  rtt_init_print!();
-
-  let _y;
-  let x = 42;
-  _y = x;
-
-  // infinite loop; just so we don't leave this stack frame
-  loop {
-    // Print RTT
-    rprintln!("Hello, world!");
-  }
-}
-```
-
-Notice the `.cargo/config` file: it tweaks the linking process to tailor the memory layout
-of the program to the requirements of the target device:
-
-```
-[target.'cfg(all(target_arch = "arm", target_os = "none"))']
-rustflags = [
-  "-C", "link-arg=-Tlink.x",
-]
-```
-
-The `Embed.toml` or `.embed.toml` file: it configures `cargo-embed`:
-
-```toml
-# "default" on the outer level is the configuration profile name.
-# Use "cargo embed --config <profile>" to use a different one.
-[default.general]
-# The chip we're working with
-chip = "STM32F401CCUx"
-
-[default.reset]
-# Halt the chip after we flashed it
-halt_afterwards = true
-
-# RTT: Real time transfers. It's a mechanism for transferring data between the host and the device.
-# Supports multiple channels (ringbuffers)
-[default.rtt]
-enabled = true
-
-[default.gdb]
-# Start a GDB server after flashing?
-enabled = true
-```
-
-To cross-compile, pass `rustc --target`. It's simple.
-But before compiling, download a pre-compiled version of the standard library for your target:
-
-```console
-$ rustup target list
-$ rustup target add ...
-```
-
-Build the binary for your target:
-
-```console
-$ cargo build --target thumbv7em-none-eabihf
-```
-
-Check the file:
-
-```console
-$ cargo readobj --target thumbv7em-none-eabihf --bin led-roulette -- --file-headers
-```
-
-Run with RTT enabled, see the terminal:
-
-```console
-$ cargo embed
-```
-
-Now, "flashing" is the moving of our program into the microcontroller's memory.
-
-
-
-
-
-# embedded/a01-rust-on-esp32
-# Rust on ESP32
-
-This is for the ESP32 board.
-
-Reading:
-
-* [ESP-RS book](https://esp-rs.github.io/book/)
-* [ESP-RS training](https://esp-rs.github.io/std-training/): writing apps with `std`
-* [Awesome ESP Rust](https://github.com/esp-rs/awesome-esp-rust): a collection
-
-In the [esp-rs](https://github.com/esp-rs/) organization:
-
-* `esp-*` repositories are focused on `no_std` applications: e.g. `esp-hal`
-* `esp-idf-*` are focused on `std` apps: e.g. `esp-idf-hal`
-
-## `std` vs `no_std`
-
-### `std` on ESP32
-
-Unlike most other embedded platforms, Espressif supports the Rust standard library.
-Most notably, this means you'll have arbitrary-sized collections like `Vec` or `HashMap` at your disposal, as well as generic heap storage using `Box`.
-
-You're also free to spawn new threads, and use synchronization primitives like `Arc` and `Mutex` to safely share data between them.
-Still, memory is a scarce resource on embedded systems, and so you need to take care not to run out of it - threads in particular can become rather expensive.
-
-Espressif provides a C-based development framework: [ESP-IDF](https://github.com/espressif/esp-idf), which provides a [newlib](https://sourceware.org/newlib/) environment that has enough functionality to build the Rust `std` on top of it.
-
-When using `std`, you have access to a lot of `ESP-IDF` features: threads, mutexes, collections, random numbers, sockets, etc.
-
-Services like Wi-Fi, HTTP client/server, MQTT, OTA updates, logging etc. are exposed via Espressif's open source IoT Development Framework, ESP-IDF.
-It is mostly written in C and as such is exposed to Rust in the canonical split crate style:
-
-* the [esp-idf-sys](https://github.com/esp-rs/esp-idf-sys) crate provides the actual `unsafe` bindings to the IDF development framework that implements access to drivers, Wi-Fi, and more
-* the higher-level [esp-idf-svc](https://github.com/esp-rs/esp-idf-svc) crate implements safe and comfortable Rust abstractions: it implements abstractions from [embedded-svc](https://github.com/esp-rs/embedded-svc): wi-fi, network, httpd, logging, etc
-* [esp-idf-hal](https://github.com/esp-rs/esp-idf-hal): implements traits from `embedded-hal` and other traits using the `esp-idf` framework: analog/digital conversion, digital I/O pins, SPI communication, etc.
-
-You might want to use the `std` when your app:
-* requires rich functionality (network, file I/O, sockets, complex data structures)
-* for portability: because the `std` crate provide APIs that can be used across different platforms
-* rapid development
-
-
-### `no_std` on ESP32
-
-Using `no_std` may be more familiar to embedded Rust developers: it uses a subset of `std`: the `core` library.
-
-See crates:
-
-* [esp-hal](https://github.com/esp-rs/esp-hal):	Hardware abstraction layer
-* [esp-pacs](https://github.com/esp-rs/esp-pacs):	Peripheral access crates
-* [esp-wifi](https://github.com/esp-rs/esp-wifi):	Wi-Fi, BLE and [ESP-NOW](https://www.espressif.com/en/solutions/low-power-solutions/esp-now) support
-* [esp-alloc](https://github.com/esp-rs/esp-alloc):	Simple heap allocator
-* [esp-println](https://github.com/esp-rs/esp-println):	`print!`, `println!`
-* [esp-backtrace](https://github.com/esp-rs/esp-backtrace):	Exception and panic handlers
-* [esp-storage](https://github.com/esp-rs/esp-storage):	Embedded-storage traits to access unencrypted flash memory
-
-You might want to use the `no_std` when:
-
-* You need a small memory footprint
-* Direct hardware control. Because `std` adds abstractions that make it harder to interact directly with the hardware
-* Real-time constraints or time-critical applications: because `std` can introduce unpredictable delays and overhead
-* Custom requirements: fine-grained control over the behavior of an application
-
-
-## Preparation
-
-Espressif SoCs are based on two different architectures: RISC-V and Xtensa.
-
-* Modern chips: ESP32-C/H/P are based on RISC-V.
-* Older chips: ESP32, ESP32-S use Tensilica Xtensa.
-
-For ESP32-C2, C2, C6, H2, P4:
-[Tools for RISC-V Targets only](https://esp-rs.github.io/book/installation/riscv.html).
-
-For all chips (Xtensa *and* RISC-V):
-
-* install `espup`: simplifies installing and maintaining the components required to build
-* Run `espup install` to install the toolchain: Rust fork, nightly toolchain, LLVM fork, GCC toolchain
-
-Instead of installing, you can use a Docker image: [espressif/idf-rust
-](https://hub.docker.com/r/espressif/idf-rust/tags):
-
-```console
-$ docker pull espressif/idf-rust:all_latest
-```
-
-But if you still want to install:
-first of all, it is recommended to use `rustup` rather than your distro's package manager!
-Your `rustup` will be able to determine which toolchain to use: see [rustup overrides](https://rust-lang.github.io/rustup/overrides.html).
-
-But anyway:
-
-```console
-$ sudo apt install llvm-dev libclang-dev clang libuv-dev
-$ cargo install cargo-espflash espflash ldproxy
-$ espup install
-```
-
-Now source this file in every terminal:
-
-```console
-$ . $HOME/export-esp.sh
-```
-
-or use direnv's `.envrc`:
-
-```bash
-#!/bin/bash
-
-# direnv:
-# will automatically configure your environment
-# see:
-# * https://direnv.net/
-# * https://github.com/direnv/direnv/wiki
-# * https://github.com/direnv/direnv/blob/master/stdlib.sh
-
-watch_file ~/export-esp.sh
-. ~/export-esp.sh
-```
-
-Also, you'd need to set the toolchain for this folder:
-
-```console
-$ rustup override set esp
-```
-
-## Start a project
-
-Generate a project:
-
-```console
-$ cargo install cargo-generate
-$ cargo generate esp-rs/esp-template
-```
-
-Questions from `cargo generate`:
-
-* Which MCU? `esp32` with Xtensa architecture
-
-Now build and flash:
-
-```console
-$ cargo build
-$ cargo run
-```
-
-You can use `cargo run` because of `.cargo/config.toml`, which configures the build target and the runner:
-
-```toml
-[target.xtensa-esp32-none-elf]
-runner = "espflash flash --monitor"
-```
-
-
-
-## VSCode
-
-Rust analyzer can behave strangely without `std`.
-Add this to `settings.json`:
-
-```json
-{
-  "rust-analyzer.checkOnSave.allTargets": false
-}
-```
-
-
-
-
-# embedded/a01-rust-on-esp32/.envrc
-
-```
-PATH_add /home/kolypto/.rustup/toolchains/esp/bin
-
-watch_file ~/export-esp.sh
-. ~/export-esp.sh
-
-
-```
-
-
-
-
-
-# embedded/a01-rust-on-esp32/.cargo
-
-
-# embedded/a01-rust-on-esp32/.cargo/config.toml
-
-```toml
-[target.xtensa-esp32-none-elf]
-runner = "espflash flash --monitor"
-
-
-[build]
-rustflags = [
-  "-C", "link-arg=-Tlinkall.x",
-
-  "-C", "link-arg=-nostartfiles",
-]
-target = "xtensa-esp32-none-elf"
-
-[unstable]
-build-std = ["core"]
-
-```
-
-
-
-
-
-# embedded/a01-rust-on-esp32/src
-
-
-# embedded/a01-rust-on-esp32/src/main.rs
-
-```rust
-// Don't use the standard library.
-// Don't use main(), which is tailored for command-line applications.
-// Instead, we'll use the #[entry] attribute from the `xtensa-lx-rt` crate
-#![no_std]
-#![no_main]
-
-// Installs a panic handler.
-// You can use other crates, but `esp-backtrace` prints the address which can be decoded to file/line
-use esp_backtrace as _;
-
-// Provides a `println!` implementation
-use esp_println::println;
-
-// Bring some types from `esp-hal`
-use hal::{peripherals::Peripherals, prelude::*};
-use hal::{clock::ClockControl, Delay, timer::TimerGroup, Rtc};
-use hal::{IO};
-
-// The entry point.
-// It must be a "diverging function": i.e. have the `!` return type.
-#[entry]
-fn main() -> ! {
-    // HAL drivers usually take ownership of peripherals accessed via the PAC
-    // Here we take all the peripherals from the PAC to pass them to the HAL drivers later.
-    // This is singleton design pattern: one owner, here:
-    let peripherals = Peripherals::take();
-
-    // Sometimes a peripheral is coarse-grained and doesn't exactly fit the HAL drivers.
-    // Here we split the SYSTEM peripheral into smaller pieces which get passed to drivers.
-    // `split()` creates a `hal::system::SystemParts` HAL structure from a PAC structure:
-    // we are sort of "splitting" a PAC structure into HAL structures: peripherals, registers, etc.
-    let mut system: hal::system::SystemParts = peripherals.DPORT.split();
-
-    // Configure the CPU clock: use the max() frequency. Then apply (freeze)
-    // let clocks = ClockControl::boot_defaults(system.clock_control).freeze(); // defaults
-    // let clocks = ClockControl::max(system.clock_control).freeze(); // max speed
-    let clocks = match "max" {
-        // Choose a frequency
-        "max" => ClockControl::max,
-        _ => ClockControl::boot_defaults,
-    }(system.clock_control).freeze();
-
-
-
-    // Disable watchdogs.
-    // The ESP32 chip has three watchdog timers "wdt": one in each of the two timer modules, and one in the RTC module.
-    // Only the RDWT (RTC Watchdog) can trigger the "system reset" (reset the entire chip)
-    // The two other timers can do: "interrupt", "CPU reset", "core reset".
-    // They have four stages each, each with a timeout and action.
-    // Let's disable them all.
-
-    // Disable the RWDT (RTC watchdog).
-    // "RTC" is a real-time clock. It can wake the device up from a low power mode.
-    let mut rtc = Rtc::new(peripherals.RTC_CNTL);
-    rtc.rwdt.disable();
-
-    // Disable TIMG watchdog timers ("MWDT": main watchdog timers).
-    // If not, the SoC would reboot after some time.
-    // Another way is to feed the watchdog.
-    let timer_group0 = TimerGroup::new(peripherals.TIMG0, &clocks, &mut system.peripheral_clock_control);
-    let timer_group1 = TimerGroup::new(peripherals.TIMG1, &clocks, &mut system.peripheral_clock_control);
-    let mut wdt0 = timer_group0.wdt;
-    let mut wdt1 = timer_group1.wdt;
-    wdt0.disable();
-    wdt1.disable();
-
-
-    // App config file.
-    // Values are read from "cfg.toml" during build.
-    let app_config = CONFIG;
-
-
-
-    // IO handle: it enables us to create handles for individual pins.
-    // GPIOs need to be configured before use:
-    let io = IO::new(peripherals.GPIO, peripherals.IO_MUX);
-
-
-
-    // Set GPIO2 as an output: this is the LED.
-    // Configure it to be a PUSH-PULL output: i.e. low=GND (push down), high=VCC (pull up).
-    // Set its initial state: HIGH
-    let mut led = io.pins.gpio2.into_push_pull_output();
-    led.set_high().unwrap();
-
-    // Set GPIO36 as input
-    let button = io.pins.gpio36.into_pull_up_input();
-
-
-
-    // Init a timer
-    // The MCU has several timers. They can do things for us: e.g. pause the execution for some time.
-    let mut timer0 = timer_group0.timer0;
-
-    // Or use this lame `Delay` which is a busy-wait timer: loop + count cycles
-    let mut delay = Delay::new(&clocks);
-
-    loop {
-        println!("Loop...");
-        // Blink
-        // led.toggle().unwrap();
-
-        // If the button is pressed (or the pin is touched) — blink
-        if button.is_high().unwrap() {
-            for _ in 0..10 {
-                led.set_high().unwrap();
-                delay.delay_ms(50_u32);
-
-                led.set_low().unwrap();
-                delay.delay_ms(50_u32);
-            }
-        }
-
-        // Sleep a bit
-        delay.delay_ms(app_config.loop_timer);
-
-        // Sleep using a timer
-        let mut del_var = app_config.loop_timer.millis();
-        timer0.start(del_var);
-        while timer0.wait() != Ok(()) {}
-    }
-}
-
-
-/// This configuration is picked up at compile time from `cfg.toml`.
-#[toml_cfg::toml_config]
-pub struct Config {
-    //#[default("")]
-    //wifi_ssid: &'static str,
-
-    #[default(500u32)]
-    loop_timer: u32,
-}
-
-```
-
-
-
-
-
-# embedded/a02-rust-on-esp32-std
-# Rust on ESP32 with `std`
-
-Generate a project:
-
-```console
-$ cargo generate esp-rs/esp-idf-template cargo
-$ cd <project-folder>
-$ rustup override set esp
-```
-
-* choose "STD support = yes"
-* when choosing the IDF version, note that not all chips support it.
-
-Recommended: set the toolchain directory to "global":
-otherwise, each new project will have its own instance of the toolchain and eat up disk space:
-
-*   Add this to `.cargo/config.toml`:
-
-    ```toml
-    [env]
-    ESP_IDF_TOOLS_INSTALL_DIR = { value = "global" } # add this line
-    ```
-
-*   Add this to `rust-toolchain.toml`:
-
-    ```toml
-    [toolchain]
-    channel = "nightly-2023-02-28" # change this line
-    ```
-
-We'll use `toml_cfg`. All add `anyhow` to be used in the build script:
-
-```console
-$ cargo add toml_cfg anyhow esp-idf-hal embedded-svc
-$ cargo add esp-idf-sys --features=binstart
-$ cargo add --build toml_cfg anyhow
-```
-
-
-
-
-Further reading for ESP32 `std` programming:
-
-* [HTTPS Server](https://esp-rs.github.io/std-training/03_4_http_server.html) and [code](https://github.com/esp-rs/std-training/tree/main/intro/http-server)
-* [MQTT Client](https://esp-rs.github.io/std-training/03_5_0_mqtt.html) and [code](https://github.com/esp-rs/std-training/tree/main/intro/mqtt)
-* [I2C, I/O, Sensors, Interrupts](https://esp-rs.github.io/std-training/04_0_advanced_workshop.html)
-
-Further reading for ESP32:
-
-* [Awesome ESP32](https://github.com/esp-rs/awesome-esp-rust)
-
-
-
-# embedded/a02-rust-on-esp32-std/cfg.toml
-
-```toml
-[a02-rust-on-esp32-std]
-wifi_ssid = "RT-WiFi-2FCB"
-wifi_psk = "Euief5xaRm"
-
-```
-
-
-
-# embedded/a02-rust-on-esp32-std/build.rs
-
-```rust
-// Note: in `build.rs` we don't need to explicitly import crates.
-// These "[build-dependencies]" are added automatically
-
-fn main() -> anyhow::Result<()> {
-    // Prints build args
-    embuild::espidf::sysenv::output();
-
-    // Check & import `cfg.toml`
-    if !std::path::Path::new("cfg.toml").exists() {
-        anyhow::bail!("You need to create a `cfg.toml` file with your Wi-Fi credentials! Use `cfg.toml.example` as a template.");
-    }
-    let app_config = CONFIG; // const `CONFIG` is auto-generateed
-    if app_config.wifi_ssid == "" || app_config.wifi_psk == "" {
-        anyhow::bail!("You need to set the Wi-Fi credentials in `cfg.toml`!");
-    }
-
-    // // Necessary because of this issue: https://github.com/rust-lang/cargo/issues/9641 :
-    // // > "rustc-link-arg does not propagate transitively"
-    // // But build actually fails if we enable these
-    // embuild::build::CfgArgs::output_propagated("ESP_IDF")?;
-    // embuild::build::LinkArgs::output_propagated("ESP_IDF")
-
-    // Return
-    Ok(())
-}
-
-// App config: the WiFi network to connect to.
-// The config is taken from `cfg.toml` and imported into Rust as a value
-#[toml_cfg::toml_config]
-pub struct Config {
-    #[default("")]
-    wifi_ssid: &'static str,
-    #[default("")]
-    wifi_psk: &'static str,
-}
-
-```
-
-
-
-
-
-# embedded/a02-rust-on-esp32-std/src
-
-
-# embedded/a02-rust-on-esp32-std/src/main.rs
-
-```rust
-use esp_idf_hal::{
-    prelude::Peripherals,
-};
-use esp_idf_svc::{
-    eventloop::EspSystemEventLoop,
-};
-use anyhow::{bail, Result};
-use core::str;
-use log;
-
-use a02_rust_on_esp32_std::{wifi, httpclient}; // our lib
-
-fn main() -> Result<()> {
-    // Need to call this once: applies patches to the runtime.
-    esp_idf_svc::sys::link_patches();
-
-    // Bind the log crate to the ESP Logging facilities
-    esp_idf_svc::log::EspLogger::initialize_default();
-
-    // Let HAL take the peripherals
-    let peripherals = Peripherals::take().unwrap();
-    let sysloop = EspSystemEventLoop::take()?;
-
-    // Print something
-    println!("Started :)");
-
-    // Connect to WiFi
-    let _wifi = match wifi::connect(
-        CONFIG.wifi_ssid,
-        CONFIG.wifi_psk,
-        peripherals.modem,
-        sysloop,
-    ){
-        Ok(wifi) => {
-            log::info!("Connected to Wi-Fi network {:?}!", CONFIG.wifi_ssid);
-            wifi
-        }
-        Err(err) => {
-            // Red!
-            bail!("Could not connect to Wi-Fi network: {:?}", err)
-        }
-    };
-
-    // HTTP request
-    httpclient::get_url("https://api.myip.com/")?;
-
-    Ok(())
-}
-
-
-// App config. Auto-generated as `CONFIG`
-#[toml_cfg::toml_config]
-pub struct Config {
-    #[default("")]
-    wifi_ssid: &'static str,
-    #[default("")]
-    wifi_psk: &'static str,
-}
-
-```
-
-
-
-# embedded/a02-rust-on-esp32-std/src/lib.rs
-
-```rust
-// Define the modules' structure
-mod lib {
-    // Need `pub` -- because otherwise `pub use` won't be able to re-publish them.
-    pub mod wifi;
-    pub mod httpclient;
-}
-
-// Re-publish
-pub use crate::lib::{wifi, httpclient};
-
-```
-
-
-
-
-
-# embedded/a02-rust-on-esp32-std/src/lib
-
-
-# embedded/a02-rust-on-esp32-std/src/lib/wifi.rs
-
-```rust
-use anyhow::{bail, Result};
-use embedded_svc::wifi::{
-    AccessPointConfiguration, AuthMethod, ClientConfiguration, Configuration,
-};
-use esp_idf_hal::peripheral;
-use esp_idf_svc::{eventloop::EspSystemEventLoop, wifi::BlockingWifi, wifi::EspWifi};
-use log::info;
-
-
-/// Connect to a WiFi network
-pub fn connect(
-    ssid: &str,
-    pass: &str,
-    modem: impl peripheral::Peripheral<P = esp_idf_hal::modem::Modem> + 'static,
-    sysloop: EspSystemEventLoop,
-) -> Result<Box<EspWifi<'static>>> {
-    // Auth method
-    let mut auth_method = AuthMethod::WPA2Personal;
-    if ssid.is_empty() {
-        bail!("Missing WiFi name")
-    }
-    if pass.is_empty() {
-        auth_method = AuthMethod::None;
-        info!("Wifi password is empty");
-    }
-
-    // Init Wi-Fi
-    let mut esp_wifi = EspWifi::new(modem, sysloop.clone(), None)?;
-    let mut wifi = BlockingWifi::wrap(&mut esp_wifi, sysloop)?;
-    wifi.set_configuration(&Configuration::Client(ClientConfiguration::default()))?;
-
-    // Start Wi-Fi
-    info!("Starting wifi...");
-    wifi.start()?;
-
-    // Scan networks
-    info!("Scanning...");
-    let ap_infos = wifi.scan()?;
-    let ours = ap_infos.into_iter().find(|a| a.ssid == ssid);
-
-    // Choose a channel
-    let channel = if let Some(ours) = ours {
-        info!("Found configured access point {} on channel {}", ssid, ours.channel);
-        Some(ours.channel)
-    } else {
-        info!("Configured access point {} not found during scanning, will go with unknown channel", ssid);
-        None
-    };
-
-    // Configure the WiFi adapter
-    wifi.set_configuration(&Configuration::Mixed(
-        // "Mixed" is a Client + Access Point. Yes, we can be an access point.
-        ClientConfiguration {
-            ssid: ssid.into(),
-            password: pass.into(),
-            channel,
-            auth_method,
-            ..Default::default()
-        },
-        AccessPointConfiguration {
-            ssid: "aptest".into(),
-            channel: channel.unwrap_or(1),
-            ..Default::default()
-        },
-    ))?;
-
-    // Connect to the AP Access Point
-    info!("Connecting wifi...");
-    wifi.connect()?;
-
-    // Get an IP address (DHCP)
-    info!("Waiting for DHCP lease...");
-    wifi.wait_netif_up()?;
-
-    // Get IP info and print it
-    let ip_info = wifi.wifi().sta_netif().get_ip_info()?;
-    info!("Wifi DHCP info: {:?}", ip_info);
-
-    // Done
-    Ok(Box::new(esp_wifi))
-}
-```
-
-
-
-# embedded/a02-rust-on-esp32-std/src/lib/httpclient.rs
-
-```rust
-use anyhow::{bail, Result};
-use core::str;
-use esp_idf_sys;
-use embedded_svc::{
-    http::{client::Client, Status},
-    io::Read,
-};
-use esp_idf_svc::{
-    http::client::{Configuration, EspHttpConnection},
-};
-
-
-/// Download data from an HTTP URL
-// The `AsRef<str>` means the function accepts anything that implements the trait: both `&str` and `String`
-pub fn get_url(url: impl AsRef<str>) -> Result<()> {
-    // Create a client: EspHttpConnection, then Client
-    let connection = EspHttpConnection::new(&Configuration {
-        use_global_ca_store: true,
-        crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
-        ..Default::default()
-    })?;
-    let mut client = Client::wrap(connection);
-
-    // Open a GET request
-    let request = client.get(url.as_ref())?;
-
-    // Sed the request
-    let response = request.submit()?;
-    let status = response.status();
-    println!("Response code: {}\n", status);
-
-    // Check the HTTP code
-    match status {
-        200..=299 => {
-            // Read response, buffer size = 256
-            let mut buf = [0_u8; 256];
-            let mut offset = 0; // offset in the buffer
-            let mut total = 0;  // total number of bytes read
-            let mut reader = response;
-
-            // Keep reading
-            loop {
-                // Read into the buffer, starting at `offset`
-                if let Ok(size) = Read::read(&mut reader, &mut buf[offset..]) {
-                    // Read nothing? stop reading.
-                    if size == 0 {
-                        break;
-                    }
-                    total += size;
-
-                    // Try converting the bytes into UTF-8 and print
-                    let size_plus_offset = size + offset;
-                    match str::from_utf8(&buf[..size_plus_offset]) {
-                        Ok(text) => {
-                            // Print
-                            print!("{}", text);
-                            // Empty the buffer
-                            offset = 0;
-                        },
-                        Err(error) => {
-                            let valid_up_to = error.valid_up_to();
-                            unsafe {
-                                print!("{}", str::from_utf8_unchecked(&buf[..valid_up_to]));
-                            }
-
-                            // Move bytes in the buffer
-                            buf.copy_within(valid_up_to.., 0);
-                            offset = size_plus_offset - valid_up_to;
-                        }
-                    }
-                }
-            }
-            println!("Total: {} bytes", total);
-        }
-        _ => bail!("Unexpected response code: {}", status),
-    }
-
-    Ok(())
-}
-
-```
-
-
-
-
-
-# embedded/a03-esp32-serial
-## Serial port
-
-"Serial communication" is asynchronous (without a clock signal): where two devices exchange data serially,
-one bit at a time, using two data lines + a common ground.
-
-Both parties must agree on how fast data will be sent.
-The common configuration is: 1 start bit, 8 bits of data, 1 stop bit, baud rate of 115200 bps.
-
-Today's computers don't have serial ports, but our SoC has a USB-to-serial converter:
-it exposes a serial interface to the microcontroller, and a USB interface to the computer, which will see the microcontroller as a virtual serial device.
-
-The computer will see it as a TTY device: `/dev/ttyUSB0` or `/dev/ttyACM0`.
-You can send out data by simply writing to this file:
-
-```console
-$ echo 'Hello, world!' > /dev/ttyACM0
-```
-
-Here's how to open a terminal:
-
-```console
-$ screen -U /dev/ttyUSB0 115200
-C-a \
-
-$ minicom --device /dev/ttyUSB0 -b 115200
-C-a x
-
-$ picocom /dev/ttyUSB0 --b 115200
-C-a C-x
-```
-
-## UART
-
-The microcontroller has a peripheral called UART: Universal Async Receiver/Transmitter.
-It can be configured to work with several communication protocols: e.g. serial.
-We'll use it to talk to your computer.
-
-
-
-
-
-
-# embedded/a03-esp32-serial/src
-
-
-# embedded/a03-esp32-serial/src/main.rs
-
-```rust
-#![no_std]
-#![no_main]
-
-use esp_backtrace as _;
-use esp_println::println;
-use hal::{
-    prelude::{*, nb::block},
-    peripherals::Peripherals,
-    peripherals::Interrupt,
-    clock::ClockControl, Delay,
-    IO, Uart,
-    interrupt, uart,
-};
-use esp_backtrace as _;
-// use debouncr::{debounce_3, Edge};  // debounce button press
-use core::fmt::Write;  // writeln!() here
-use embedded_io;  // read(&buf)
-
-#[entry]
-fn main() -> ! {
-    let peripherals = Peripherals::take();
-    let mut system: hal::system::SystemParts = peripherals.DPORT.split();
-    let clocks = ClockControl::max(system.clock_control).freeze();
-
-    let mut delay = Delay::new(&clocks);
-
-    // Logging
-    esp_println::logger::init_logger_from_env();
-    log::info!("Logger is setup");
-    println!("Hello world!");
-
-    // Get hold of the LED and the button
-    let io = IO::new(peripherals.GPIO, peripherals.IO_MUX);
-    let mut led = io.pins.gpio2.into_push_pull_output();
-    let mut button = io.pins.gpio0.into_pull_up_input();
-
-    // Get hold of UART.
-    // With ESP32, it can be mapped to any GPIO pins, but we use TX/RX pins connected to USB:
-    let mut uart0 = Uart::new_with_config(
-        peripherals.UART0,
-        Some(hal::uart::config::Config{
-            baudrate: 115_200,  // the speed
-            ..Default::default()
-        }),
-        // The pings to use: Tx and Rx
-        Some(hal::uart::TxRxPins::new_tx_rx(
-            // our board has a CP2102 USB-UART converter connected to U0TXD (GPIO1)  and U0RXD (GPIO3) pins.
-            // Let's use them: then all our output to this `uart0` will end up in /dev/ttyUSB0 :)
-            io.pins.gpio1.into_push_pull_output(),
-            io.pins.gpio3.into_floating_input(),
-        )),
-        &clocks,
-        &mut system.peripheral_clock_control,
-    );
-    // .. or do the same thing, with defaults:
-    // let mut uart0 = Uart::new(peripherals.UART0, &mut system.peripheral_clock_control); // with defaults
-
-
-    // Example: write to UART while the button is pressed
-    if false {
-        loop {
-            // Toggle the LED while the button is pressed
-            if !button.is_input_high() {
-                led.toggle().unwrap();
-
-                // Speak into UART
-                writeln!(uart0, "Button Press!\n").unwrap();
-            }
-
-            // Sleep
-            delay.delay_ms(50u32);
-        }
-    }
-
-    // Example: echo server. Reading from UART
-    // Heapless: static data structures that don't require dynamic memory allocation
-    // All heapless data structures store their memory allocation inline:
-    use heapless::Vec;
-
-    // Allocate a buffer: can store up to 128 bytes
-    let mut buf: Vec<u8, 128> = Vec::new();
-
-    loop {
-        buf.clear();
-
-        // TODO: how to read the whole string?
-        // let n =embedded_io::Read::read(&mut uart0, &mut buf).unwrap();
-
-        loop {
-            // Read bytes into the buffer
-            let byte = nb::block!(uart0.read()).unwrap();
-            if buf.push(byte).is_err() {
-                write!(uart0, "error: buffer full\n").unwrap();
-                break;
-            }
-
-            // Enter. Done.
-            if byte == 13 {  // <enter>
-                // Reverse the string and print it
-                for byte in buf.iter().rev().chain(&[b'\n']) {
-                    nb::block!(uart0.write(*byte)).unwrap();
-                }
-                break;
-            }
-        }
-
-        nb::block!(uart0.flush()).unwrap()
-    }
-}
-
-```
-
-
-
-
-
-# embedded/a04-i2c-display
-# I2C
-
-"I2C": Inter-Integrated Circuit: synchronous serial communication protocol.
-
-Uses two lines: a data line (SDA) and a clock line (SCL).
-Because a clock line is used to synchronize the communication, this is a *synchronous* protocol.
-
-
-The "controller" is the device that starts and drives the communication.
-
-Several devices, both controllers and targets, can be connected to the same bus.
-
-A controller communicates with a device by first broadcasting its address to the bus.
-This address can be 7bits or 10bits long.
-
-No other device can use the bus until the controller stops the communication (!)
-
-The clock determines how fast data can be exchanged:
-usually 100 kHz (standard mode) or 400 kHz (fast mode)
-
-Protocol:
-
-1. Controller sends START
-2. Controller broadcasts target address (7 or 10 bits) + 1 R/W bit. It's set to "WRITE" for "controller -> target" communication, and "READ" for "controller <- target" communication.
-3. Target responds with ACK
-4. repeat ( Send one byte + Respond with ACK )
-5. Controller broadcasts STOP (or RESTART and go back to 2)
-
-## ADXL345 Accelerometer
-
-What I have here is an ADXL345 accelerometer with I2C, SPI, and two configurable "interrupt" pins to report tap/double-tap/falling.
-
-It is configurable: has a number of writable registers that contain the settings. The registers also contain the readings.
-
-In a sense, these sensors are very similar to the peripherals inside the microcontroller.
-The difference is that their registers are not mapped into the microcontroller's memory:
-instead, their registers have to be acessed via the I2C bus.
-
-Some accelerometer modules also have a magnetometer: LSM303AGR , MPU-6050.
-
-### Practice
-
-First: find out the target address of the accelerometer.
-With ADXL345, the address is `0x1D`, followed by the R/W bit: this translates to `0x3B` (R) and `0x3A` (W).
-
-Second: lots of I2C chips will have some sort of device identification register.
-With this device ID register, we can verify that we are indeed talking to the device we expect:
-in our case, `DEVID` (`0x00` register) contains `11100101`.
-
-## SSD1780 Display
-
-This is a 128x64 OLED display with I2C and SPI interfaces.
-
-Its address is `011110` + `1/0`.
-
-
-
-
-
-
-# embedded/a04-i2c-display/src
-
-
-# embedded/a04-i2c-display/src/main.rs
-
-```rust
-#![no_std]
-#![no_main]
-
-use esp_backtrace as _;
-use esp_println::println;
-use hal::{
-    prelude::*,
-    clock::ClockControl, peripherals::Peripherals,
-    Delay,
-    i2c::I2C, IO,
-};
-use core::fmt::Write;
-
-use embedded_graphics::{
-    mono_font::{ascii::FONT_6X10, MonoTextStyleBuilder},
-    pixelcolor::BinaryColor,
-    prelude::*,
-    text::{Baseline, Text},
-};
-use ssd1306::{
-    prelude::*,
-    I2CDisplayInterface, Ssd1306,
-    mode::BufferedGraphicsMode,  mode::TerminalMode,
-};
-
-
-
-#[entry]
-fn main() -> ! {
-    let peripherals = Peripherals::take();
-    let mut system = peripherals.DPORT.split();
-    let clocks = ClockControl::max(system.clock_control).freeze();
-    let mut delay = Delay::new(&clocks);
-
-    let mut io = IO::new(peripherals.GPIO, peripherals.IO_MUX);
-
-    // Create a new I2C peripheral
-    let mut i2c = I2C::new(
-        peripherals.I2C0, // we have 2 I2C peripherals
-        io.pins.gpio21,  // SDA pin to use
-        io.pins.gpio22,  // SCL pin to use
-        100_u32.kHz(),  // frequency. 100kHz is the "standard mode"
-        &mut system.peripheral_clock_control,
-        &clocks,
-    );
-
-
-    // let interface = I2CDisplayInterface::new(i2c);
-    // let mut display = Ssd1306::new(
-    //     interface,
-    //     DisplaySize128x64,
-    //     DisplayRotation::Rotate0,
-    // ).into_buffered_graphics_mode();
-    // display.init().unwrap();
-
-    // let text_style = MonoTextStyleBuilder::new()
-    //     .font(&FONT_6X10)
-    //     .text_color(BinaryColor::On)
-    //     .build();
-
-    // Text::with_baseline("Hello world!", Point::zero(), text_style, Baseline::Top)
-    //     .draw(&mut display)
-    //     .unwrap();
-
-    // Text::with_baseline("Hello Rust!", Point::new(0, 16), text_style, Baseline::Top)
-    //     .draw(&mut display)
-    //     .unwrap();
-
-    // display.flush().unwrap();
-
-
-    // let interface = I2CDisplayInterface::new(i2c);
-
-    // let mut display = Ssd1306::new(
-    //     interface,
-    //     DisplaySize128x64,
-    //     DisplayRotation::Rotate0,
-    // ).into_terminal_mode();
-    // display.init().unwrap();
-    // display.clear().unwrap();
-
-    // // Spam some characters to the display
-    // for c in 97..123 {
-    //     let _ = display.write_str(unsafe { core::str::from_utf8_unchecked(&[c]) });
-    // }
-    // for c in 65..91 {
-    //     let _ = display.write_str(unsafe { core::str::from_utf8_unchecked(&[c]) });
-    // }
-
-
-    loop {
-        // Get us a buffer and read into it
-        let mut data = [0u8; 22];
-        // i2c.write_read(<device_addr>, <register>, <buffer>)
-        // i2c.write_read(DISPLAY_ADDR, &[0x00], &mut data).ok();
-        println!("{:?}", data);
-
-        delay.delay_ms(500_u32);
-    }
-}
-
-const DISPLAY_ADDR: u8 = 0b111100;
-const ACCELEROMETER_ADDR: u8 = 0x3A;
-
-```
-
-
-
-
-
-# embedded
-# Further reading on embedded Rust
-
-* [embedded-hal](https://docs.rs/embedded-hal/latest/embedded_hal/)
-* For ESP32: [esp32-hal](https://crates.io/crates/esp32-hal) and [esp32 (PAC)](https://crates.io/crates/esp32)
-* For ESP32: [awesome-esp](https://github.com/esp-rs/awesome-esp-rust) and [awesome-esp (non-Rust)](https://github.com/agucova/awesome-esp)
-* [Awesome Embedded Rust](https://github.com/rust-embedded/awesome-embedded-rust): curated list of libraries and teaching materials
-
-
-
-
-
+* [Style Guide](https://doc.rust-lang.org/stable/style-guide/index.html)
+* [The Standard Library](https://doc.rust-lang.org/stable/std/index.html)

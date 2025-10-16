@@ -1,3 +1,5 @@
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 [package]
 name = "a01-hello"
 version = "0.1.0"
@@ -5,9 +7,12 @@ version = "0.1.0"
 # "Edition" is a major release of the language, released every couple of years.
 # Edition changes only affect the way the compiler initially parses code:
 # if you use a crate that wants an older edition, Rust will comply.
-edition = "2021"
+edition = "2024"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# Got to specify this because we did not follow the standard "src/main.rs" file path
+[[bin]]
+name = "main"
+path = "main.rs"
 
 [dependencies]
-ferris-says = "0.3.1"
+ferris-says = "0.3.2"

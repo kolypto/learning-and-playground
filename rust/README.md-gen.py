@@ -1,10 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import pathlib
 
+
 def main(files: list[str]):
-        print('# Go\n')
+        print(open('README.md-HEADER', 'r').read())
 
         prev_folder = None
         for file_path in files:

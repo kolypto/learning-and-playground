@@ -1,0 +1,62 @@
+# Cargo.toml: crate metata
+# used when publishing to crates.io:
+# $ cargo publish
+[package]
+name = "a15_cargo"
+version = "0.1.0"
+edition = "2024"
+
+license = "MIT"  # open-source :)
+description = "A crate that does nothing"
+
+# "Release profiles": different configurations for compiling code:
+# * "dev": for `cargo build`.
+# * "release": for `cargo build --release`.
+[profile.dev]
+# The number of optimizations Rust will apply to the code.
+# More optimizations extends compiling time.
+opt-level = 0  # the default
+
+[profile.release]
+opt-level = 3  # the default
+
+
+
+
+# A "workspace" is a set of packages that share the same `Cargo.lock` and output directory.
+# It allows you to split one large lib.rs into smaller packages.
+#
+# Why? Because:
+# * Modules share the same compilation unit and dependencies.
+# * Crates in a workspace are separate compilation units with independent dependencies.
+# Benefits:
+# * Cargo can compile independent crates simultaneously.
+# * Recompilation boundaries: change code in one crate -- and it recompiles only one crate,
+#   not the whole thing. Faster recompilation when testing.
+#
+# Run this to create a library sub-crate:
+# $ cargo new adder --lib
+#
+# The workspace has one target directory.
+# Compiled artifacts will end up in ./target
+# # NOTE: commented out because our top-level Cargo.toml complains
+# [workspace]
+# members = [
+#     # sub-library.
+#     # Generate it with:
+#     # $ cargo new adder --lib
+#     "adder"
+# ]
+
+
+
+# Dependencies
+[dependencies]
+# Use our sub-library as a dependency :)
+adder = { path = "./adder" }
+
+
+# Dependencies only for development
+[dev-dependencies]
+# Extends standard `assert_eq!()` with colorful diff
+pretty_assertions = "1"

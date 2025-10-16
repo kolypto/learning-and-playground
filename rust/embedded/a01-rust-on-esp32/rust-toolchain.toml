@@ -1,6 +1,0 @@
-[toolchain]
-channel = "stable"
-
-# Provide some hints to `cargo`
-components = ["rustfmt", "rustc-dev"]
-targets = ["xtensa-esp32-none-elf"]

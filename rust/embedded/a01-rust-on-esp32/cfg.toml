@@ -1,3 +1,0 @@
-# This is a safer way than storing consts in the code
-[a01-led-roulette]
-loop_timer = 500
