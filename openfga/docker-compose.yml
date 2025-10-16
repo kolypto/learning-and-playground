@@ -8,11 +8,37 @@ services:
     - 2112:2112  # Prometheus metrics
     - 4317:4317  # Tracing
     - 3000:3000  # Playground
+    networks:
+    - openfga
+    # Config: https://openfga.dev/docs/getting-started/setup-openfga/configuration
     command:
     - run
     - --trace-enabled=true
-    networks:
-    - openfga
+    # - --playground-enabled=false
+    environment:
+    # Prepare DB:
+    # $ docker compose run --rm -it openfga migrate
+    - OPENFGA_DATASTORE_ENGINE=sqlite
+    - OPENFGA_DATASTORE_URI=file:/home/nonroot/openfga.db
+    # No authn by default.
+    # # Two keys: one for admin tools, one for the app
+    # - OPENFGA_AUTHN_METHOD=preshared
+    # - OPENFGA_AUTHN_PRESHARED_KEYS=secret_admin_key,secret_app_key
+    # Keep DB files safe
+    volumes:
+    - openfga_db:/home/nonroot
+    user: nonroot
+
+  fga:
+    profiles:
+    - oneoff
+    image: openfga/cli:latest # NOTE: it does not follow the versioning of the service
+    restart: no
+    tty: true
+    environment:
+    - FGA_API_URL=http://openfga:8080
+    # - FGA_API_TOKEN=secret_admin_key
+
 
 networks:
   openfga:

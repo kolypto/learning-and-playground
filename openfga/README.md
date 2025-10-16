@@ -17,7 +17,7 @@ and OpenFGA efficiently answers "can user X do action A on object O?". This is p
 * It needs a back-end (memory, Postgres, MySQL, SQLite) to store relations
 * It can list objects that you have access to. If they are many, it can stream as results come in
 * Supports RBAC and ABAC models
-* APIs: HTTP and gRPC
+* APIs: HTTP and gRPC (NOTE: gRPC is not provided by default in Python and Go SDK clients!)
 
 Alternatives:
 
@@ -228,6 +228,11 @@ data, err := fgaClient.Check(ctx).
 // data = { allowed: true }
 ```
 
+The `User` field of the request can be:
+* a specific target, such as `user:anne`, or
+* a userset (set of users) such as `group:marketing#member`, or
+* a type-bound public access `user:*`.
+
 A **list object request** returns all *objects* of a given *type* that the *user* has a specified *relationship* with:
 
 ```go
@@ -278,6 +283,11 @@ data, err := fgaClient.ListUsers(ctx).
 
 // data.Users = [{"object":{"type":"user","id":"anne"}}, {"object":{"type":"user","id":"beth"}}]
 ```
+
+There is also the `Read()` API that just filters tuples: i.e. returns only direct relations
+without resolving implied relations against the model.
+
+Actually, check this out: [OpenFGA API](https://openfga.dev/api/)
 
 
 ## Configuration Language
@@ -691,19 +701,25 @@ model
 
 type user
 
+type team
+  relations
+    define member: [user, team#member]
+
+type organization
+  relations
+    define member: [user]
+    define owner: [organization]
+    define repo_admin: [user, team#member, organization#member]
+
 type repo
   relations
+    define owner: [organization]
     define admin: [user, team#member, organization#member] or repo_admin from owner
     define maintainer: [user, team#member, organization#member] or admin
     define writer: [user, team#member, organization#member] or maintainer or writer from owner
     define triager: [user, team#member, organization#member] or writer
     define reader: [user, team#member, organization#member] or triager or reader from owner
-    define owner: [organization]
 
-type organization
-  relations
-    define owner: [organization]
-    define repo_admin: [user, team#member, organization#member]
 ```
 
 ### Slack
