@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>esp-rs web server</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+        /* Base styles */
+        body {
+            font-size: 12pt;
+        }
+
+        /* Smaller tablets and mobiles */
+        @media (max-width: 768px) {
+            body {
+                font-size: 16pt;
+            }
+        }
+        </style>
+    </head>
+    <body>
+        <h1>Hello, Traveler!</h1>
+
+    <!-- Buttons -->
+    <div class="button-container">
+        <button class="btn-on" onclick="sendRequest(true)">Turn on LED</button>
+        <button class="btn-off" onclick="sendRequest(false)">Turn off LED</button>
+    </div>
+
+    <!-- Handle button clicks -->
+    <script>
+        function sendRequest(is_on) {
+            fetch('/set-led', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_on })
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Network response was not ok');
+            })
+            .then(data => {
+                console.log('Success:', data);
+                //alert(`LED turned ${action}`);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to send the request');
+            });
+        }
+    </script>
+
+    </body>
+</html>

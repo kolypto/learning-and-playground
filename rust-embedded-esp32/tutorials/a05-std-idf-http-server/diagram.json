@@ -1,0 +1,31 @@
+{
+    "version": 1,
+    "editor": "wokwi",
+    "author": "Mark Vartanyan <kolypto@gmail.com>",
+    "parts": [
+        { "type": "board-esp32-c3-devkitm-1", "id": "esp", "attrs": { "flashSize": "16" } },
+        { "type": "wokwi-resistor", "id": "r0", "top": 100, "left": -70, "attrs": { "value": "1000" } },
+        { "type": "wokwi-resistor", "id": "r1", "top": 110, "left": -70, "attrs": { "value": "1000" } },
+        { "type": "wokwi-resistor", "id": "r2", "top": 120, "left": -70, "attrs": { "value": "1000" } },
+        { "type": "wokwi-led", "id": "led0", "top": -20,  "left": -80, "attrs": { "color": "red" } },
+        { "type": "wokwi-led", "id": "led1", "top": -30, "left": -60, "attrs": { "color": "green" } },
+        { "type": "wokwi-led", "id": "led2", "top": -40, "left": -40, "attrs": { "color": "blue" } }
+    ],
+    "connections": [
+        [ "esp:TX", "$serialMonitor:RX", "", [] ],
+        [ "esp:RX", "$serialMonitor:TX", "", [] ],
+        [ "esp:0", "led0:C", "black", [] ],
+        [ "esp:1", "led1:C", "black", [] ],
+        [ "esp:2", "led2:C", "black", [] ],
+        [ "led0:A", "r0:1", "green" ],
+        [ "led1:A", "r1:1", "green" ],
+        [ "led2:A", "r2:1", "green" ],
+        [ "r0:2", "esp:3V3.1", "green" ],
+        [ "r1:2", "esp:3V3.1", "green" ],
+        [ "r2:2", "esp:3V3.1", "green" ]
+    ],
+    "serialMonitor": {
+        "display": "terminal",
+        "convertEol": true
+    }
+}

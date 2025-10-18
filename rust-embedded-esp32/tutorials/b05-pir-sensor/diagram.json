@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "author": "Mark Vartanyan",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-c3-devkitm-1", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    {
+      "type": "wokwi-pir-motion-sensor",
+      "id": "pir1",
+      "top": -15,
+      "left": -100,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "pir1:VCC", "esp:5V.1", "red", [ "v0" ] ],
+    [ "pir1:GND", "esp:GND.4", "black", [ "v0" ] ],
+    [ "pir1:OUT", "esp:0", "green", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}
