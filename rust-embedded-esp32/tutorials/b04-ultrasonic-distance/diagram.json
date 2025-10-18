@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "author": "Mark Vartanyan",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-c3-devkitm-1", "id": "esp", "attrs": { "flashSize": "16" } },
+    { "type": "wokwi-buzzer", "id": "bz1", "top": -8, "left": 130, "attrs": { "volume": "0.1" } },
+    { "type": "wokwi-hc-sr04", "id": "ultrasonic1", "top": -84.9, "left": -224.9, "attrs": {} },
+    { "type": "wokwi-resistor", "id": "r1", "top": 100, "left": -115, "attrs": { "value": "1000" } },
+    { "type": "wokwi-resistor", "id": "r2", "top": 120, "left": -115, "attrs": { "value": "2000" } }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "bz1:1", "esp:GND.8", "green", [ "v0" ] ],
+    [ "bz1:2", "esp:4", "green", [ "v0" ] ],
+    [ "ultrasonic1:VCC", "esp:5V.2", "red", [ "v0" ] ],
+    [ "ultrasonic1:TRIG", "esp:0", "yellow", [ "v0" ] ],
+    [ "ultrasonic1:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "ultrasonic1:ECHO", "r1:1", "green", [ "v0" ] ],
+    [ "r1:2", "esp:1", "green", [ "v0" ] ],
+    [ "r2:2", "esp:GND.4", "green", [ "v0" ] ],
+    [ "r1:1", "r2:1", "green", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}

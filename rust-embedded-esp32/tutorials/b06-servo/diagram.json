@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "author": "Mark Vartanyan",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-c3-devkitm-1", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-servo", "id": "servo1", "top": 74.8, "left": 19.2, "attrs": {} }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "esp:GND.4", "servo1:GND", "black", [ "h0" ] ],
+    [ "esp:5V.1", "servo1:V+", "red", [ "h0" ] ],
+    [ "servo1:PWM", "esp:0", "green", [ "h0" ] ]
+  ],
+  "dependencies": {}
+}

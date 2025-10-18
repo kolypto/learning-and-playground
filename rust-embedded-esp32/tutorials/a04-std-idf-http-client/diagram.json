@@ -1,0 +1,20 @@
+{
+    "version": 1,
+    "editor": "wokwi",
+    "author": "Mark Vartanyan <kolypto@gmail.com>",
+    "parts": [
+        { "type": "board-esp32-c3-devkitm-1", "id": "esp", "top": 0, "left": 0, "attrs": { "flashSize": "16" } },
+        { "type": "wokwi-neopixel", "id": "rgb1", "top": 70, "left": 40, "attrs": {} }
+    ],
+    "connections": [
+        [ "esp:TX", "$serialMonitor:RX", "", [] ],
+        [ "esp:RX", "$serialMonitor:TX", "", [] ],
+        [ "rgb1:DIN", "esp:4", "green", [ "h0" ] ],
+        [ "rgb1:VDD", "esp:5V.1", "green", [ "h0" ] ],
+        [ "rgb1:VSS", "esp:GND.3", "green", [ "v0" ] ]
+    ],
+    "serialMonitor": {
+        "display": "terminal",
+        "convertEol": true
+    }
+}
