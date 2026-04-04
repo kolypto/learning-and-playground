@@ -17,6 +17,43 @@ Espressif uses two bootloaders:
    At the moment, only ESP-IDF Bootloader is supported as a second stage bootloader.
    Later, MCUBOOT support is planned.
 
+
+### Boot Mode Selection
+
+See: [Boot Mode Selection](https://docs.espressif.com/projects/esptool/en/latest/esp32c3/advanced-topics/boot-mode-selection.html).
+
+Also see: “Strapping Pins” in the datasheet:
+* GPIO2, GPIO8, GPIO9 : Strapping pins.
+* GPIO18, GPIO19 : USB Serial/JTAG interface.
+* GPIO4, GPIO5, GPIO6, GPIO7 : JTAG interface.
+* GPIO20, GPIO21 : UART0 interface.
+
+All strapping pins have latches: they remember the bit value from boot until the chip is shut down.
+It makes the strapping pin values available for chip operation.
+
+Also see: "eFuse parameters". You can burn the `EFUSE_UART_PRINT_CONTROL` to disable bootloader messages.
+
+#### Boot Messages (ROM Messages Printing Control to UART0)
+
+When ESP32-C3 boots, the bootloader prints its logs to GPIO20-21:
+these are the default UART pins tied to UART0.
+
+`EFUSE_UART_PRINT_CONTROL` and `GPIO8` control ROM messages printing to `UART0`.
+NOTE: I was unsuccessful to get rid of bootloader messages — so just decided to use another GPIO for UART.
+
+The boot messages printed by the ROM bootloader can be suppressed by connecting `GPIO8` to GND during boot.
+Connect it over a 10K resistor to GND: you can then also use the pin!
+
+The second stage will also print messages: you can disable them in "make menuconfig":
+
+1. Bootloader config -> Bootloader log verbosity -> (no output)
+2. Component config -> Log output -> Default log verbosity (no output)
+
+Alternatives:
+
+1. Ignore on the receiving end
+2. Use a MOSFET to gate the bootloader output
+
 # Flash
 
 The Flash memory is flashed with a partition table at the default offset:

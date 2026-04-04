@@ -63,6 +63,80 @@ can be *bit-banged*: i.e. directly controlled by the processor.
 Note that bit-banging is CPU-intensive and not usually as precise.
 
 
+
+## Client
+
+Get a USB2TTL converter and send UART lines with `picocom`:
+
+```console
+$ picocom /dev/ttyUSB0 -b 115200 --omap 'crcrlf' --imap 'lfcrlf' 
+```
+
+Note that by default when you hit "Enter" it sends a "CR":
+because back in the day, "Enter" meant "Carriarge Return", and there was a separate key for "Line Feed"
+(see DEC VT05 from the 1970-s). Terminal emulators *emulate* exactly this behavior.
+The `--omap` option converts your `\r` into `\r\n` when *outputting* it to the UART.
+
+
+## Reading/Writing
+
+You might want to split the peripheral to handle Rx and Tx separately:
+
+```rust
+// Init UART
+// TODO: check DMA for faster I/O without CPU
+let mut uart = uart::Uart::new(
+    peripherals.UART1,
+    uart::Config::default().with_baudrate(115_200),
+    ).expect("UART init")
+    .with_tx(peripherals.GPIO0)
+    .with_rx(peripherals.GPIO1)
+    .into_async();
+let (rx, mut tx) = uart.split();
+```
+
+Writing:
+
+```rust
+// Send bytes
+let data = b"Hello\n";
+tx.write_async(data).await.expect("UART write");
+```
+
+Read bytes:
+
+```rust
+let mut buf = [0u8; 64];
+loop {
+    let n = uart.read_async(&mut buf).await.expect("UART read");
+    defmt::info!("Uart read: {}", buf[..n]);
+}
+```
+
+### Buffer
+
+If you type manually, you will see that "read" reads one byte at a time.
+This is because `read_async()` returns as many bytes as is available in the hardware Rx buffer,
+which has 128 bytes in ESP32-C3. 
+
+ESP32-C3 has:
+
+* RX FIFO: 128 bytes hardware buffer
+* TX FIFO: 128 bytes hardware buffer
+
+Incoming bytes from the modem go straight into RX FIFO. When data arrives, UART hardware triggers an interrupt,
+which in turn wakes up the task and `read_async()` reads whatever's in the FIFO (could be 1 byte, could be 50).
+
+Interrupts: `esp-hal` configures these for you. 
+RX interrupt fires when FIFO has data (or hits threshold). 
+TX interrupt fires when FIFO has space.
+
+If modem sends data faster than you read, you lose bytes, so the reader's got to be fast.
+Or use `with_cts()` and `with_rcs()` for devices to agree on i/o readiness.
+
+Also, you could use DMA that would let UART write directly to RAM without CPU intervention. 
+But ESP32-C3 UART doesn't have DMA (ESP32-S3 does).
+
 ## Flow Control
 
 Flow Control is a mechanism where the receiver can tell the sender that it's overwhelmed
@@ -82,6 +156,8 @@ and cannot keep up.
   sending special flow control characters: typically, ASCII codes XON and XOFF (0x11 and 0x13).
 
 More info: [UART Flow Control](https://www.silabs.com/documents/public/application-notes/an0059.0-uart-flow-control.pdf)
+
+
 
 ## Links
 

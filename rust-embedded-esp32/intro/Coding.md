@@ -408,6 +408,61 @@ If your device does not have such a port, you will have to use [`esp-prog`](http
 or another suitable programmer and connect it according to the [connection instructions](https://docs.espressif.com/projects/esp-idf/en/v5.2.3/esp32s2/api-guides/jtag-debugging/configure-other-jtag.html)
 (select the desired chip on the page).
 
+To set up unit-tests, you first need to realize that altough your code runs in `no_std`, unit-tests are run in `std`!
+So you'll need to prep some files:
+
+`lib.rs`: it should allow `std` in testing:
+
+```rust
+#![cfg_attr(not(test), no_std)]
+```
+
+`Cargo.toml`: ESP crates won't compile on your Linux. Make them architecture-dependent:
+
+```rust
+[target.'cfg(target_arch = "riscv32")'.dependencies]
+esp-hal = { version = "~1.0", features = ["defmt", "esp32c3", "unstable"] }
+//...
+```
+
+`build.rs` also contains ESP-specific stuff. Make it conditional:
+
+```rust
+// ESP_only stuff
+#[cfg(target_arch = "riscv32")]{
+  // ...
+}
+```
+
+Finally, provice the `--target architecture` when running your tests:
+
+```console
+$ cargo test --lib linebuf --target x86_64-unknown-linux-gnu
+```
+
+Also, rust-analyzer can analyze one target at a time, so you'd have to add this:
+
+```json
+        "cargo": {
+          // This target works with #[test] in std
+          "target": "x86_64-unknown-linux-gnu",
+        }
+```
+
+Ouch.
+
+Claude suggests that if you structure the project better, you can live with two configs:
+
+```
+project/
+├── Cargo.toml          # Workspace root
+├── libs/               # Pure logic, no_std library
+│   ├── Cargo.toml
+│   └── src/lib.rs      # Your linebuf + tests
+└── firmware/           # ESP32 binary
+    ├── Cargo.toml      # Has esp-hal deps
+    └── src/main.rs     # Uses linebuf as dependency
+```
 
 
 ## Over-the-Air Updates (OTA)
@@ -448,4 +503,3 @@ $ cargo add anyhow --no-default-features
 ### Heapless
 
 Statically allocated objects: strings, etc.
-
