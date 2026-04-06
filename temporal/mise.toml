@@ -1,0 +1,8 @@
+[tools]
+python = "latest"
+temporal = "latest"
+tctl = "latest"
+
+[env]
+VIRTUAL_ENV = ".venv"
+_.python.venv = { path = ".venv", create = true }

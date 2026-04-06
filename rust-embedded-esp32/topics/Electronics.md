@@ -67,7 +67,7 @@ Buck converter provides the major drop, LDO provides fine regulation.
 
 Modules:
 
-* ?
+* LM7812: 12V fix
 
 ### Boost Converters
 
