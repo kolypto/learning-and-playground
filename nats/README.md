@@ -931,6 +931,10 @@ Advanced features (as NATS headers):
 * `"Nats-TTL"` Header: specify a message's TTL (overrides stream's default)
 * `"Nats-Rollup"` Header: purge all prior messages (in the stream or in the subject)
 * `"Nats-Marker-Reason"` Header: reason for message deletion
+* `Nats-Schedule`: send message `@at 2009-11-10T23:00:00Z` or regularly: `0 30 14 * * *`. Usable for background jobs!
+* `Nats-Batch-Id`: atomic publish many messages or KV keys
+
+See more info: [NATS Headers](https://docs.nats.io/nats-concepts/jetstream/headers)
 
 ### JetStream Events
 
