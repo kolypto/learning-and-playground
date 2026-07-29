@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google AIP Digest — All AIPs</title>
+<style>
+  :root {
+    --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3;
+    --muted:#8b949e; --accent:#58a6ff; --green:#3fb950; --amber:#d29922;
+    --code-bg:#1c2128;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;padding:0 0 4rem;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5;}
+  .topbar{position:sticky;top:0;z-index:20;background:rgba(13,17,23,.92);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:1.1rem 1.5rem .75rem;}
+  .wrap{max-width:1280px;margin:0 auto;padding:0 1.5rem;}
+  .topbar .wrap{padding:0;}
+  h1{margin:0 0 .15rem;font-size:1.4rem;letter-spacing:-.02em;}
+  .sub{margin:0 0 .8rem;color:var(--muted);font-size:.85rem;}
+  .sub a{color:var(--accent);text-decoration:none;}
+  .controls{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;}
+  #search{background:var(--code-bg);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:.4rem .7rem;font-size:.85rem;min-width:200px;font-family:inherit;}
+  #search:focus{outline:none;border-color:var(--accent);}
+  .filters{display:flex;gap:.4rem;flex-wrap:wrap;}
+  .filter{background:var(--card);border:1px solid var(--border);color:var(--muted);
+    border-radius:20px;padding:.3rem .7rem;font-size:.76rem;cursor:pointer;
+    display:inline-flex;align-items:center;gap:.35rem;transition:.15s;}
+  .filter:hover{color:var(--text);border-color:var(--muted);}
+  .filter.active{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:600;}
+  .filter span:not(.fs){opacity:.6;font-variant-numeric:tabular-nums;}
+  .filter.active span:not(.fs){opacity:.7;}
+  .fs{width:8px;height:8px;border-radius:50%;display:inline-block;}
+  main{padding-top:1.5rem;}
+  section{margin-bottom:2rem;}
+  .cat-head{display:flex;align-items:center;gap:.55rem;font-size:.92rem;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+    margin:1.2rem 0 .8rem;font-weight:700;}
+  .cat-swatch{width:11px;height:11px;border-radius:3px;}
+  .cat-count{margin-left:.2rem;font-size:.78rem;opacity:.6;}
+  .grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;
+    padding:1rem 1.15rem;display:flex;flex-direction:column;}
+  .card.secondary{border-style:dashed;border-color:#2b3038;}
+  .card.collapsed{cursor:pointer;padding:.55rem .9rem;}
+  .card.collapsed .body,
+  .card.collapsed .tldr,
+  .card.collapsed .foot{display:none;}
+  .card.collapsed .card-head{margin-bottom:0;}
+  .card.collapsed:hover{border-color:var(--muted);}
+  .toggle{background:var(--code-bg);border:1px solid var(--border);color:var(--muted);
+    width:22px;height:22px;border-radius:6px;cursor:pointer;font-size:1rem;line-height:1;
+    display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;font-family:var(--mono);}
+  .toggle:hover{color:var(--text);border-color:var(--muted);}
+  .card-head{display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem;}
+  .num{font-family:var(--mono);font-size:.74rem;color:var(--accent);font-weight:600;white-space:nowrap;}
+  .card h2{margin:0;font-size:.98rem;letter-spacing:-.01em;flex:1;}
+  .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .tldr{color:var(--muted);font-size:.83rem;margin:.1rem 0 .7rem;}
+  .ex-label{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;
+    letter-spacing:.08em;color:var(--muted);opacity:.65;margin-bottom:.2rem;}
+  pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;
+    padding:.6rem .75rem;overflow-x:auto;margin:0 0 .5rem;
+    font-family:var(--mono);font-size:.75rem;line-height:1.55;white-space:pre;}
+  pre .c{color:var(--muted);}
+  .section-label{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--muted);margin:.3rem 0 .3rem;font-weight:600;}
+  ul{margin:0 0 .6rem;padding-left:1.05rem;}
+  li{margin:.18rem 0;font-size:.8rem;}
+  .foot{margin-top:auto;display:flex;align-items:center;justify-content:space-between;
+    padding-top:.55rem;border-top:1px solid var(--border);}
+  .state{font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;
+    padding:.1rem .45rem;border-radius:20px;font-weight:600;}
+  .st-approved{color:var(--green);background:rgba(63,185,80,.12);}
+  .st-draft{color:var(--amber);background:rgba(210,153,34,.12);}
+  .st-other{color:var(--muted);background:rgba(139,148,158,.12);}
+  .src{color:var(--accent);font-size:.74rem;text-decoration:none;}
+  .src:hover{text-decoration:underline;}
+  .hidden{display:none!important;}
+  .empty{color:var(--muted);text-align:center;padding:3rem;font-size:.9rem;}
+  code{background:var(--code-bg);padding:.05rem .3rem;border-radius:4px;
+    font-family:var(--mono);font-size:.82em;}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="wrap">
+      <h1>Google AIP Digest</h1>
+      <p class="sub">72 general API Improvement Proposals · example-first · content from the <a href="https://github.com/aip-dev/google.aip.dev" target="_blank">aip.dev repo</a></p>
+      <div class="controls">
+        <input id="search" type="text" placeholder="Search title or number…" autocomplete="off">
+        <button id="expandAll" class="filter expand-btn">Expand secondary</button>
+        <div class="filters"><button class="filter active" data-f="all">All <span>72</span></button>
+<button class="filter" data-f="meta"><span class="fs" style="background:#8b949e"></span>Process &amp; Meta <span>7</span></button>
+<button class="filter" data-f="design"><span class="fs" style="background:#58a6ff"></span>Design Foundations <span>3</span></button>
+<button class="filter" data-f="resource"><span class="fs" style="background:#a371f7"></span>Resources <span>7</span></button>
+<button class="filter" data-f="method"><span class="fs" style="background:#3fb950"></span>Methods <span>19</span></button>
+<button class="filter" data-f="field"><span class="fs" style="background:#e3b341"></span>Fields <span>11</span></button>
+<button class="filter" data-f="naming"><span class="fs" style="background:#f778ba"></span>Naming &amp; Style <span>5</span></button>
+<button class="filter" data-f="data"><span class="fs" style="background:#56d4dd"></span>Data Types <span>4</span></button>
+<button class="filter" data-f="ops"><span class="fs" style="background:#ff9e64"></span>Lifecycle &amp; Ops <span>7</span></button>
+<button class="filter" data-f="compat"><span class="fs" style="background:#d29922"></span>Versioning &amp; Compat <span>5</span></button>
+<button class="filter" data-f="errors"><span class="fs" style="background:#f85149"></span>Errors &amp; Retry <span>2</span></button>
+<button class="filter" data-f="security"><span class="fs" style="background:#db61a2"></span>Security <span>2</span></button></div>
+      </div>
+    </div>
+  </div>
+  <main class="wrap">
+    <section data-cat-section="meta">
+  <h3 class="cat-head"><span class="cat-swatch" style="background:#8b949e"></span>Process &amp; Meta <span class="cat-count">7</span></h3>
+  <div class="grid"><div class="card secondary collapsed" data-cat="meta" data-num="1" data-title="aip purpose and guidelines">
+  <div class="card-head">
+    <span class="num">AIP-1</span>
+    <h2>AIP Purpose and Guidelines</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#8b949e" title="Process & Meta"></span>
+  </div>
+  <p class="tldr">What an AIP is and how the process works — styled after Python PEPs.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>Design AIP  → guidance for API producers<br>Process AIP → rules about the AIP process itself</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Source of truth for API design at Google</li><li>Two types: design guidance &amp; process</li><li>States: draft → reviewing → approved</li><li>Editors assign numbers &amp; approve</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/1" target="_blank">aip.dev/1 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="meta" data-num="2" data-title="aip numbering">
+  <div class="card-head">
+    <span class="num">AIP-2</span>
+    <h2>AIP Numbering</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#8b949e" title="Process & Meta"></span>
+  </div>
+  <p class="tldr">How AIP numbers are handed out and blocked into ranges.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>0xxx  general guidance<br>1xx   resource design<br>2xx   collections &amp; batch<br>4xxx  Google Cloud / client libs</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Numbers assigned when a draft is accepted</li><li>All AIPs get numbers, even unapproved</li><li>Blocks reserved per scope/team</li><li>Occasional joke numbers</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/2" target="_blank">aip.dev/2 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="meta" data-num="3" data-title="aip versioning">
+  <div class="card-head">
+    <span class="num">AIP-3</span>
+    <h2>AIP Versioning</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#8b949e" title="Process & Meta"></span>
+  </div>
+  <p class="tldr">AIPs themselves are living docs; changes tracked, not versioned formally.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>Changelog at the bottom of each AIP</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>No semver on AIPs</li><li>Substantive changes logged</li><li>Guidance evolves over time</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/3" target="_blank">aip.dev/3 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="meta" data-num="8" data-title="aip style and guidance">
+  <div class="card-head">
+    <span class="num">AIP-8</span>
+    <h2>AIP Style and Guidance</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#8b949e" title="Process & Meta"></span>
+  </div>
+  <p class="tldr">How to write AIPs: RFC-2119 keywords, structure, tone.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>MUST / MUST NOT — hard rule<br>SHOULD / SHOULD NOT — strong default<br>MAY — optional</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>RFC-2119 requirement levels</li><li>Standard section layout</li><li>Examples use the &#x27;library&#x27; domain (publishers/books)</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/8" target="_blank">aip.dev/8 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="meta" data-num="9" data-title="glossary">
+  <div class="card-head">
+    <span class="num">AIP-9</span>
+    <h2>Glossary</h2>
+    
+    <span class="dot" style="background:#8b949e" title="Process & Meta"></span>
+  </div>
+  <p class="tldr">Shared vocabulary: resource, collection, method, plane, etc.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>resource   an addressable entity with a name<br>collection a list of resources of one type<br>method     an operation on a resource</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Resource / collection / method</li><li>Management vs data plane</li><li>Standard vs custom method</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/9" target="_blank">aip.dev/9 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="meta" data-num="100" data-title="api design review faq">
+  <div class="card-head">
+    <span class="num">AIP-100</span>
+    <h2>API Design Review FAQ</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#8b949e" title="Process & Meta"></span>
+  </div>
+  <p class="tldr">Common questions from API design reviews, answered.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>Q: gRPC or REST first?  A: design in proto, transcode to REST.</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Review process guidance</li><li>When to break the rules (rarely)</li><li>How precedent is weighed</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/100" target="_blank">aip.dev/100 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="meta" data-num="200" data-title="precedent">
+  <div class="card-head">
+    <span class="num">AIP-200</span>
+    <h2>Precedent</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#8b949e" title="Process & Meta"></span>
+  </div>
+  <p class="tldr">When existing APIs conflict with an AIP, how precedent is handled.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>New APIs follow AIPs; legacy consistency can win case-by-case</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>AIPs guide new design</li><li>Local consistency sometimes overrides</li><li>Editors arbitrate conflicts</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/200" target="_blank">aip.dev/200 ↗</a>
+  </div>
+</div></div>
+</section><section data-cat-section="design">
+  <h3 class="cat-head"><span class="cat-swatch" style="background:#58a6ff"></span>Design Foundations <span class="cat-count">3</span></h3>
+  <div class="grid"><div class="card" data-cat="design" data-num="111" data-title="planes (cpl / dpl)">
+  <div class="card-head">
+    <span class="num">AIP-111</span>
+    <h2>Planes (CPL / DPL)</h2>
+    
+    <span class="dot" style="background:#58a6ff" title="Design Foundations"></span>
+  </div>
+  <p class="tldr">Separate the management plane (provision resources) from the data plane (use them).</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>Management: CreateTopic, DeleteTopic<br>Data:       Publish,     Subscribe</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Management plane = CRUD on config, resource-oriented</li><li>Data plane = high-throughput data access</li><li>Different latency/consistency expectations</li><li>Keep them in separate services when they diverge</li><li>CPL / DPL = Yandex Cloud jargon for these (not AIP terms)</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/111" target="_blank">aip.dev/111 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="design" data-num="127" data-title="http and grpc transcoding">
+  <div class="card-head">
+    <span class="num">AIP-127</span>
+    <h2>HTTP and gRPC Transcoding</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#58a6ff" title="Design Foundations"></span>
+  </div>
+  <p class="tldr">Define in proto; map to REST with google.api.http so both surfaces work.</p>
+  <div class="body">
+    <div class="ex-label">proto</div>
+    <pre>post: &quot;/v1/{parent=publishers/*}/books&quot;<br>body: &quot;book&quot;</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Path vars pull from request fields</li><li>`body` names the field mapped to the HTTP body</li><li>One RPC → one clean REST route</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/127" target="_blank">aip.dev/127 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="design" data-num="128" data-title="declarative-friendly interfaces">
+  <div class="card-head">
+    <span class="num">AIP-128</span>
+    <h2>Declarative-friendly interfaces</h2>
+    
+    <span class="dot" style="background:#58a6ff" title="Design Foundations"></span>
+  </div>
+  <p class="tldr">Design resources so tools (Terraform-style) can reconcile desired state.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>client declares desired state → server converges<br>(supports etags, LROs, soft-delete, validate-only)</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Full CRUD + idempotency</li><li>etag, validate_only, allow_missing support</li><li>Consistent output for the same input</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/128" target="_blank">aip.dev/128 ↗</a>
+  </div>
+</div></div>
+</section><section data-cat-section="resource">
+  <h3 class="cat-head"><span class="cat-swatch" style="background:#a371f7"></span>Resources <span class="cat-count">7</span></h3>
+  <div class="grid"><div class="card" data-cat="resource" data-num="121" data-title="resource-oriented design">
+  <div class="card-head">
+    <span class="num">AIP-121</span>
+    <h2>Resource-oriented design</h2>
+    
+    <span class="dot" style="background:#a371f7" title="Resources"></span>
+  </div>
+  <p class="tldr">Model the API as resources (nouns) + a small set of standard methods (verbs).</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>publishers/{publisher}/books/{book}<br>  Get · List · Create · Update · Delete</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Prefer 5 standard methods over custom RPCs</li><li>Resources have name, type, methods</li><li>Collections nest hierarchically</li><li>Custom methods only when nothing standard fits</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/121" target="_blank">aip.dev/121 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="resource" data-num="122" data-title="resource names">
+  <div class="card-head">
+    <span class="num">AIP-122</span>
+    <h2>Resource names</h2>
+    
+    <span class="dot" style="background:#a371f7" title="Resources"></span>
+  </div>
+  <p class="tldr">Each resource is identified by one opaque hierarchical `name` — collection/id pairs alternating all the way down.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>publishers / oreilly / books / 9781492 / chapters / 3<br>  └coll┘   └─id─┘  └coll┘  └──id──┘  └─coll─┘ └id┘<br><br>name = collection/{id}/collection/{id}/…</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Strictly alternates collection/id/collection/id</li><li>Collection segments: plural, lowerCamelCase</li><li>IDs are opaque — clients don&#x27;t parse or build names</li><li>`name` field holds identity; `parent` holds container</li><li>Avoid PII / user-invisible IDs in names</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/122" target="_blank">aip.dev/122 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="resource" data-num="123" data-title="resource types">
+  <div class="card-head">
+    <span class="num">AIP-123</span>
+    <h2>Resource types</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#a371f7" title="Resources"></span>
+  </div>
+  <p class="tldr">Every resource declares a globally unique type string.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>library.googleapis.com/Book<br>  = {service-name}/{Type}</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Type = service DNS name + PascalCase kind</li><li>Declared via google.api.resource annotation</li><li>Enables generic tooling &amp; references</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/123" target="_blank">aip.dev/123 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="resource" data-num="124" data-title="resource association">
+  <div class="card-head">
+    <span class="num">AIP-124</span>
+    <h2>Resource association</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#a371f7" title="Resources"></span>
+  </div>
+  <p class="tldr">Reference one resource from another by its name string, not an embedded copy.</p>
+  <div class="body">
+    <div class="ex-label">json</div>
+    <pre>GET /v1/publishers/oreilly/books/9781492<br>{<br>  &quot;name&quot;:   &quot;publishers/oreilly/books/9781492&quot;,<br>  &quot;author&quot;: &quot;authors/ursula-le-guin&quot;<br>}</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Store the referenced resource&#x27;s `name` string</li><li>Not an embedded copy of the resource</li><li>Many-to-many → a dedicated association resource</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/124" target="_blank">aip.dev/124 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="resource" data-num="156" data-title="singleton resources">
+  <div class="card-head">
+    <span class="num">AIP-156</span>
+    <h2>Singleton resources</h2>
+    
+    <span class="dot" style="background:#a371f7" title="Resources"></span>
+  </div>
+  <p class="tldr">One-per-parent resources: Get/Update only, no Create/Delete/List.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>GET   /v1/users/me/config<br>PATCH /v1/users/me/config?updateMask=theme<br><br><span class="c">// note: no ID segment after &quot;config&quot;</span></pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Always exists with its parent</li><li>No Create/Delete (implicitly created)</li><li>Name has no ID segment (…/config)</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/156" target="_blank">aip.dev/156 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="resource" data-num="162" data-title="resource revisions">
+  <div class="card-head">
+    <span class="num">AIP-162</span>
+    <h2>Resource Revisions</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#a371f7" title="Resources"></span>
+  </div>
+  <p class="tldr">Immutable history: a resource keeps versioned revisions you can alias/rollback.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>GET  /v1/publishers/oreilly/books/9781492/revisions<br>POST /v1/publishers/oreilly/books/9781492:rollback<br>     { &quot;revisionId&quot;: &quot;c7a2e1&quot; }</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>revisions/ sub-collection</li><li>Each edit snapshots a revision</li><li>Alias (e.g. &#x27;latest&#x27;) + rollback</li><li>Still a draft AIP</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-draft">draft</span>
+    <a class="src" href="https://google.aip.dev/162" target="_blank">aip.dev/162 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="resource" data-num="214" data-title="resource expiration">
+  <div class="card-head">
+    <span class="num">AIP-214</span>
+    <h2>Resource expiration</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#a371f7" title="Resources"></span>
+  </div>
+  <p class="tldr">TTL/expire_time fields for auto-deleting resources.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre><span class="c">// input: relative ttl</span><br>{ &quot;ttl&quot;: &quot;86400s&quot; }<br><br><span class="c">// output: absolute expire time</span><br>{ &quot;expireTime&quot;: &quot;2026-07-30T14:30:00Z&quot; }</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>expire_time (absolute) output</li><li>ttl (relative) input, mapped to expire_time</li><li>Server reclaims after expiry</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/214" target="_blank">aip.dev/214 ↗</a>
+  </div>
+</div></div>
+</section><section data-cat-section="method">
+  <h3 class="cat-head"><span class="cat-swatch" style="background:#3fb950"></span>Methods <span class="cat-count">19</span></h3>
+  <div class="grid"><div class="card secondary collapsed" data-cat="method" data-num="130" data-title="methods">
+  <div class="card-head">
+    <span class="num">AIP-130</span>
+    <h2>Methods</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">Overview of method families: standard, custom, batch, LRO.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>Standard: Get List Create Update Delete<br>Custom:   :verb<br>Batch:    :batchGet …</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Prefer standard methods</li><li>Custom = colon verb on resource/collection</li><li>Batch operates on many at once</li><li>Long ops return an Operation</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/130" target="_blank">aip.dev/130 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="method" data-num="131" data-title="standard methods: get">
+  <div class="card-head">
+    <span class="num">AIP-131</span>
+    <h2>Standard methods: Get</h2>
+    
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">Fetch a single resource by name. Read-only, no side effects.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>GET /v1/publishers/oreilly/books/9781492<br><br>→ 200  { &quot;name&quot;: &quot;publishers/oreilly/books/9781492&quot;, … }<br>→ 404  NOT_FOUND</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Request has a single required `name`</li><li>Returns the resource or NOT_FOUND</li><li>No side effects; safe to retry</li><li>No `filter`/`order_by` — that&#x27;s List</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/131" target="_blank">aip.dev/131 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="method" data-num="132" data-title="standard methods: list">
+  <div class="card-head">
+    <span class="num">AIP-132</span>
+    <h2>Standard methods: List</h2>
+    
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">Return a page of resources from one collection under a `parent`.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>GET /v1/publishers/oreilly/books<br>      ?pageSize=20&amp;pageToken=abc&amp;orderBy=title<br><br>→ { &quot;books&quot;: [ … ], &quot;nextPageToken&quot;: &quot;def&quot; }</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Response MUST include next_page_token</li><li>Optional filter (AIP-160) &amp; order_by</li><li>Optional total_size (post-filter, may estimate)</li><li>Consistent for any reader with permission</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/132" target="_blank">aip.dev/132 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="method" data-num="133" data-title="standard methods: create">
+  <div class="card-head">
+    <span class="num">AIP-133</span>
+    <h2>Standard methods: Create</h2>
+    
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">POST a new resource into a collection under `parent`.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>POST /v1/publishers/oreilly/books?bookId=9781492<br>{ &quot;title&quot;: &quot;A Wizard of Earthsea&quot; }<br><br>→ 200  { &quot;name&quot;: &quot;publishers/oreilly/books/9781492&quot;, … }</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Request: parent + resource (+ optional id)</li><li>Server assigns name if id not given</li><li>Returns the created resource</li><li>Support client-specified id for idempotency</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/133" target="_blank">aip.dev/133 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="method" data-num="134" data-title="standard methods: update">
+  <div class="card-head">
+    <span class="num">AIP-134</span>
+    <h2>Standard methods: Update</h2>
+    
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">PATCH a resource; an update_mask says which fields to touch.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>PATCH /v1/publishers/oreilly/books/9781492<br>      ?updateMask=title,rating<br>{ &quot;title&quot;: &quot;New Title&quot;, &quot;rating&quot;: 5 }</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>PATCH = partial via field mask (AIP-161)</li><li>Mask absent → full replace (discouraged)</li><li>Support allow_missing for upsert</li><li>OUTPUT_ONLY fields ignored in mask</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/134" target="_blank">aip.dev/134 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="method" data-num="135" data-title="standard methods: delete">
+  <div class="card-head">
+    <span class="num">AIP-135</span>
+    <h2>Standard methods: Delete</h2>
+    
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">DELETE a single resource by name. Returns empty (or an LRO).</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>DELETE /v1/publishers/oreilly/books/9781492<br><br>→ 200  {}          (or an Operation if long-running)</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Single required `name`</li><li>Not idempotent by default → use etag / allow_missing</li><li>Cascading deletes need explicit force flag</li><li>Soft delete → see AIP-164</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/135" target="_blank">aip.dev/135 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="method" data-num="136" data-title="custom methods">
+  <div class="card-head">
+    <span class="num">AIP-136</span>
+    <h2>Custom methods</h2>
+    
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">Non-CRUD actions via the colon syntax: `resource:verb`.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>POST /v1/publishers/oreilly/books/9781492:archive<br>{}<br><br><span class="c">// collection-level verb:</span><br>POST /v1/publishers/oreilly/books:sort</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Verb is lowerCamelCase after &#x27;:&#x27;</li><li>Default POST; GET only if safe &amp; cacheable</li><li>Attach to a resource or a collection</li><li>Last resort — try standard methods first</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/136" target="_blank">aip.dev/136 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="method" data-num="157" data-title="partial responses">
+  <div class="card-head">
+    <span class="num">AIP-157</span>
+    <h2>Partial responses</h2>
+    
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">Return only some fields via a field-mask query param or a view enum.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>GET /v1/publishers/oreilly/books/9781492?$fields=name,title<br><br><span class="c">// or a preset view:</span><br>GET /v1/publishers/oreilly/books?view=BASIC</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Mask goes in a side channel (query param / header), NOT the request body</li><li>Field mask as a request field is discouraged</li><li>Omitted mask defaults to &#x27;*&#x27; (all fields)</li><li>View enum (BASIC / FULL) for fixed presets</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/157" target="_blank">aip.dev/157 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="method" data-num="158" data-title="pagination">
+  <div class="card-head">
+    <span class="num">AIP-158</span>
+    <h2>Pagination</h2>
+    
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">Standard page_size / page_token in, next_page_token out.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>req:  page_size, page_token<br>resp: results[], next_page_token</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Opaque page_token — clients don&#x27;t build it</li><li>Empty next_page_token = last page</li><li>page_size is a max, server may return fewer</li><li>Token encodes filter/order; don&#x27;t mix params</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/158" target="_blank">aip.dev/158 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="method" data-num="159" data-title="reading across collections">
+  <div class="card-head">
+    <span class="num">AIP-159</span>
+    <h2>Reading across collections</h2>
+    
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">Use `-` as a wildcard parent to List across sibling collections.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>GET /v1/publishers/-/books<br>(all books across all publishers)</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>`-` wildcard in the parent segment</li><li>Read-only aggregation</li><li>Filtering still applies</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/159" target="_blank">aip.dev/159 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="method" data-num="160" data-title="filtering">
+  <div class="card-head">
+    <span class="num">AIP-160</span>
+    <h2>Filtering</h2>
+    
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">A single string `filter` field with a standard expression grammar.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>filter = rating &gt; 4 AND NOT hidden<br>         author.name = &quot;Le Guin&quot;        (nested field)<br>         metadata.tags : &quot;fantasy&quot;       (map / has)<br>         details.pages.count &gt;= 300      (deep nesting)</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>One string field, EBNF-defined grammar</li><li>Nested fields via dotted paths (author.name)</li><li>`:` = has/contains; `=` exact match</li><li>AND OR NOT, comparisons, ( ) grouping</li><li>Document which fields are filterable</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/160" target="_blank">aip.dev/160 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="method" data-num="161" data-title="field masks">
+  <div class="card-head">
+    <span class="num">AIP-161</span>
+    <h2>Field masks</h2>
+    
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">FieldMask names exactly which fields a request reads or writes.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>update_mask = &quot;title,author.name&quot;<br>(FieldMask, dotted paths)</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Dotted paths into nested messages</li><li>&#x27;*&#x27; means all fields</li><li>Drives partial update (AIP-134) &amp; read (AIP-157)</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/161" target="_blank">aip.dev/161 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="method" data-num="164" data-title="soft delete">
+  <div class="card-head">
+    <span class="num">AIP-164</span>
+    <h2>Soft delete</h2>
+    
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">Delete marks resources deleted; undelete restores; expunge purges.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>DELETE /v1/publishers/oreilly/books/9781492      (soft)<br>GET    /v1/publishers/oreilly/books?showDeleted=true<br>POST   /v1/publishers/oreilly/books/9781492:undelete<br>POST   /v1/publishers/oreilly/books/9781492:expunge  (hard)</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Soft-deleted keep a delete_time</li><li>List with ?showDeleted=true to include them</li><li>undelete within the retention window</li><li>expunge for permanent removal</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/164" target="_blank">aip.dev/164 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="method" data-num="165" data-title="criteria-based delete">
+  <div class="card-head">
+    <span class="num">AIP-165</span>
+    <h2>Criteria-based delete</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">Delete many matching a filter via `:purge` (an LRO), with a dry-run guard.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>POST /v1/{parent=publishers/*}/books:purge<br>body: { filter:&quot;…&quot;, force:true }</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Filter selects what to delete</li><li>force=false → dry-run count first</li><li>Returns an LRO</li><li>Dangerous — guarded by design</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/165" target="_blank">aip.dev/165 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="method" data-num="217" data-title="unreachable resources">
+  <div class="card-head">
+    <span class="num">AIP-217</span>
+    <h2>Unreachable resources</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">List can return partial results plus an `unreachable` list of skipped scopes.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>ListBooksResponse{ books[], unreachable:[&#x27;us-west1&#x27;] }</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Partial success on List/aggregate</li><li>unreachable[] names skipped locations</li><li>Client decides retry/degrade</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/217" target="_blank">aip.dev/217 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="method" data-num="231" data-title="batch methods: get">
+  <div class="card-head">
+    <span class="num">AIP-231</span>
+    <h2>Batch methods: Get</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">Fetch many resources by name in one call under a shared parent.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>GET /v1/{parent=publishers/*}/books:batchGet<br>  ?names=…/books/1&amp;names=…/books/2</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Shared parent + repeated names</li><li>Response order matches request</li><li>≤ ~1000 per batch</li><li>Read-only</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/231" target="_blank">aip.dev/231 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="method" data-num="233" data-title="batch methods: create">
+  <div class="card-head">
+    <span class="num">AIP-233</span>
+    <h2>Batch methods: Create</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">Create many resources atomically in one call.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>POST /v1/{parent=publishers/*}/books:batchCreate<br>body: { requests: [ CreateBookRequest, … ] }</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Wraps N CreateBookRequests</li><li>Atomic: all succeed or all fail</li><li>Returns all created resources</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/233" target="_blank">aip.dev/233 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="method" data-num="234" data-title="batch methods: update">
+  <div class="card-head">
+    <span class="num">AIP-234</span>
+    <h2>Batch methods: Update</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">Update many resources atomically; each carries its own mask.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>POST /v1/{parent=publishers/*}/books:batchUpdate<br>body: { requests: [ UpdateBookRequest, … ] }</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Wraps N UpdateBookRequests</li><li>Atomic all-or-nothing</li><li>Per-item update_mask</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/234" target="_blank">aip.dev/234 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="method" data-num="235" data-title="batch methods: delete">
+  <div class="card-head">
+    <span class="num">AIP-235</span>
+    <h2>Batch methods: Delete</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#3fb950" title="Methods"></span>
+  </div>
+  <p class="tldr">Delete many resources by name atomically in one call.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>POST /v1/{parent=publishers/*}/books:batchDelete<br>body: { names: [ …/books/1, …/books/2 ] }</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Repeated names under one parent</li><li>Atomic all-or-nothing</li><li>POST (has a body), not DELETE</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/235" target="_blank">aip.dev/235 ↗</a>
+  </div>
+</div></div>
+</section><section data-cat-section="field">
+  <h3 class="cat-head"><span class="cat-swatch" style="background:#e3b341"></span>Fields <span class="cat-count">11</span></h3>
+  <div class="grid"><div class="card secondary collapsed" data-cat="field" data-num="129" data-title="server-modified values and defaults">
+  <div class="card-head">
+    <span class="num">AIP-129</span>
+    <h2>Server-Modified Values and Defaults</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#e3b341" title="Fields"></span>
+  </div>
+  <p class="tldr">Document when the server fills, overrides, or defaults a field.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>create_time  OUTPUT_ONLY (server sets)<br>language     defaults to &#x27;en&#x27; if unset</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Mark server-set fields OUTPUT_ONLY</li><li>Document default values explicitly</li><li>Don&#x27;t silently override client input</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/129" target="_blank">aip.dev/129 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="field" data-num="141" data-title="quantities">
+  <div class="card-head">
+    <span class="num">AIP-141</span>
+    <h2>Quantities</h2>
+    
+    <span class="dot" style="background:#e3b341" title="Fields"></span>
+  </div>
+  <p class="tldr">Name numeric fields with their unit; use *_count for counts.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>size_bytes, timeout_seconds, book_count</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Suffix with the unit</li><li>Counts use `_count`</li><li>Prefer int64 for large / growing values</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/141" target="_blank">aip.dev/141 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="field" data-num="142" data-title="time and duration">
+  <div class="card-head">
+    <span class="num">AIP-142</span>
+    <h2>Time and duration</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#e3b341" title="Fields"></span>
+  </div>
+  <p class="tldr">Use Timestamp for instants, Duration for spans. Suffix `_time`.</p>
+  <div class="body">
+    <div class="ex-label">json</div>
+    <pre>{<br>  &quot;createTime&quot;: &quot;2026-07-29T14:30:00Z&quot;,   <span class="c">// RFC 3339</span><br>  &quot;ttl&quot;: &quot;3600s&quot;                          <span class="c">// duration</span><br>}</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Timestamps: `_time` suffix, UTC</li><li>Durations: Duration type, not int seconds</li><li>Avoid raw epoch ints</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/142" target="_blank">aip.dev/142 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="field" data-num="143" data-title="standardized codes">
+  <div class="card-head">
+    <span class="num">AIP-143</span>
+    <h2>Standardized codes</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#e3b341" title="Fields"></span>
+  </div>
+  <p class="tldr">Use recognized standards for languages, countries, currencies.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>language_code  &#x27;en-US&#x27;   (BCP-47)<br>currency_code  &#x27;USD&#x27;     (ISO 4217)<br>region_code    &#x27;US&#x27;      (CLDR)</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>BCP-47 languages, ISO-4217 currency</li><li>`_code` suffix</li><li>Don&#x27;t invent your own code sets</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/143" target="_blank">aip.dev/143 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="field" data-num="144" data-title="repeated fields">
+  <div class="card-head">
+    <span class="num">AIP-144</span>
+    <h2>Repeated fields</h2>
+    
+    <span class="dot" style="background:#e3b341" title="Fields"></span>
+  </div>
+  <p class="tldr">Plural name; replace the whole list on update. Add/remove via custom methods.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>POST /v1/publishers/oreilly/books/9781492:addAuthor<br>{ &quot;author&quot;: &quot;authors/ursula-le-guin&quot; }<br><br>POST /v1/publishers/oreilly/books/9781492:removeAuthor</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Plural field name</li><li>Update replaces the entire list</li><li>Fine-grained changes → add/remove custom methods</li><li>Avoid repeated inside repeated</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/144" target="_blank">aip.dev/144 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="field" data-num="145" data-title="ranges">
+  <div class="card-head">
+    <span class="num">AIP-145</span>
+    <h2>Ranges</h2>
+    
+    <span class="dot" style="background:#e3b341" title="Fields"></span>
+  </div>
+  <p class="tldr">Represent ranges as [start, end) — inclusive start, exclusive end.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>start_time (inclusive) … end_time (exclusive)</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Half-open [start, end)</li><li>Both bounds same type</li><li>Consistent inclusivity everywhere</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/145" target="_blank">aip.dev/145 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="field" data-num="146" data-title="generic fields">
+  <div class="card-head">
+    <span class="num">AIP-146</span>
+    <h2>Generic fields</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#e3b341" title="Fields"></span>
+  </div>
+  <p class="tldr">For open/arbitrary data use Struct, Any, or map — deliberately.</p>
+  <div class="body">
+    <div class="ex-label">json</div>
+    <pre>{<br>  &quot;metadata&quot;: { &quot;any&quot;: &quot;json&quot;, &quot;nested&quot;: [1, 2] },  <span class="c">// Struct</span><br>  &quot;labels&quot;:   { &quot;env&quot;: &quot;prod&quot;, &quot;team&quot;: &quot;search&quot; }   <span class="c">// map</span><br>}</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Struct for JSON-ish blobs</li><li>Any for typed-but-open payloads</li><li>map for key/value; document key format</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/146" target="_blank">aip.dev/146 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="field" data-num="148" data-title="standard fields">
+  <div class="card-head">
+    <span class="num">AIP-148</span>
+    <h2>Standard fields</h2>
+    
+    <span class="dot" style="background:#e3b341" title="Fields"></span>
+  </div>
+  <p class="tldr">Canonical field names &amp; types every resource should reuse.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>name, display_name, uid, create_time, update_time,<br>delete_time, etag, labels, annotations</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Reuse these exact names/types</li><li>create_time/update_time OUTPUT_ONLY</li><li>etag for concurrency; uid stable &amp; unique</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/148" target="_blank">aip.dev/148 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="field" data-num="149" data-title="unset field values">
+  <div class="card-head">
+    <span class="num">AIP-149</span>
+    <h2>Unset field values</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#e3b341" title="Fields"></span>
+  </div>
+  <p class="tldr">Distinguish &#x27;unset&#x27; from &#x27;zero&#x27; when it matters (null vs. absent vs. default).</p>
+  <div class="body">
+    <div class="ex-label">json</div>
+    <pre>{ &quot;pageCount&quot;: 0 }      <span class="c">// explicitly zero</span><br>{ &quot;pageCount&quot;: null }   <span class="c">// explicitly unset</span><br>{ }                     <span class="c">// absent → server default</span></pre>
+    <div class="section-label">Key points</div>
+    <ul><li>null ≠ 0 ≠ absent — decide which you mean</li><li>Use nullable / optional presence where it matters</li><li>Document default-vs-unset semantics</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/149" target="_blank">aip.dev/149 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="field" data-num="202" data-title="fields">
+  <div class="card-head">
+    <span class="num">AIP-202</span>
+    <h2>Fields</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#e3b341" title="Fields"></span>
+  </div>
+  <p class="tldr">General guidance on defining fields: types, presence, repeatability.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>Prefer specific types; avoid stringly-typed data</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Choose the narrowest correct type</li><li>Document required/optional</li><li>Avoid overloading one field</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/202" target="_blank">aip.dev/202 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="field" data-num="203" data-title="field behavior documentation">
+  <div class="card-head">
+    <span class="num">AIP-203</span>
+    <h2>Field behavior documentation</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#e3b341" title="Fields"></span>
+  </div>
+  <p class="tldr">Annotate fields with behavior so tools &amp; docs know their role.</p>
+  <div class="body">
+    <div class="ex-label">proto</div>
+    <pre>[(field_behavior) = REQUIRED]<br>[(field_behavior) = OUTPUT_ONLY]<br>[(field_behavior) = IMMUTABLE]</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>REQUIRED / OPTIONAL</li><li>OUTPUT_ONLY (server-set)</li><li>IMMUTABLE (set once)</li><li>INPUT_ONLY (never returned)</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/203" target="_blank">aip.dev/203 ↗</a>
+  </div>
+</div></div>
+</section><section data-cat-section="naming">
+  <h3 class="cat-head"><span class="cat-swatch" style="background:#f778ba"></span>Naming &amp; Style <span class="cat-count">5</span></h3>
+  <div class="grid"><div class="card secondary collapsed" data-cat="naming" data-num="140" data-title="field names">
+  <div class="card-head">
+    <span class="num">AIP-140</span>
+    <h2>Field names</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#f778ba" title="Naming & Style"></span>
+  </div>
+  <p class="tldr">snake_case in proto, descriptive, consistent across the API.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>good: create_time, display_name, page_size<br>bad:  createTime, dispName, sz</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>snake_case in proto → camelCase in JSON</li><li>No abbreviations or type suffixes</li><li>Booleans read positively (enabled, not disabled)</li><li>Reuse standard field names</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/140" target="_blank">aip.dev/140 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="naming" data-num="190" data-title="naming conventions">
+  <div class="card-head">
+    <span class="num">AIP-190</span>
+    <h2>Naming conventions</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#f778ba" title="Naming & Style"></span>
+  </div>
+  <p class="tldr">Cross-cutting naming: services, messages, enums, files.</p>
+  <div class="body">
+    <div class="ex-label">proto</div>
+    <pre>service Library { … }        <span class="c">// PascalCase</span><br>message CreateBookRequest    <span class="c">// Verb+Noun+Request</span></pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Services &amp; messages PascalCase</li><li>RPC = Verb+Noun; msgs get Request/Response</li><li>Enums PascalCase, values SCREAMING_SNAKE</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/190" target="_blank">aip.dev/190 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="naming" data-num="191" data-title="file and directory structure">
+  <div class="card-head">
+    <span class="num">AIP-191</span>
+    <h2>File and directory structure</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#f778ba" title="Naming & Style"></span>
+  </div>
+  <p class="tldr">Where protos live, package naming, per-language namespace options.</p>
+  <div class="body">
+    <div class="ex-label">proto</div>
+    <pre>google/example/library/v1/library.proto<br>package google.example.library.v1;</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Path mirrors package + version</li><li>One version dir per major</li><li>Set language namespace options</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/191" target="_blank">aip.dev/191 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="naming" data-num="192" data-title="documentation">
+  <div class="card-head">
+    <span class="num">AIP-192</span>
+    <h2>Documentation</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#f778ba" title="Naming & Style"></span>
+  </div>
+  <p class="tldr">Every proto element gets a comment; comments are the public docs.</p>
+  <div class="body">
+    <div class="ex-label">proto</div>
+    <pre><span class="c">// Creates a book under the given publisher.</span><br>rpc CreateBook(...) returns (Book);</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Comment every field/method/message</li><li>Full sentences, present tense</li><li>Comments render as reference docs</li><li>Use Markdown, avoid implementation detail</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/192" target="_blank">aip.dev/192 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="naming" data-num="215" data-title="api-specific protos">
+  <div class="card-head">
+    <span class="num">AIP-215</span>
+    <h2>API-specific protos</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#f778ba" title="Naming & Style"></span>
+  </div>
+  <p class="tldr">Keep API protos self-contained; don&#x27;t share mutable internal types.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>Define your own request/response protos per API version</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Avoid cross-API type coupling</li><li>Internal types stay internal</li><li>Version isolation</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/215" target="_blank">aip.dev/215 ↗</a>
+  </div>
+</div></div>
+</section><section data-cat-section="data">
+  <h3 class="cat-head"><span class="cat-swatch" style="background:#56d4dd"></span>Data Types <span class="cat-count">4</span></h3>
+  <div class="grid"><div class="card secondary collapsed" data-cat="data" data-num="126" data-title="enumerations">
+  <div class="card-head">
+    <span class="num">AIP-126</span>
+    <h2>Enumerations</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#56d4dd" title="Data Types"></span>
+  </div>
+  <p class="tldr">Use proto enums for fixed sets; always reserve a zero UNSPECIFIED value.</p>
+  <div class="body">
+    <div class="ex-label">json</div>
+    <pre>{ &quot;format&quot;: &quot;HARDCOVER&quot; }<br><br><span class="c">// allowed: FORMAT_UNSPECIFIED | HARDCOVER | PAPERBACK</span></pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Zero value = *_UNSPECIFIED</li><li>Prefix values with enum name</li><li>Use string if the set changes often / is open</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/126" target="_blank">aip.dev/126 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="data" data-num="210" data-title="unicode">
+  <div class="card-head">
+    <span class="num">AIP-210</span>
+    <h2>Unicode</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#56d4dd" title="Data Types"></span>
+  </div>
+  <p class="tldr">Strings are UTF-8; define length in characters, normalize consistently.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>max length counted in Unicode code points, not bytes</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>UTF-8 everywhere</li><li>Length in code points</li><li>Pick a normalization form (NFC)</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/210" target="_blank">aip.dev/210 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="data" data-num="213" data-title="common components">
+  <div class="card-head">
+    <span class="num">AIP-213</span>
+    <h2>Common components</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#56d4dd" title="Data Types"></span>
+  </div>
+  <p class="tldr">Shared reusable message types (money, latlng, intervals, etc.).</p>
+  <div class="body">
+    <div class="ex-label">json</div>
+    <pre>{<br>  &quot;price&quot;:    { &quot;currencyCode&quot;: &quot;USD&quot;, &quot;units&quot;: 42 },  <span class="c">// Money</span><br>  &quot;location&quot;: { &quot;latitude&quot;: 59.43, &quot;longitude&quot;: 24.75 } <span class="c">// LatLng</span><br>}</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Reuse google.type.* types</li><li>Don&#x27;t reinvent money/date/geo</li><li>Consistent across APIs</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/213" target="_blank">aip.dev/213 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="data" data-num="216" data-title="states">
+  <div class="card-head">
+    <span class="num">AIP-216</span>
+    <h2>States</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#56d4dd" title="Data Types"></span>
+  </div>
+  <p class="tldr">Lifecycle state as an OUTPUT_ONLY enum; transitions via methods, not writes.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>GET …/books/9781492<br>{ &quot;state&quot;: &quot;DRAFT&quot; }   <span class="c">// read-only, server-owned</span><br><br>POST …/books/9781492:publish   <span class="c">// DRAFT → PUBLISHED</span></pre>
+    <div class="section-label">Key points</div>
+    <ul><li>state is OUTPUT_ONLY</li><li>Clients can&#x27;t set it directly</li><li>Custom methods drive transitions</li><li>Name it `state`, not `status`</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/216" target="_blank">aip.dev/216 ↗</a>
+  </div>
+</div></div>
+</section><section data-cat-section="ops">
+  <h3 class="cat-head"><span class="cat-swatch" style="background:#ff9e64"></span>Lifecycle &amp; Ops <span class="cat-count">7</span></h3>
+  <div class="grid"><div class="card" data-cat="ops" data-num="151" data-title="long-running operations">
+  <div class="card-head">
+    <span class="num">AIP-151</span>
+    <h2>Long-running operations</h2>
+    
+    <span class="dot" style="background:#ff9e64" title="Lifecycle & Ops"></span>
+  </div>
+  <p class="tldr">Slow calls return an Operation; poll it for the result.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>POST /v1/publishers/oreilly/books<br>→ 200 { &quot;name&quot;: &quot;operations/abc123&quot;, &quot;done&quot;: false }<br><br>GET /v1/operations/abc123<br>→ { &quot;done&quot;: true, &quot;response&quot;: { … } }</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Return google.longrunning.Operation</li><li>Declare response_type &amp; metadata_type</li><li>Poll GetOperation until done</li><li>Errors land in the Operation, not the RPC</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/151" target="_blank">aip.dev/151 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="ops" data-num="152" data-title="jobs">
+  <div class="card-head">
+    <span class="num">AIP-152</span>
+    <h2>Jobs</h2>
+    
+    <span class="dot" style="background:#ff9e64" title="Lifecycle & Ops"></span>
+  </div>
+  <p class="tldr">For repeatable/scheduled work: a Job resource you `:run` to make Executions.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>POST /v1/publishers/oreilly/writeBookJobs/nightly:run<br>{}<br>→ { &quot;name&quot;: &quot;operations/xyz&quot; }   <span class="c">// → an Execution</span></pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Job = config; Execution = one run</li><li>`:run` custom method starts it</li><li>Run returns an LRO</li><li>Good for schedules / batch pipelines</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/152" target="_blank">aip.dev/152 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="ops" data-num="153" data-title="import and export">
+  <div class="card-head">
+    <span class="num">AIP-153</span>
+    <h2>Import and export</h2>
+    
+    <span class="dot" style="background:#ff9e64" title="Lifecycle & Ops"></span>
+  </div>
+  <p class="tldr">Bulk in/out of external storage via `:import` / `:export` LROs.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>POST /v1/publishers/oreilly/books:import<br>{ &quot;gcsSource&quot;: { &quot;uri&quot;: &quot;gs://bucket/books.csv&quot; } }<br><br>POST /v1/publishers/oreilly/books:export<br>{ &quot;gcsDestination&quot;: { &quot;uri&quot;: &quot;gs://bucket/out/&quot; } }</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Both return LROs</li><li>Source/destination = GCS-style URIs</li><li>Not a substitute for standard Create/List</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/153" target="_blank">aip.dev/153 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="ops" data-num="154" data-title="resource freshness validation (etag)">
+  <div class="card-head">
+    <span class="num">AIP-154</span>
+    <h2>Resource freshness validation (ETag)</h2>
+    
+    <span class="dot" style="background:#ff9e64" title="Lifecycle & Ops"></span>
+  </div>
+  <p class="tldr">Use etags so writes only apply if the client&#x27;s copy is current.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>UpdateBook{ book{ etag:&#x27;abc&#x27; } }<br>→ ABORTED if etag stale</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Server returns etag on read</li><li>Client sends it back on write</li><li>Mismatch → ABORTED (optimistic concurrency)</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/154" target="_blank">aip.dev/154 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="ops" data-num="155" data-title="request identification">
+  <div class="card-head">
+    <span class="num">AIP-155</span>
+    <h2>Request identification</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#ff9e64" title="Lifecycle & Ops"></span>
+  </div>
+  <p class="tldr">request_id makes retried mutations idempotent (dedupe).</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>CreateBook{ request_id:&#x27;uuid-v4&#x27; }<br>same id within window → same result</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Client-supplied UUID</li><li>Server dedupes duplicate requests</li><li>Safe retries for create/mutation</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/155" target="_blank">aip.dev/155 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="ops" data-num="163" data-title="change validation">
+  <div class="card-head">
+    <span class="num">AIP-163</span>
+    <h2>Change validation</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#ff9e64" title="Lifecycle & Ops"></span>
+  </div>
+  <p class="tldr">validate_only lets clients dry-run a mutation without applying it.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>CreateBook{ validate_only: true }<br>→ validates, changes nothing</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>validate_only flag on mutations</li><li>Returns what would happen / errors</li><li>No side effects when true</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/163" target="_blank">aip.dev/163 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="ops" data-num="236" data-title="policy preview">
+  <div class="card-head">
+    <span class="num">AIP-236</span>
+    <h2>Policy preview</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#ff9e64" title="Lifecycle & Ops"></span>
+  </div>
+  <p class="tldr">Preview the effect of a policy change before committing it.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>POST …/experiments/*:startPreview<br>POST …/experiments/*:commit</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Experiment resource models the change</li><li>startPreview → evaluate; commit → apply</li><li>LRO-driven; safe what-if analysis</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/236" target="_blank">aip.dev/236 ↗</a>
+  </div>
+</div></div>
+</section><section data-cat-section="compat">
+  <h3 class="cat-head"><span class="cat-swatch" style="background:#d29922"></span>Versioning &amp; Compat <span class="cat-count">5</span></h3>
+  <div class="grid"><div class="card secondary collapsed" data-cat="compat" data-num="180" data-title="backwards compatibility">
+  <div class="card-head">
+    <span class="num">AIP-180</span>
+    <h2>Backwards compatibility</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#d29922" title="Versioning & Compat"></span>
+  </div>
+  <p class="tldr">Long list of what you may and may not change without a new version.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>OK:  add a field, add an enum value<br>NOT: remove/rename a field, tighten validation</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Additive changes generally safe</li><li>Removing/renaming/retyping = breaking</li><li>Semantic changes count as breaking</li><li>Break → new major version (AIP-185)</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/180" target="_blank">aip.dev/180 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="compat" data-num="181" data-title="stability levels">
+  <div class="card-head">
+    <span class="num">AIP-181</span>
+    <h2>Stability levels</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#d29922" title="Versioning & Compat"></span>
+  </div>
+  <p class="tldr">Alpha / Beta / Stable — each with different change guarantees.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>v1alpha1 → may break anytime<br>v1beta1  → limited guarantees<br>v1       → stable, compat rules apply</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Alpha: no guarantees</li><li>Beta: some notice</li><li>Stable: full AIP-180 rules</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/181" target="_blank">aip.dev/181 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="compat" data-num="182" data-title="external software dependencies">
+  <div class="card-head">
+    <span class="num">AIP-182</span>
+    <h2>External software dependencies</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#d29922" title="Versioning & Compat"></span>
+  </div>
+  <p class="tldr">Be cautious taking deps that leak into your public API surface.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>Vendored proto types can become a compat liability</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Deps in the surface = compat risk</li><li>Prefer stable, well-owned types</li><li>Still under review</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-draft">reviewing</span>
+    <a class="src" href="https://google.aip.dev/182" target="_blank">aip.dev/182 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="compat" data-num="185" data-title="api versioning">
+  <div class="card-head">
+    <span class="num">AIP-185</span>
+    <h2>API Versioning</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#d29922" title="Versioning & Compat"></span>
+  </div>
+  <p class="tldr">Version in the path (v1, v2); bump major only for breaking changes.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre>/v1/publishers/…   →   /v2/publishers/…</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Major version in path &amp; proto package</li><li>New major only when you must break</li><li>Run versions in parallel during migration</li><li>Channel suffixes: v1beta1, v1alpha1</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/185" target="_blank">aip.dev/185 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="compat" data-num="205" data-title="beta-blocking changes">
+  <div class="card-head">
+    <span class="num">AIP-205</span>
+    <h2>Beta-blocking changes</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#d29922" title="Versioning & Compat"></span>
+  </div>
+  <p class="tldr">Things that must be fixed before an API can graduate to beta.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>Unresolved naming / structural debt blocks beta</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Catch issues before beta lock-in</li><li>Naming &amp; shape must be settled</li><li>Cheaper to fix in alpha</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/205" target="_blank">aip.dev/205 ↗</a>
+  </div>
+</div></div>
+</section><section data-cat-section="errors">
+  <h3 class="cat-head"><span class="cat-swatch" style="background:#f85149"></span>Errors &amp; Retry <span class="cat-count">2</span></h3>
+  <div class="grid"><div class="card" data-cat="errors" data-num="193" data-title="errors">
+  <div class="card-head">
+    <span class="num">AIP-193</span>
+    <h2>Errors</h2>
+    
+    <span class="dot" style="background:#f85149" title="Errors & Retry"></span>
+  </div>
+  <p class="tldr">Return google.rpc.Status: a canonical code, a message, and typed details.</p>
+  <div class="body">
+    <div class="ex-label">json</div>
+    <pre>{ &quot;error&quot;: { &quot;code&quot;: 404,<br>  &quot;status&quot;: &quot;NOT_FOUND&quot;,<br>  &quot;message&quot;: &quot;Book … not found&quot;,<br>  &quot;details&quot;: [ … ] } }</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Use canonical gRPC codes (map to HTTP)</li><li>Human message + machine details</li><li>ErrorInfo carries reason &amp; domain</li><li>Don&#x27;t leak internals; be actionable</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/193" target="_blank">aip.dev/193 ↗</a>
+  </div>
+</div>
+<div class="card" data-cat="errors" data-num="194" data-title="automatic retry configuration">
+  <div class="card-head">
+    <span class="num">AIP-194</span>
+    <h2>Automatic retry configuration</h2>
+    
+    <span class="dot" style="background:#f85149" title="Errors & Retry"></span>
+  </div>
+  <p class="tldr">Declare which methods/codes are safe to auto-retry.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>retry on: UNAVAILABLE, DEADLINE_EXCEEDED<br>idempotent methods only</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Only idempotent methods auto-retry</li><li>Retry on transient codes</li><li>Exponential backoff expected</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/194" target="_blank">aip.dev/194 ↗</a>
+  </div>
+</div></div>
+</section><section data-cat-section="security">
+  <h3 class="cat-head"><span class="cat-swatch" style="background:#db61a2"></span>Security <span class="cat-count">2</span></h3>
+  <div class="grid"><div class="card" data-cat="security" data-num="147" data-title="sensitive fields">
+  <div class="card-head">
+    <span class="num">AIP-147</span>
+    <h2>Sensitive fields</h2>
+    
+    <span class="dot" style="background:#db61a2" title="Security"></span>
+  </div>
+  <p class="tldr">Secrets are write-only; pair them with an output-only `_set` boolean so clients can tell if one exists.</p>
+  <div class="body">
+    <div class="ex-label">http</div>
+    <pre><span class="c">// request  (write the secret)</span><br>PATCH …/integrations/webhook<br>{ &quot;sharedSecret&quot;: &quot;s3cr3t&quot; }<br><br><span class="c">// response (never echoes it back)</span><br>{ &quot;sharedSecretSet&quot;: true }</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>Secret field is INPUT_ONLY — never echoed back</li><li>`&lt;field&gt;_set` OUTPUT_ONLY boolean reveals presence, not value</li><li>Or `obfuscated_&lt;field&gt;` to show a redacted hint</li><li>Required secret → input-only, no _set needed</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/147" target="_blank">aip.dev/147 ↗</a>
+  </div>
+</div>
+<div class="card secondary collapsed" data-cat="security" data-num="211" data-title="authorization checks">
+  <div class="card-head">
+    <span class="num">AIP-211</span>
+    <h2>Authorization checks</h2>
+    <button class="toggle" aria-label="expand">+</button>
+    <span class="dot" style="background:#db61a2" title="Security"></span>
+  </div>
+  <p class="tldr">Check permission before existence — don&#x27;t leak resources via error codes.</p>
+  <div class="body">
+    <div class="ex-label">text</div>
+    <pre>no access → PERMISSION_DENIED (or NOT_FOUND)<br>never reveal &#x27;exists but forbidden&#x27;</pre>
+    <div class="section-label">Key points</div>
+    <ul><li>AuthZ before revealing existence</li><li>Consistent code to avoid enumeration</li><li>Check on every method</li></ul>
+  </div>
+  <div class="foot">
+    <span class="state st-approved">approved</span>
+    <a class="src" href="https://google.aip.dev/211" target="_blank">aip.dev/211 ↗</a>
+  </div>
+</div></div>
+</section>
+    <div class="empty hidden" id="empty">No AIPs match.</div>
+  </main>
+<script>
+  const cards = [...document.querySelectorAll('.card')];
+  const sections = [...document.querySelectorAll('section')];
+  const filters = [...document.querySelectorAll('.filter:not(.expand-btn)')];
+  const search = document.getElementById('search');
+  const empty = document.getElementById('empty');
+  let activeCat = 'all';
+
+  function apply() {
+    const q = search.value.trim().toLowerCase();
+    let anyVisible = false;
+    cards.forEach(c => {
+      const catOk = activeCat === 'all' || c.dataset.cat === activeCat;
+      const qOk = !q || c.dataset.title.includes(q) || ('aip-'+c.dataset.num).includes(q) || c.dataset.num.includes(q);
+      const show = catOk && qOk;
+      c.classList.toggle('hidden', !show);
+      if (show) anyVisible = true;
+    });
+    sections.forEach(s => {
+      const visible = [...s.querySelectorAll('.card')].some(c => !c.classList.contains('hidden'));
+      s.classList.toggle('hidden', !visible);
+    });
+    empty.classList.toggle('hidden', anyVisible);
+  }
+
+  filters.forEach(f => f.addEventListener('click', () => {
+    filters.forEach(x => x.classList.remove('active'));
+    f.classList.add('active');
+    activeCat = f.dataset.f;
+    apply();
+  }));
+  search.addEventListener('input', apply);
+
+  // per-card toggle: whole card expands when collapsed; button collapses when open
+  function setCard(c, collapse) {
+    c.classList.toggle('collapsed', collapse);
+    const t = c.querySelector('.toggle');
+    if (t) t.textContent = collapse ? '+' : '−';
+  }
+  document.querySelectorAll('.card.secondary').forEach(c => {
+    c.addEventListener('click', e => {
+      // don't hijack link clicks or text selection
+      if (e.target.closest('a')) return;
+      if (window.getSelection && window.getSelection().toString()) return;
+      if (c.classList.contains('collapsed')) {
+        setCard(c, false);           // click anywhere → expand
+      } else if (e.target.closest('.toggle')) {
+        setCard(c, true);            // only the − button collapses
+      }
+    });
+  });
+
+  // expand / collapse all secondary
+  const expandBtn = document.getElementById('expandAll');
+  let allOpen = false;
+  expandBtn.addEventListener('click', () => {
+    allOpen = !allOpen;
+    document.querySelectorAll('.card.secondary').forEach(c => setCard(c, !allOpen));
+    expandBtn.textContent = allOpen ? 'Collapse secondary' : 'Expand secondary';
+    expandBtn.classList.toggle('active', allOpen);
+  });
+</script>
+</body>
+</html>
